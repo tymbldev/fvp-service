@@ -73,4 +73,43 @@ public class CategoryService {
         
         return result;
     }
+
+    @Cacheable(value = "categoryLinks", key = "#tenantId + '_' + #categoryId")
+    public List<CategoryWithLinkDTO> getCategoryLinks(Integer tenantId, Integer categoryId) {
+        List<CategoryWithLinkDTO> result = new ArrayList<>();
+        
+        // Get the category
+        AllCat category = allCatRepository.findById(categoryId).orElse(null);
+        if (category == null || !category.getTenantId().equals(tenantId)) {
+            return result;
+        }
+        
+        // Get the count of links for this category
+        Long linkCount = linkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName());
+        
+        // Get all links for this category
+        List<LinkCategory> linkCategories = linkCategoryRepository.findByTenantIdAndCategory(tenantId, category.getName());
+        
+        for (LinkCategory linkCategory : linkCategories) {
+            Link link = linkCategory.getLink();
+            
+            CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+            dto.setId(category.getId());
+            dto.setName(category.getName());
+            dto.setHomeThumb(category.getHomeThumb());
+            dto.setHeader(category.getHeader());
+            dto.setHomeSEO(category.getHomeSEO());
+            dto.setHomeCatOrder(category.getHomeCatOrder());
+            dto.setDescription(category.getDescription());
+            dto.setLink(link.getLink());
+            dto.setLinkTitle(link.getTitle());
+            dto.setLinkThumbnail(link.getThumbnail());
+            dto.setLinkDuration(link.getDuration());
+            dto.setLinkCount(linkCount);
+            
+            result.add(dto);
+        }
+        
+        return result;
+    }
 } 

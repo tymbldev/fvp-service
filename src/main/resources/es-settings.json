@@ -1,0 +1,67 @@
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "standard": {
+          "type": "standard"
+        }
+      }
+    },
+    "index": {
+      "number_of_shards": 1,
+      "number_of_replicas": 1
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "tenantId": {
+        "type": "integer"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "categories": {
+        "type": "keyword"
+      },
+      "duration": {
+        "type": "integer"
+      },
+      "thumbnail": {
+        "type": "keyword"
+      },
+      "thumbPath": {
+        "type": "keyword"
+      },
+      "sheetName": {
+        "type": "keyword"
+      },
+      "link": {
+        "type": "keyword"
+      },
+      "source": {
+        "type": "keyword"
+      },
+      "stars": {
+        "type": "integer"
+      },
+      "createdAt": {
+        "type": "date"
+      },
+      "trailer": {
+        "type": "keyword"
+      },
+      "searchableText": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "name": {
+        "type": "text",
+        "analyzer": "standard"
+      }
+    }
+  }
+} 

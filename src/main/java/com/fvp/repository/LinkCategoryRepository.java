@@ -37,4 +37,10 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     List<String> findAllDistinctCategories(Integer tenantId);
     
     List<LinkCategory> findByTenantId(Integer tenantId);
+    
+    @Query("SELECT lc FROM LinkCategory lc WHERE lc.tenantId = :tenantId AND lc.category = :category")
+    List<LinkCategory> findByTenantIdAndCategory(
+        @Param("tenantId") Integer tenantId,
+        @Param("category") String category
+    );
 } 

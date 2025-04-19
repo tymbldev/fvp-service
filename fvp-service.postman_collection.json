@@ -7,6 +7,39 @@
 	},
 	"item": [
 		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "health"]
+						},
+						"description": "Get the health status of the service and its components"
+					},
+					"response": []
+				},
+				{
+					"name": "Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health/ping",
+							"host": ["{{base_url}}"],
+							"path": ["api", "health", "ping"]
+						},
+						"description": "Simple ping endpoint to check if the service is responding"
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Categories",
 			"item": [
 				{
@@ -27,6 +60,34 @@
 							"path": ["api", "categories", "home"]
 						},
 						"description": "Get all categories with home=1, ordered by home_cat_order, including a random link for each category"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Category Links",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Tenant-Id",
+								"value": "0",
+								"type": "text",
+								"description": "Tenant ID (optional, defaults to 0)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories/:categoryId/links",
+							"host": ["{{base_url}}"],
+							"path": ["api", "categories", ":categoryId", "links"],
+							"variable": [
+								{
+									"key": "categoryId",
+									"value": "1",
+									"description": "ID of the category to get links for"
+								}
+							]
+						},
+						"description": "Get all links for a specific category"
 					},
 					"response": []
 				}
