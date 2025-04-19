@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
-    <property name="LOGS_PATH" value="${LOG_PATH:-logs}" />
+<configuration debug="true">
+    <!-- Try both property names for compatibility -->
+    <property name="LOGS_PATH" value="${LOG_PATH:-${logs.path:-logs}}" />
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n" />
 
-    <!-- Console Appender -->
+    <!-- Console Appender (for troubleshooting) -->
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
@@ -58,11 +59,13 @@
     <springProfile name="prod">
         <!-- Root Logger for Production -->
         <root level="INFO">
+            <appender-ref ref="Console" />
             <appender-ref ref="ApplicationLog" />
         </root>
 
         <!-- Application Loggers for Production -->
         <logger name="com.fvp" level="INFO" additivity="false">
+            <appender-ref ref="Console" />
             <appender-ref ref="ApplicationLog" />
         </logger>
     </springProfile>
