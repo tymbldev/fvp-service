@@ -24,17 +24,16 @@ public class SheetDataWriter implements ItemWriter<SheetData> {
     public void write(List<? extends SheetData> items) throws Exception {
         for (SheetData item : items) {
             // Save or update link
-            Link link = linkRepository.findByTenantIdAndLink(0, item.getLink())
-                .orElseGet(() -> {
-                    Link newLink = new Link();
-                    newLink.setTenantId(0);
-                    newLink.setLink(item.getLink());
-                    newLink.setSource(item.getSource());
-                    newLink.setThumbnail(item.getThumbnail());
-                    newLink.setTitle(item.getTitle());
-                    newLink.setDuration(item.getDuration());
-                    return newLink;
-                });
+            Link link = linkRepository.findByTenantIdAndLink(0, item.getLink());
+            if (link == null) {
+                link = new Link();
+                link.setTenantId(0);
+                link.setLink(item.getLink());
+                link.setSource(item.getSource());
+                link.setThumbnail(item.getThumbnail());
+                link.setTitle(item.getTitle());
+                link.setDuration(item.getDuration());
+            }
 
             link = linkRepository.save(link);
 

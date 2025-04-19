@@ -2,6 +2,7 @@ package com.fvp.batch;
 
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
+import com.google.api.services.sheets.v4.model.Sheet;
 import com.fvp.model.SheetData;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -45,11 +46,11 @@ public class GoogleSheetsBatchConfig {
         List<SheetData> data = new ArrayList<>();
         
         // Get all sheets
-        var sheets = sheetsService.spreadsheets().get(spreadsheetId).execute().getSheets();
+        List<Sheet> sheets = sheetsService.spreadsheets().get(spreadsheetId).execute().getSheets();
         
         // Filter sheets with date format (dd.MM.yy)
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy");
-        var dateSheets = sheets.stream()
+        List<Sheet> dateSheets = sheets.stream()
             .filter(sheet -> {
                 try {
                     LocalDate.parse(sheet.getProperties().getTitle(), formatter);
@@ -61,7 +62,7 @@ public class GoogleSheetsBatchConfig {
             .collect(Collectors.toList());
         
         // Read data from each sheet
-        for (var sheet : dateSheets) {
+        for (Sheet sheet : dateSheets) {
             String range = sheet.getProperties().getTitle() + "!A2:G"; // Skip header row
             ValueRange response = sheetsService.spreadsheets().values()
                 .get(spreadsheetId, range)
