@@ -2,6 +2,8 @@
 DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS link_categories;
+DROP TABLE IF EXISTS links;
 
 -- Create users table
 CREATE TABLE users (
@@ -35,6 +37,33 @@ CREATE TABLE user_roles (
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 
+-- Create links table
+CREATE TABLE links (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    category JSON,
+    duration INT NOT NULL,
+    thumbnail VARCHAR(500) NOT NULL,
+    thumb_path VARCHAR(100) NOT NULL,
+    sheet_name VARCHAR(100) NOT NULL,
+    link VARCHAR(500) NOT NULL UNIQUE,
+    source VARCHAR(100) NOT NULL,
+    star JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    trailer VARCHAR(500)
+);
+
+-- Create link_categories table
+CREATE TABLE link_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    link_id INT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE
+);
+
 -- Insert default roles
 INSERT INTO roles (name, description) VALUES
 ('ROLE_ADMIN', 'Administrator role with full access'),
@@ -43,4 +72,6 @@ INSERT INTO roles (name, description) VALUES
 -- Create indexes
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_roles_name ON roles(name); 
+CREATE INDEX idx_roles_name ON roles(name);
+CREATE INDEX idx_links_tenant_id ON links(tenant_id);
+CREATE INDEX idx_link_categories_link_id ON link_categories(link_id); 
