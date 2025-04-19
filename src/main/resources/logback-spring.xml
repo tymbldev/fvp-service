@@ -39,19 +39,35 @@
         <appender-ref ref="AccessLog" />
     </logger>
 
-    <!-- Root Logger -->
-    <root level="INFO">
-        <appender-ref ref="Console" />
-        <appender-ref ref="ApplicationLog" />
-    </root>
+    <!-- Development Profile Configuration -->
+    <springProfile name="!prod">
+        <!-- Root Logger for Development -->
+        <root level="INFO">
+            <appender-ref ref="Console" />
+            <appender-ref ref="ApplicationLog" />
+        </root>
 
-    <!-- Application Loggers -->
-    <logger name="com.fvp" level="DEBUG" additivity="false">
-        <appender-ref ref="Console" />
-        <appender-ref ref="ApplicationLog" />
-    </logger>
+        <!-- Application Loggers for Development -->
+        <logger name="com.fvp" level="DEBUG" additivity="false">
+            <appender-ref ref="Console" />
+            <appender-ref ref="ApplicationLog" />
+        </logger>
+    </springProfile>
 
-    <!-- Framework Loggers -->
+    <!-- Production Profile Configuration -->
+    <springProfile name="prod">
+        <!-- Root Logger for Production -->
+        <root level="INFO">
+            <appender-ref ref="ApplicationLog" />
+        </root>
+
+        <!-- Application Loggers for Production -->
+        <logger name="com.fvp" level="INFO" additivity="false">
+            <appender-ref ref="ApplicationLog" />
+        </logger>
+    </springProfile>
+
+    <!-- Framework Loggers (common for all profiles) -->
     <logger name="org.springframework" level="INFO" />
     <logger name="org.hibernate" level="INFO" />
 </configuration> 
