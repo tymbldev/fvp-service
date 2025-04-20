@@ -1,11 +1,15 @@
 package com.fvp.document;
 
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.Setting;
 
+@Data
 @Document(indexName = "categories")
+@Setting(settingPath = "es-settings.json")
 public class CategoryDocument {
     @Id
     private String id;

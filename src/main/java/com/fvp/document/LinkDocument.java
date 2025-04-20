@@ -6,8 +6,9 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 import org.springframework.data.elasticsearch.annotations.Setting;
+import org.springframework.data.elasticsearch.annotations.DateFormat;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 @Data
@@ -48,8 +49,8 @@ public class LinkDocument {
     @Field(type = FieldType.Integer)
     private Integer stars;
 
-    @Field(type = FieldType.Date)
-    private LocalDateTime createdAt;
+    @Field(type = FieldType.Date, format = DateFormat.date_time)
+    private Date createdAt;
 
     @Field(type = FieldType.Keyword)
     private String trailer;
