@@ -54,4 +54,48 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     
     @Transactional
     void deleteByLinkId(Integer linkId);
+    
+    @Query(value = "SELECT lc.* FROM link_category lc JOIN link l ON lc.link_id = l.id " +
+            "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
+            "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
+            "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
+            "ORDER BY lc.random_order LIMIT :limit OFFSET :offset", 
+            nativeQuery = true)
+    List<LinkCategory> findByCategoryWithFiltersPageable(
+        @Param("tenantId") Integer tenantId,
+        @Param("category") String category,
+        @Param("maxDuration") Integer maxDuration,
+        @Param("quality") String quality,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
+    
+    @Query(value = "SELECT COUNT(lc.id) FROM link_category lc JOIN link l ON lc.link_id = l.id " +
+            "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
+            "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
+            "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality)",
+            nativeQuery = true)
+    Long countByCategoryWithFilters(
+        @Param("tenantId") Integer tenantId,
+        @Param("category") String category,
+        @Param("maxDuration") Integer maxDuration,
+        @Param("quality") String quality
+    );
+
+    @Query(value = "SELECT lc.* FROM link_category lc JOIN link l ON lc.link_id = l.id " +
+            "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
+            "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
+            "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
+            "AND l.id != :excludeId " +
+            "ORDER BY lc.random_order LIMIT :limit OFFSET :offset",
+            nativeQuery = true)
+    List<LinkCategory> findByCategoryWithFiltersExcludingLinkPageable(
+        @Param("tenantId") Integer tenantId,
+        @Param("category") String category,
+        @Param("maxDuration") Integer maxDuration,
+        @Param("quality") String quality,
+        @Param("excludeId") Integer excludeId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
 } 

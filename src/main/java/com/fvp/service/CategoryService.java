@@ -269,136 +269,157 @@ public class CategoryService {
       return Page.empty();
     }
 
-    // Create cache key with all parameters
-    final String fullListKey = String.format("%d_%s%s%s",
-        tenantId,
-        categoryName,
-        maxDuration != null ? "_duration_" + maxDuration : "",
-        quality != null ? "_quality_" + quality : ""
+    logger.info("Fetching category links for tenant {} and category {}, page: {}, size: {}, maxDuration: {}, quality: {}", 
+        tenantId, categoryName, pageable.getPageNumber(), pageable.getPageSize(), maxDuration, quality);
+    
+    // Get the category by name
+    AllCat category = LoggingUtil.logOperationTime(
+        logger, 
+        "fetch category by name", 
+        () -> allCatRepository.findByTenantIdAndName(tenantId, categoryName)
     );
     
-    // Try to get the full list from cache
-    TypeReference<List<CategoryWithLinkDTO>> typeRef = new TypeReference<List<CategoryWithLinkDTO>>() {};
-    Optional<List<CategoryWithLinkDTO>> cachedList = LoggingUtil.logOperationTime(
+    if (category == null) {
+      logger.warn("Category not found for tenant {} and name {}", tenantId, categoryName);
+      return Page.empty();
+    }
+    
+    // Get the total count with filters (for pagination metadata)
+    Long totalCount = LoggingUtil.logOperationTime(
         logger, 
-        "get category links from cache", 
-        () -> cacheService.getCollectionFromCache(
-            CATEGORY_LINKS_CACHE, 
-            fullListKey, 
-            typeRef
+        "count links with filters", 
+        () -> linkCategoryRepository.countByCategoryWithFilters(tenantId, categoryName, maxDuration, quality)
+    );
+    
+    if (totalCount == 0) {
+      logger.info("No links found for category {} with given filters", categoryName);
+      return Page.empty();
+    }
+    
+    List<CategoryWithLinkDTO> pageContent = new ArrayList<>();
+    
+    // For first page, include the "first link" as the first item
+    if (pageable.getPageNumber() == 0) {
+      CategoryWithLinkDTO firstLink = getCategoryFirstLink(tenantId, categoryName);
+      
+      if (firstLink != null) {
+        // Only include the first link when no filters are applied (default landing)
+        boolean includeFirstLink = (maxDuration == null && quality == null);
+        
+        if (includeFirstLink) {
+          pageContent.add(firstLink);
+          
+          // If first page has only one item (pageSize=1), we're done
+          if (pageable.getPageSize() == 1) {
+            return new PageImpl<>(pageContent, pageable, totalCount);
+          }
+          
+          // Get link entity for exclusion from subsequent query
+          Link linkEntity = null;
+          try {
+            linkEntity = linkRepository.findByTenantIdAndLink(tenantId, firstLink.getLink());
+          } catch (Exception e) {
+            logger.warn("Error fetching link entity: {}", e.getMessage());
+          }
+          
+          // For first page, get one less item from DB and exclude the first link's ID
+          Integer firstLinkId = linkEntity != null ? linkEntity.getId() : null;
+          
+          if (firstLinkId != null) {
+            // Get remaining items for first page, excluding the first link
+            List<LinkCategory> remainingItems = LoggingUtil.logOperationTime(
+                logger, 
+                "fetch remaining items for first page", 
+                () -> linkCategoryRepository.findByCategoryWithFiltersExcludingLinkPageable(
+                    tenantId, 
+                    categoryName, 
+                    maxDuration, 
+                    quality,
+                    firstLinkId,
+                    0, // still start from beginning
+                    pageable.getPageSize() - 1 // one less item
+                )
+            );
+            
+            // Add remaining items to page content
+            pageContent.addAll(createDTOsFromLinkCategories(remainingItems, category));
+            
+            return new PageImpl<>(pageContent, pageable, totalCount);
+          }
+        }
+      }
+    }
+    
+    // For pages other than first page (or if first link couldn't be included)
+    // Calculate correct offset, adjusting for first link if needed
+    int offset = (int) pageable.getOffset();
+    final int limit = pageable.getPageSize();
+    
+    // For first page, if we didn't add a first link, use normal pagination
+    // For subsequent pages, adjust offset to account for the first link on page 0
+    final int adjustedOffset;
+    if (pageable.getPageNumber() > 0 && pageContent.isEmpty()) {
+      adjustedOffset = offset - 1; // Reduce offset by 1 to account for first link on page 0
+    } else {
+      adjustedOffset = offset;
+    }
+    
+    // Fetch items from database with pagination
+    List<LinkCategory> dbItems = LoggingUtil.logOperationTime(
+        logger, 
+        "fetch items with pagination", 
+        () -> linkCategoryRepository.findByCategoryWithFiltersPageable(
+            tenantId, 
+            categoryName, 
+            maxDuration, 
+            quality, 
+            adjustedOffset, 
+            limit
         )
     );
     
-    List<CategoryWithLinkDTO> allLinks;
-    if (cachedList.isPresent() && !cachedList.get().isEmpty()) {
-      logger.info("Retrieved {} category links from cache for tenant {} and category {}", 
-          cachedList.get().size(), tenantId, categoryName);
-      allLinks = cachedList.get();
-    } else {
-      logger.info("Cache miss for category links, fetching from database for tenant {} and category {}", 
-          tenantId, categoryName);
-      
-      // Get the category by name
-      AllCat category = LoggingUtil.logOperationTime(
-          logger, 
-          "fetch category by name", 
-          () -> allCatRepository.findByTenantIdAndName(tenantId, categoryName)
-      );
-      
-      if (category == null) {
-        logger.warn("Category not found for tenant {} and name {}", tenantId, categoryName);
-        return Page.empty();
-      }
-
-      // Get the count of links for this category
-      Long linkCount = LoggingUtil.logOperationTime(
-          logger, 
-          "count links for category", 
-          () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, categoryName)
-      );
-
-      // Get all links for this category with random ordering
-      List<LinkCategory> linkCategories = LoggingUtil.logOperationTime(
-          logger, 
-          "find links by category ordered by random", 
-          () -> linkCategoryRepository.findByTenantIdAndCategoryOrderByRandomOrder(tenantId, categoryName)
-      );
-
-      // Filter links based on duration and quality if provided
-      List<LinkCategory> filteredLinkCategories = LoggingUtil.logOperationTime(
-          logger, 
-          "filter links by duration and quality", 
-          () -> linkCategories.stream()
-              .filter(lc -> {
-                Link link = lc.getLink();
-
-                // Filter by tenant
-                if (!link.getTenantId().equals(tenantId)) {
-                  return false;
-                }
-
-                // Filter by duration if specified
-                if (maxDuration != null && link.getDuration() != null && link.getDuration() > maxDuration) {
-                  return false;
-                }
-
-                // Filter by quality if specified
-                if (quality != null && !quality.equals(link.getQuality())) {
-                  return false;
-                }
-
-                return true;
-              })
-              .collect(Collectors.toList())
-      );
-
-      // Create DTOs for all links
-      allLinks = new ArrayList<>();
-      
-      for (LinkCategory linkCategory : filteredLinkCategories) {
-        Link link = linkCategory.getLink();
-
-        CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
-        dto.setId(category.getId());
-        dto.setName(category.getName());
-        dto.setHomeThumb(category.getHomeThumb());
-        dto.setHeader(category.getHeader());
-        dto.setHomeSEO(category.getHomeSEO());
-        dto.setHomeCatOrder(category.getHomeCatOrder());
-        dto.setDescription(category.getDescription());
-        dto.setLink(link.getLink());
-        dto.setLinkTitle(link.getTitle());
-        dto.setLinkThumbnail(link.getThumbnail());
-        dto.setLinkDuration(link.getDuration());
-        dto.setLinkCount(linkCount);
-
-        allLinks.add(dto);
-      }
-      
-      // Save to cache
-      LoggingUtil.logOperationTime(
-          logger, 
-          "store category links in cache", 
-          () -> {
-            cacheService.putInCache(CATEGORY_LINKS_CACHE, fullListKey, allLinks);
-            return null;
-          }
-      );
-      
-      logger.info("Stored {} category links in cache for tenant {} and category {}", 
-          allLinks.size(), tenantId, categoryName);
+    // Add DB items to page content if first page didn't already add items
+    if (pageContent.isEmpty()) {
+      pageContent.addAll(createDTOsFromLinkCategories(dbItems, category));
     }
-    
-    // Apply pagination
-    int start = (int) pageable.getOffset();
-    int end = Math.min((start + pageable.getPageSize()), allLinks.size());
-    
-    List<CategoryWithLinkDTO> pageContent = (start <= end) ? 
-        allLinks.subList(start, end) : Collections.emptyList();
     
     logger.info("Returning page {} with {} items for tenant {} and category {}", 
         pageable.getPageNumber(), pageContent.size(), tenantId, categoryName);
     
-    return new PageImpl<>(pageContent, pageable, allLinks.size());
+    return new PageImpl<>(pageContent, pageable, totalCount);
+  }
+  
+  /**
+   * Helper method to create DTOs from LinkCategory entities
+   */
+  private List<CategoryWithLinkDTO> createDTOsFromLinkCategories(List<LinkCategory> linkCategories, AllCat category) {
+    List<CategoryWithLinkDTO> dtos = new ArrayList<>();
+    
+    for (LinkCategory linkCategory : linkCategories) {
+      Link link = linkCategory.getLink();
+      
+      // Skip links that don't match the tenant id (additional safety check)
+      if (!link.getTenantId().equals(category.getTenantId())) {
+        continue;
+      }
+      
+      CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+      dto.setId(category.getId());
+      dto.setName(category.getName());
+      dto.setHomeThumb(category.getHomeThumb());
+      dto.setHeader(category.getHeader());
+      dto.setHomeSEO(category.getHomeSEO());
+      dto.setHomeCatOrder(category.getHomeCatOrder());
+      dto.setDescription(category.getDescription());
+      dto.setLink(link.getLink());
+      dto.setLinkTitle(link.getTitle());
+      dto.setLinkThumbnail(link.getThumbnail());
+      dto.setLinkDuration(link.getDuration());
+      dto.setLinkCount(linkCategoryRepository.countByTenantIdAndCategory(category.getTenantId(), category.getName()));
+      
+      dtos.add(dto);
+    }
+    
+    return dtos;
   }
 } 
