@@ -25,4 +25,7 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
     List<Link> findByTitleContaining(Integer tenantId, String keyword);
     
     List<Link> findByTenantId(Integer tenantId);
+
+    // Find a link by URL and tenant ID
+    Link findByLinkAndTenantId(String link, Integer tenantId);
 } 

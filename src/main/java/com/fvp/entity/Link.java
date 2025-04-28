@@ -1,16 +1,29 @@
 package com.fvp.entity;
 
-import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-
-import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Data
 @Entity
-@Table(name = "links", schema = "fvp_test")
-public class Link {
+@Table(name = "link")
+@NoArgsConstructor
+public class Link implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,6 +66,16 @@ public class Link {
     @Column(length = 500)
     private String trailer;
     
+    @ToString.Exclude
     @OneToMany(mappedBy = "link", cascade = CascadeType.ALL)
-    private Set<LinkCategory> linkCategories;
+    private Set<LinkCategory> linkCategories = new HashSet<>();
+
+    @Column(name = "quality")
+    private String quality;
+
+    @Column(name = "created_on")
+    private LocalDateTime createdOn;
+
+    @Column(name = "random_order")
+    private Integer randomOrder;
 } 

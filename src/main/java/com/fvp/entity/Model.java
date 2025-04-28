@@ -2,13 +2,15 @@ package com.fvp.entity;
 
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "models", schema = "fvp_test")
+@Table(name = "models")
+@NoArgsConstructor
 public class Model {
     
     @Id

@@ -1,8 +1,13 @@
 package com.fvp.controller;
 
-import com.fvp.document.CategoryDocument;
-import com.fvp.service.CategoryElasticsearchService;
+import com.fvp.dto.CategoryWithLinkDTO;
+import com.fvp.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,60 +17,36 @@ import java.util.List;
 @RequestMapping("/api/categories")
 public class CategoryController {
 
-    private final CategoryElasticsearchService categoryService;
+    private final CategoryService categoryService;
 
     @Autowired
-    public CategoryController(CategoryElasticsearchService categoryService) {
+    public CategoryController(CategoryService categoryService) {
         this.categoryService = categoryService;
     }
 
-    @PostMapping
-    public ResponseEntity<CategoryDocument> createCategory(@RequestBody CategoryDocument category) {
-        return ResponseEntity.ok(categoryService.save(category));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<CategoryDocument> getCategoryById(@PathVariable String id) {
-        return categoryService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/tenant/{tenantId}")
-    public ResponseEntity<List<CategoryDocument>> getCategoriesByTenantId(@PathVariable Integer tenantId) {
-        List<CategoryDocument> categories = categoryService.findByTenantId(tenantId);
+    @GetMapping("/home")
+    public ResponseEntity<List<CategoryWithLinkDTO>> getHomeCategories(
+            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
+        List<CategoryWithLinkDTO> categories = categoryService.getHomeCategoriesWithLinks(tenantId);
         return ResponseEntity.ok(categories);
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<List<CategoryDocument>> searchCategories(@RequestParam String name) {
-        List<CategoryDocument> categories = categoryService.searchByName(name);
-        return ResponseEntity.ok(categories);
+    @GetMapping("/{categoryName}/first")
+    public ResponseEntity<CategoryWithLinkDTO> getCategoryFirstLink(
+            @PathVariable String categoryName,
+            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
+        CategoryWithLinkDTO category = categoryService.getCategoryFirstLink(tenantId, categoryName);
+        return ResponseEntity.ok(category);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<CategoryDocument> updateCategory(
-            @PathVariable String id,
-            @RequestBody CategoryDocument category) {
-        return categoryService.findById(id)
-                .map(existingCategory -> {
-                    category.setId(id);
-                    return ResponseEntity.ok(categoryService.save(category));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(@PathVariable String id) {
-        if (categoryService.findById(id).isPresent()) {
-            categoryService.deleteById(id);
-            return ResponseEntity.ok().build();
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    @GetMapping
-    public ResponseEntity<Iterable<CategoryDocument>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.findAll());
+    @GetMapping("/{categoryName}/links")
+    public ResponseEntity<Page<CategoryWithLinkDTO>> getCategoryLinks(
+            @PathVariable String categoryName,
+            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId,
+            @RequestParam(required = false) Integer maxDuration,
+            @RequestParam(required = false) String quality,
+            @PageableDefault(size = 20, sort = "randomOrder") Pageable pageable) {
+        Page<CategoryWithLinkDTO> links = categoryService.getCategoryLinks(tenantId, categoryName, pageable, maxDuration, quality);
+        return ResponseEntity.ok(links);
     }
 } 

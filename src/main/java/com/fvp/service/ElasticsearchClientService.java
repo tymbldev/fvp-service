@@ -1,0 +1,173 @@
+package com.fvp.service;
+
+import com.fvp.document.LinkDocument;
+import com.fvp.util.LoggingUtil;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@Service
+public class ElasticsearchClientService {
+
+    private static final Logger logger = LoggingUtil.getLogger(ElasticsearchClientService.class);
+    private static final String LINKS_INDEX = "links";
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private final RestHighLevelClient esClient;
+
+    @Autowired
+    public ElasticsearchClientService(RestHighLevelClient esClient) {
+        this.esClient = esClient;
+    }
+
+    public void saveLinkDocument(LinkDocument document) {
+        LoggingUtil.logOperationTime(logger, "save link document to elasticsearch", () -> {
+            try {
+                IndexRequest request = new IndexRequest(LINKS_INDEX);
+                request.id(document.getId());
+                
+                Map<String, Object> documentMap = convertToMap(document);
+                request.source(documentMap);
+                
+                IndexResponse response = esClient.index(request, RequestOptions.DEFAULT);
+                logger.info("Indexed document with ID: {}", response.getId());
+                return null;
+            } catch (Exception e) {
+                logger.error("Error indexing document: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to index document", e);
+            }
+        });
+    }
+
+    public List<LinkDocument> findByCategoriesContaining(String category) {
+        return LoggingUtil.logOperationTime(logger, "find documents by category", () -> {
+            List<LinkDocument> results = new ArrayList<>();
+            try {
+                SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
+                SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+                searchSourceBuilder.query(QueryBuilders.matchQuery("categories", category));
+                searchRequest.source(searchSourceBuilder);
+
+                SearchResponse response = esClient.search(searchRequest, RequestOptions.DEFAULT);
+                
+                for (SearchHit hit : response.getHits().getHits()) {
+                    Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                    LinkDocument document = convertToLinkDocument(sourceAsMap);
+                    document.setId(hit.getId());
+                    results.add(document);
+                }
+                
+                logger.info("Found {} documents with category {}", results.size(), category);
+            } catch (Exception e) {
+                logger.error("Error searching for documents with category {}: {}", category, e.getMessage(), e);
+                throw new RuntimeException("Failed to search documents by category", e);
+            }
+            return results;
+        });
+    }
+
+    public List<LinkDocument> searchByTitleOrText(String title, String searchableText) {
+        return LoggingUtil.logOperationTime(logger, "search documents by title or text", () -> {
+            List<LinkDocument> results = new ArrayList<>();
+            try {
+                SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
+                SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+                
+                if (title != null && !title.isEmpty()) {
+                    searchSourceBuilder.query(QueryBuilders.matchQuery("title", title));
+                } else if (searchableText != null && !searchableText.isEmpty()) {
+                    searchSourceBuilder.query(QueryBuilders.matchQuery("searchableText", searchableText));
+                } else {
+                    logger.warn("Both title and searchableText are null or empty");
+                    return results;
+                }
+                
+                searchRequest.source(searchSourceBuilder);
+
+                SearchResponse response = esClient.search(searchRequest, RequestOptions.DEFAULT);
+                
+                for (SearchHit hit : response.getHits().getHits()) {
+                    Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                    LinkDocument document = convertToLinkDocument(sourceAsMap);
+                    document.setId(hit.getId());
+                    results.add(document);
+                }
+                
+                logger.info("Found {} documents matching search criteria", results.size());
+            } catch (Exception e) {
+                logger.error("Error searching documents: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to search documents", e);
+            }
+            return results;
+        });
+    }
+
+    public void deleteById(String id) {
+        LoggingUtil.logOperationTime(logger, "delete document by id", () -> {
+            try {
+                DeleteRequest request = new DeleteRequest(LINKS_INDEX, id);
+                DeleteResponse response = esClient.delete(request, RequestOptions.DEFAULT);
+                logger.info("Deleted document with ID: {}", response.getId());
+                return null;
+            } catch (Exception e) {
+                logger.error("Error deleting document with ID {}: {}", id, e.getMessage(), e);
+                throw new RuntimeException("Failed to delete document", e);
+            }
+        });
+    }
+
+    private Map<String, Object> convertToMap(LinkDocument document) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", document.getId());
+        map.put("tenantId", document.getTenantId());
+        map.put("title", document.getTitle());
+        map.put("link", document.getLink());
+        map.put("thumbnail", document.getThumbnail());
+        map.put("thumbPath", document.getThumbPath());
+        map.put("duration", document.getDuration());
+        map.put("sheetName", document.getSheetName());
+        map.put("source", document.getSource());
+        map.put("stars", document.getStars());
+        map.put("createdAt", document.getCreatedAt());
+        map.put("trailer", document.getTrailer());
+        map.put("searchableText", document.getSearchableText());
+        map.put("categories", document.getCategories());
+        return map;
+    }
+
+    private LinkDocument convertToLinkDocument(Map<String, Object> map) {
+        LinkDocument document = new LinkDocument();
+        document.setId((String) map.get("id"));
+        document.setTenantId((Integer) map.get("tenantId"));
+        document.setTitle((String) map.get("title"));
+        document.setLink((String) map.get("link"));
+        document.setThumbnail((String) map.get("thumbnail"));
+        document.setThumbPath((String) map.get("thumbPath"));
+        document.setDuration((Integer) map.get("duration"));
+        document.setSheetName((String) map.get("sheetName"));
+        document.setSource((String) map.get("source"));
+        document.setStars((Integer) map.get("stars"));
+        document.setCreatedAt((Date) map.get("createdAt"));
+        document.setTrailer((String) map.get("trailer"));
+        document.setSearchableText((String) map.get("searchableText"));
+        document.setCategories((List<String>) map.get("categories"));
+        return document;
+    }
+} 

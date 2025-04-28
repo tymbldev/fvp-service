@@ -25,4 +25,7 @@ public interface AllCatRepository extends JpaRepository<AllCat, Integer> {
     AllCat findByTenantIdAndName(Integer tenantId, String name);
     
     List<AllCat> findByTenantId(Integer tenantId);
+    
+    @Query("SELECT DISTINCT a.tenantId FROM AllCat a")
+    List<Integer> findAllDistinctTenantIds();
 } 

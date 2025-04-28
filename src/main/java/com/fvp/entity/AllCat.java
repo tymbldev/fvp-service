@@ -2,14 +2,17 @@ package com.fvp.entity;
 
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.io.Serializable;
 
 @Data
 @Entity
-@Table(name = "allCat", schema = "fvp_test")
-public class AllCat {
+@Table(name = "allCat")
+@NoArgsConstructor
+public class AllCat implements Serializable {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

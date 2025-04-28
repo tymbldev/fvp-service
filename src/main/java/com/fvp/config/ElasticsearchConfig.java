@@ -2,30 +2,29 @@ package com.fvp.config;
 
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.elasticsearch.client.ClientConfiguration;
-import org.springframework.data.elasticsearch.client.RestClients;
-import org.springframework.data.elasticsearch.config.AbstractElasticsearchConfiguration;
-import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StreamUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.elasticsearch.client.RestClientBuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.io.IOException;
-import java.time.Duration;
 
 @Configuration
-@EnableElasticsearchRepositories(basePackages = "com.fvp.repository")
-public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
+public class ElasticsearchConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConfig.class);
 
@@ -39,17 +38,15 @@ public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
     private String password;
 
     @Value("${spring.elasticsearch.connection-timeout:5000}")
-    private long connectionTimeout;
+    private int connectionTimeout;
 
     @Value("${spring.elasticsearch.socket-timeout:30000}")
-    private long socketTimeout;
+    private int socketTimeout;
 
-    @Override
     @Bean
     public RestHighLevelClient elasticsearchClient() {
         try {
-            ClientConfiguration clientConfiguration = createClientConfiguration();
-            RestHighLevelClient client = RestClients.create(clientConfiguration).rest();
+            RestHighLevelClient client = createClient();
 
             // Create index if it doesn't exist
             String indexName = "links";
@@ -60,7 +57,7 @@ public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
                 ClassPathResource resource = new ClassPathResource("es-settings.json");
                 String settings = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
                 
-                // For Elasticsearch 8.x, we need to use a different approach to set settings
+                // Apply settings
                 request.source(settings, XContentType.JSON);
                 
                 try {
@@ -84,31 +81,40 @@ public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
         }
     }
 
-    private ClientConfiguration createClientConfiguration() {
+    private RestHighLevelClient createClient() {
         String host = elasticsearchUri.replace("http://", "").replace("https://", "");
+        String[] hostParts = host.split(":");
+        String hostName = hostParts[0];
+        int port = hostParts.length > 1 ? Integer.parseInt(hostParts[1]) : 9200;
         
+        RestClientBuilder builder = RestClient.builder(new HttpHost(hostName, port, "http"));
+        
+        // Configure timeouts
+        builder.setRequestConfigCallback(requestConfigBuilder -> 
+            requestConfigBuilder
+                .setConnectTimeout(connectionTimeout)
+                .setSocketTimeout(socketTimeout));
+        
+        // Configure authentication if provided
         if (username != null && !username.isEmpty() && password != null && !password.isEmpty()) {
             logger.info("Elasticsearch authentication enabled with username: {}", username);
-            return ClientConfiguration.builder()
-                .connectedTo(host)
-                .withBasicAuth(username, password)
-                .withConnectTimeout(Duration.ofMillis(connectionTimeout))
-                .withSocketTimeout(Duration.ofMillis(socketTimeout))
-                .build();
+            
+            final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+            credentialsProvider.setCredentials(
+                AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+            
+            builder.setHttpClientConfigCallback(httpClientBuilder -> 
+                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
         } else {
             logger.info("Elasticsearch authentication disabled (no password provided)");
-            return ClientConfiguration.builder()
-                .connectedTo(host)
-                .withConnectTimeout(Duration.ofMillis(connectionTimeout))
-                .withSocketTimeout(Duration.ofMillis(socketTimeout))
-                .build();
         }
+        
+        return new RestHighLevelClient(builder);
     }
 
     private RestHighLevelClient createDummyClient() {
         logger.warn("Creating dummy Elasticsearch client - operations will be logged but not executed");
-        return RestClients.create(ClientConfiguration.builder()
-            .connectedTo("localhost:9200")
-            .build()).rest();
+        return new RestHighLevelClient(
+            RestClient.builder(new HttpHost("localhost", 9200, "http")));
     }
 } 
