@@ -304,6 +304,146 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Batch Processing",
+			"item": [
+				{
+					"name": "Process Categories and Models",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/links/batch/process-categories-models?page=0&size=100",
+							"host": ["{{base_url}}"],
+							"path": ["api", "links", "batch", "process-categories-models"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (zero-based)"
+								},
+								{
+									"key": "size",
+									"value": "100",
+									"description": "Number of items per page"
+								}
+							]
+						},
+						"description": "Process categories and models for links in a specific page. Returns a 200 OK response with processing results."
+					}
+				},
+				{
+					"name": "Process All Categories and Models",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/links/batch/process-all-categories-models",
+							"host": ["{{base_url}}"],
+							"path": ["api", "links", "batch", "process-all-categories-models"]
+						},
+						"description": "Start background processing of all links for categories and models. Returns a 202 Accepted response immediately."
+					}
+				},
+				{
+					"name": "Process By Tenant ID",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/links/batch/process-by-tenant/:tenantId?page=0&size=100",
+							"host": ["{{base_url}}"],
+							"path": ["api", "links", "batch", "process-by-tenant", ":tenantId"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (zero-based)"
+								},
+								{
+									"key": "size",
+									"value": "100",
+									"description": "Number of items per page"
+								}
+							],
+							"variable": [
+								{
+									"key": "tenantId",
+									"value": "1",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Start background processing of categories and models for links of a specific tenant. Returns a 202 Accepted response immediately."
+					}
+				},
+				{
+					"name": "Process By Date Range",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/links/batch/process-by-date-range?startDate=2023-01-01T00:00:00&endDate=2023-12-31T23:59:59&page=0&size=100",
+							"host": ["{{base_url}}"],
+							"path": ["api", "links", "batch", "process-by-date-range"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2023-01-01T00:00:00",
+									"description": "Start date in ISO format"
+								},
+								{
+									"key": "endDate",
+									"value": "2023-12-31T23:59:59",
+									"description": "End date in ISO format"
+								},
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (zero-based)"
+								},
+								{
+									"key": "size",
+									"value": "100",
+									"description": "Number of items per page"
+								}
+							]
+						},
+						"description": "Start background processing of categories and models for links within a date range. Returns a 202 Accepted response immediately."
+					}
+				},
+				{
+					"name": "Process By Category",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/links/batch/process-by-category?category=exampleCategory&page=0&size=100",
+							"host": ["{{base_url}}"],
+							"path": ["api", "links", "batch", "process-by-category"],
+							"query": [
+								{
+									"key": "category",
+									"value": "exampleCategory",
+									"description": "Category to process"
+								},
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (zero-based)"
+								},
+								{
+									"key": "size",
+									"value": "100",
+									"description": "Number of items per page"
+								}
+							]
+						},
+						"description": "Start background processing of models for links with a specific category. Returns a 202 Accepted response immediately."
+					}
+				}
+			]
 		}
 	]
 } 

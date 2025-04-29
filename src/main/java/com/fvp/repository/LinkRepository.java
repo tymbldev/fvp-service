@@ -1,11 +1,14 @@
 package com.fvp.repository;
 
 import com.fvp.entity.Link;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -28,6 +31,15 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
     
     @Query("SELECT l FROM Link l WHERE l.tenantId = :tenantId AND l.thumbPathProcessed = 1")
     List<Link> findByTenantId(Integer tenantId);
+    
+    // Find links by tenant ID with pagination
+    Page<Link> findByTenantId(Integer tenantId, Pageable pageable);
+    
+    // Find links by date range with pagination
+    Page<Link> findByCreatedOnBetween(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+    
+    // Find links by category with pagination
+    Page<Link> findByCategoryContaining(String category, Pageable pageable);
 
     // Find a link by URL and tenant ID
     @Query("SELECT l FROM Link l WHERE l.link = :link AND l.tenantId = :tenantId AND l.thumbPathProcessed = 1")

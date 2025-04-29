@@ -10,6 +10,10 @@ import com.fvp.repository.AllCatRepository;
 import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import java.lang.reflect.Type;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -88,7 +92,7 @@ public class LinkProcessingService {
     long saveLinkTimeMs = 0;
     long processCategoriesTimeMs = 0;
     long processModelsTimeMs = 0;
-    
+
     try {
       // Check if link with same URL already exists
       long checkStartMs = System.currentTimeMillis();
@@ -101,7 +105,8 @@ public class LinkProcessingService {
             link.getLink());
 
         // Clean up old categories and models before adding new ones
-        logger.info("Deleting from link_category table: entries for link ID {}", existingLink.getId());
+        logger.info("Deleting from link_category table: entries for link ID {}",
+            existingLink.getId());
         linkCategoryRepository.deleteByLinkId(existingLink.getId());
         linkCategoryRepository.flush(); // Explicitly flush to DB
 
@@ -123,7 +128,7 @@ public class LinkProcessingService {
         logger.info("Updating link table: 1 entry with ID {} and title '{}'", existingLink.getId(),
             existingLink.getTitle());
         link = linkRepository.saveAndFlush(existingLink); // Use saveAndFlush instead of save
-        
+
         // Update Elasticsearch document
         updateElasticsearchDocument(link);
       } else {
@@ -149,29 +154,39 @@ public class LinkProcessingService {
         processModels(link, models);
         processModelsTimeMs = System.currentTimeMillis() - modelsStartMs;
       }
-      
+
       long totalTimeMs = System.currentTimeMillis() - startTimeMs;
-      logger.info("Link processing completed in {} ms (check: {} ms, save: {} ms, categories: {} ms, models: {} ms): {}",
-          totalTimeMs, checkExistingTimeMs, saveLinkTimeMs, processCategoriesTimeMs, processModelsTimeMs, link.getTitle());
-      
+      logger.info(
+          "Link processing completed in {} ms (check: {} ms, save: {} ms, categories: {} ms, models: {} ms): {}",
+          totalTimeMs, checkExistingTimeMs, saveLinkTimeMs, processCategoriesTimeMs,
+          processModelsTimeMs, link.getTitle());
+
     } catch (Exception e) {
       long errorTimeMs = System.currentTimeMillis() - startTimeMs;
       logger.error("Error processing link after {} ms: {}", errorTimeMs, e.getMessage(), e);
-      throw e; 
+      throw e;
     }
   }
 
-  private void processCategories(Link link, String categories) {
+  /**
+   * Process categories for a link
+   *
+   * @param link The link entity
+   * @param categories Comma-separated list of categories
+   */
+  public void processCategories(Link link, String categories) {
     // Tokenize categories using multiple delimiters (space, comma, hyphen)
     Set<String> categorySet = new HashSet<>();
     Set<String> categoriesToCreate = new HashSet<>();
-    String[] tokens = TOKEN_PATTERN.split(categories);
 
-    // Get all categories for this tenant from cache
+    Gson gson = new Gson();
+    Type listType = new TypeToken<List<String>>() {}.getType();
+    List<String> values = gson.fromJson(categories, listType);
+
     List<AllCat> allCategories = getCategoriesForTenant(link.getTenantId());
 
     // For each token from the input
-    for (String token : tokens) {
+    for (String token : values) {
       String category = token.trim();
       if (!category.isEmpty()) {
         // Check if the token exactly matches any category
@@ -194,7 +209,7 @@ public class LinkProcessingService {
               substringMatch = true;
             }
           }
-          
+
           // If no match at all, mark for creation
           if (!exactMatch && !substringMatch) {
             categoriesToCreate.add(category);
@@ -207,42 +222,45 @@ public class LinkProcessingService {
     if (!categoriesToCreate.isEmpty()) {
       logger.info("Creating {} new categories in AllCat", categoriesToCreate.size());
       List<AllCat> newCategories = new ArrayList<>();
-      
+
       for (String categoryName : categoriesToCreate) {
-        AllCat newCategory = new AllCat();
-        newCategory.setTenantId(link.getTenantId());
-        newCategory.setName(categoryName);
-        newCategory.setHomeThumb(false);
-        newCategory.setHeader(false);
-        newCategory.setHomeSEO(false);
-        newCategory.setHomeCatOrder(0);
-        newCategory.setHome(0);
-        newCategory.setDescription(null);
-        newCategory.setCreatedAt(LocalDateTime.now());
-        
-        newCategories.add(newCategory);
+        if (categoryName.length() > 1) {
+          AllCat newCategory = new AllCat();
+          newCategory.setTenantId(link.getTenantId());
+          newCategory.setName(categoryName);
+          newCategory.setHomeThumb(false);
+          newCategory.setHeader(false);
+          newCategory.setHomeSEO(false);
+          newCategory.setHomeCatOrder(0);
+          newCategory.setHome(0);
+          newCategory.setDescription(null);
+          newCategory.setCreatedAt(LocalDateTime.now());
+          newCategory.setCreatedViaLink(true);
+          newCategories.add(newCategory);
+        }
       }
-      
+
       // Save all new categories in a single batch
       List<AllCat> savedCategories = allCatRepository.saveAll(newCategories);
       allCatRepository.flush(); // Explicitly flush to DB
       logger.info("Created {} new categories in AllCat", savedCategories.size());
-      
+
       // Add to the set of categories to create link associations
       for (AllCat savedCategory : savedCategories) {
         categorySet.add(savedCategory.getName());
         allCategories.add(savedCategory);
       }
-      
+
       // Update the cache with the new categories
       categoriesCache.put(link.getTenantId(), allCategories);
     }
 
     // Create LinkCategory entries for all valid categories
     if (!categorySet.isEmpty()) {
-      logger.info("Saving to link_category table: {} entries for link ID {}", categorySet.size(), link.getId());
+      logger.info("Saving to link_category table: {} entries for link ID {}", categorySet.size(),
+          link.getId());
       List<LinkCategory> linkCategories = new ArrayList<>();
-      
+
       for (String categoryName : categorySet) {
         LinkCategory linkCategory = new LinkCategory();
         linkCategory.setTenantId(link.getTenantId());
@@ -252,19 +270,26 @@ public class LinkProcessingService {
         linkCategory.setRandomOrder(link.getRandomOrder());
         linkCategories.add(linkCategory);
       }
-      
+
       // Save all link categories in a single batch
       linkCategoryRepository.saveAll(linkCategories);
       linkCategoryRepository.flush(); // Explicitly flush to DB
-      logger.info("Saved {} entries to link_category table for link ID {}", linkCategories.size(), link.getId());
+      logger.info("Saved {} entries to link_category table for link ID {}", linkCategories.size(),
+          link.getId());
     }
   }
 
-  private void processModels(Link link, String models) {
+  /**
+   * Process models for a link
+   *
+   * @param link The link entity
+   * @param models Comma-separated list of models
+   */
+  public void processModels(Link link, String models) {
     Set<String> modelSet = tokenize(models);
     logger.info("Saving to link_model table: {} entries for link ID {}", modelSet.size(),
         link.getId());
-    
+
     List<LinkModel> linkModels = new ArrayList<>();
     for (String model : modelSet) {
       LinkModel linkModel = new LinkModel();
@@ -276,12 +301,13 @@ public class LinkProcessingService {
       linkModels.add(linkModel);
       logger.debug("Preparing to save model: {} for link ID {}", model, link.getId());
     }
-    
+
     // Save all models in batch
     if (!linkModels.isEmpty()) {
       linkModelRepository.saveAll(linkModels);
       linkModelRepository.flush(); // Explicitly flush to DB
-      logger.info("Saved {} entries to link_model table for link ID {}", modelSet.size(), link.getId());
+      logger.info("Saved {} entries to link_model table for link ID {}", modelSet.size(),
+          link.getId());
     }
   }
 
@@ -327,10 +353,11 @@ public class LinkProcessingService {
    */
   private void createElasticsearchDocument(Link link) {
     if (!elasticsearchSyncConfig.isEnabled()) {
-      logger.debug("Elasticsearch sync is disabled, skipping document creation for link ID {}", link.getId());
+      logger.debug("Elasticsearch sync is disabled, skipping document creation for link ID {}",
+          link.getId());
       return;
     }
-    
+
     try {
       LinkDocument doc = new LinkDocument();
       doc.setId(link.getId().toString());
@@ -350,10 +377,12 @@ public class LinkProcessingService {
           .collect(Collectors.toList());
       doc.setCategories(categories);
 
-      logger.info("Creating Elasticsearch document for link ID {} with {} categories", link.getId(), categories.size());
+      logger.info("Creating Elasticsearch document for link ID {} with {} categories", link.getId(),
+          categories.size());
       elasticsearchClientService.saveLinkDocument(doc);
     } catch (Exception e) {
-      logger.error("Error creating Elasticsearch document for link ID {}: {}", link.getId(), e.getMessage(), e);
+      logger.error("Error creating Elasticsearch document for link ID {}: {}", link.getId(),
+          e.getMessage(), e);
     }
   }
 
@@ -362,14 +391,16 @@ public class LinkProcessingService {
    */
   private void updateElasticsearchDocument(Link link) {
     if (!elasticsearchSyncConfig.isEnabled()) {
-      logger.debug("Elasticsearch sync is disabled, skipping document update for link ID {}", link.getId());
+      logger.debug("Elasticsearch sync is disabled, skipping document update for link ID {}",
+          link.getId());
       return;
     }
-    
+
     try {
       // Find existing document
-      List<LinkDocument> existingDocs = elasticsearchClientService.searchByTitleOrText(link.getTitle(), null);
-      
+      List<LinkDocument> existingDocs = elasticsearchClientService.searchByTitleOrText(
+          link.getTitle(), null);
+
       if (!existingDocs.isEmpty()) {
         LinkDocument doc = existingDocs.get(0);
         doc.setTitle(link.getTitle());
@@ -386,15 +417,18 @@ public class LinkProcessingService {
             .collect(Collectors.toList());
         doc.setCategories(categories);
 
-        logger.info("Updating Elasticsearch document for link ID {} with {} categories", link.getId(), categories.size());
+        logger.info("Updating Elasticsearch document for link ID {} with {} categories",
+            link.getId(), categories.size());
         elasticsearchClientService.saveLinkDocument(doc);
       } else {
         // If document doesn't exist in Elasticsearch, create it
-        logger.info("Elasticsearch document not found for link ID {}, creating new document", link.getId());
+        logger.info("Elasticsearch document not found for link ID {}, creating new document",
+            link.getId());
         createElasticsearchDocument(link);
       }
     } catch (Exception e) {
-      logger.error("Error updating Elasticsearch document for link ID {}: {}", link.getId(), e.getMessage(), e);
+      logger.error("Error updating Elasticsearch document for link ID {}: {}", link.getId(),
+          e.getMessage(), e);
     }
   }
 
@@ -404,17 +438,17 @@ public class LinkProcessingService {
   private String generateSearchableText(Link link) {
     StringBuilder searchableText = new StringBuilder();
     searchableText.append(link.getTitle());
-    
+
     if (link.getSheetName() != null && !link.getSheetName().isEmpty()) {
       searchableText.append(" ").append(link.getSheetName());
     }
-    
+
     // Add categories to searchable text
     List<LinkCategory> linkCategories = linkCategoryRepository.findByLinkId(link.getId());
     for (LinkCategory linkCategory : linkCategories) {
       searchableText.append(" ").append(linkCategory.getCategory());
     }
-    
+
     return searchableText.toString().trim();
   }
 

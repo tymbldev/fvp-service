@@ -41,6 +41,9 @@ public class AllCat implements Serializable {
     
     @Column(length = 500)
     private String description;
+
+    @Column(nullable = false)
+    private Boolean createdViaLink = false;
     
     @CreationTimestamp
     @Column(name = "created_at")
