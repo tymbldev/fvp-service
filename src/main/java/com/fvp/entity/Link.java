@@ -78,4 +78,7 @@ public class Link implements Serializable {
 
     @Column(name = "random_order")
     private Integer randomOrder;
+    
+    @Column(name = "thumb_path_processed")
+    private Integer thumbPathProcessed = 0;
 } 

@@ -13,20 +13,25 @@ import java.util.Optional;
 @Repository
 public interface LinkModelRepository extends JpaRepository<LinkModel, Integer> {
 
+    @Query("SELECT lm FROM LinkModel lm JOIN lm.link l WHERE lm.tenantId = :tenantId AND lm.model = :model AND l.thumbPathProcessed = 1")
     List<LinkModel> findByTenantIdAndModel(Integer tenantId, String model);
 
-    @Query("SELECT lm FROM LinkModel lm WHERE lm.tenantId = :tenantId AND lm.model = :model ORDER BY RAND()")
+    @Query("SELECT lm FROM LinkModel lm JOIN lm.link l WHERE lm.tenantId = :tenantId AND lm.model = :model AND l.thumbPathProcessed = 1 ORDER BY RAND()")
     Optional<LinkModel> findRandomLinkByModel(@Param("tenantId") Integer tenantId, @Param("model") String model);
 
+    @Query("SELECT lm FROM LinkModel lm JOIN lm.link l WHERE lm.tenantId = :tenantId AND lm.model = :model AND l.thumbPathProcessed = 1 ORDER BY lm.randomOrder")
     List<LinkModel> findByTenantIdAndModelOrderByRandomOrder(Integer tenantId, String model);
 
-    @Query("SELECT COUNT(lm) FROM LinkModel lm WHERE lm.tenantId = :tenantId AND lm.model = :model")
+    @Query("SELECT COUNT(lm) FROM LinkModel lm JOIN lm.link l WHERE lm.tenantId = :tenantId AND lm.model = :model AND l.thumbPathProcessed = 1")
     Long countByTenantIdAndModel(@Param("tenantId") Integer tenantId, @Param("model") String model);
 
+    @Query("SELECT lm FROM LinkModel lm JOIN lm.link l WHERE lm.tenantId = :tenantId AND l.thumbPathProcessed = 1")
     List<LinkModel> findByTenantId(Integer tenantId);
     
+    @Query("SELECT lm FROM LinkModel lm JOIN lm.link l WHERE lm.linkId = :linkId AND l.thumbPathProcessed = 1")
     List<LinkModel> findByLinkId(Integer linkId);
     
+    @Query("SELECT lm FROM LinkModel lm JOIN lm.link l WHERE lm.model = :model AND lm.tenantId = :tenantId AND l.thumbPathProcessed = 1")
     List<LinkModel> findByModelAndTenantId(String model, Integer tenantId);
     
     @Transactional

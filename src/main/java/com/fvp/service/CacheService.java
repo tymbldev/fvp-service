@@ -43,9 +43,13 @@ public class CacheService {
      */
     public <T> Optional<T> getFromCache(String cacheName, String key, Class<T> clazz) {
         return LoggingUtil.logOperationTime(logger, "get from cache: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
-                String value = jedis.get(fullKey);
+                String value;
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    value = jedis.get(fullKey);
+                }
                 
                 if (value == null) {
                     logger.debug("Cache miss for key: {}", fullKey);
@@ -71,9 +75,13 @@ public class CacheService {
      */
     public <T> Optional<T> getCollectionFromCache(String cacheName, String key, TypeReference<T> typeRef) {
         return LoggingUtil.logOperationTime(logger, "get collection from cache: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
-                String value = jedis.get(fullKey);
+                String value;
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    value = jedis.get(fullKey);
+                }
                 
                 if (value == null) {
                     logger.debug("Cache miss for collection key: {}", fullKey);
@@ -98,10 +106,14 @@ public class CacheService {
      */
     public <T> void putInCache(String cacheName, String key, T value) {
         LoggingUtil.logOperationTime(logger, "put in cache: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
                 String jsonValue = objectMapper.writeValueAsString(value);
-                jedis.setex(fullKey, DEFAULT_CACHE_TTL, jsonValue);
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    jedis.setex(fullKey, (int)DEFAULT_CACHE_TTL, jsonValue);
+                }
+                
                 logger.debug("Stored in cache: {}", fullKey);
                 return null;
             } catch (Exception e) {
@@ -119,12 +131,16 @@ public class CacheService {
      * @param value The value to put
      * @param ttlSeconds The TTL in seconds
      */
-    public <T> void putInCache(String cacheName, String key, T value, long ttlSeconds) {
+    public <T> void putInCacheWithTTL(String cacheName, String key, T value, long ttlSeconds) {
         LoggingUtil.logOperationTime(logger, "put in cache with TTL: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
                 String jsonValue = objectMapper.writeValueAsString(value);
-                jedis.setex(fullKey, ttlSeconds, jsonValue);
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    jedis.setex(fullKey, (int)ttlSeconds, jsonValue);
+                }
+                
                 logger.debug("Stored in cache with TTL {}s: {}", ttlSeconds, fullKey);
                 return null;
             } catch (Exception e) {
@@ -142,9 +158,14 @@ public class CacheService {
      */
     public void deleteFromCache(String cacheName, String key) {
         LoggingUtil.logOperationTime(logger, "delete from cache: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
-                Long result = jedis.del(fullKey);
+                Long result;
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    result = jedis.del(fullKey);
+                }
+                
                 if (result > 0) {
                     logger.debug("Deleted from cache: {}", fullKey);
                 } else {
@@ -182,11 +203,15 @@ public class CacheService {
     
     public <T> void putInCacheWithExpiry(String cacheName, String key, T value, long timeout, TimeUnit unit) {
         LoggingUtil.logOperationTime(logger, "put in cache with expiry: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
                 String jsonValue = objectMapper.writeValueAsString(value);
-                long ttlSeconds = unit.toSeconds(timeout);
-                jedis.setex(fullKey, ttlSeconds, jsonValue);
+                int seconds = (int) unit.toSeconds(timeout);
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    jedis.setex(fullKey, seconds, jsonValue);
+                }
+                
                 logger.debug("Stored in cache with expiry {} {}: {}", timeout, unit, fullKey);
                 return null;
             } catch (Exception e) {
@@ -212,9 +237,14 @@ public class CacheService {
     
     public void evictFromCache(String cacheName, String key) {
         LoggingUtil.logOperationTime(logger, "evict from cache: " + cacheName + ":" + key, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String fullKey = generateCacheKey(cacheName, key);
-                Long result = jedis.del(fullKey);
+                Long result;
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    result = jedis.del(fullKey);
+                }
+                
                 if (result > 0) {
                     logger.debug("Evicted from cache: {}", fullKey);
                 } else {
@@ -230,11 +260,18 @@ public class CacheService {
     
     public void clearCache(String cacheName) {
         LoggingUtil.logOperationTime(logger, "clear cache: " + cacheName, () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
+            try {
                 String pattern = generateCacheKey(cacheName, "*");
-                Set<String> keys = jedis.keys(pattern);
+                Set<String> keys;
+                
+                try (Jedis jedis = jedisPool.getResource()) {
+                    keys = jedis.keys(pattern);
+                }
+                
                 if (keys != null && !keys.isEmpty()) {
-                    jedis.del(keys.toArray(new String[0]));
+                    try (Jedis jedis = jedisPool.getResource()) {
+                        jedis.del(keys.toArray(new String[0]));
+                    }
                     logger.debug("Cleared cache: {}", cacheName);
                 }
                 return null;
@@ -247,8 +284,10 @@ public class CacheService {
     
     public void clearAllCaches() {
         LoggingUtil.logOperationTime(logger, "clear all caches", () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                jedis.flushDB();
+            try {
+                try (Jedis jedis = jedisPool.getResource()) {
+                    jedis.flushDB();
+                }
                 logger.info("All caches cleared");
                 return null;
             } catch (Exception e) {

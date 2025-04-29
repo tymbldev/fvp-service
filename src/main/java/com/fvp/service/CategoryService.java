@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,6 +26,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 @Service
 public class CategoryService {
@@ -33,6 +36,8 @@ public class CategoryService {
   private static final String HOME_CATEGORIES_CACHE = "homeCategories";
   private static final String CATEGORY_FIRST_LINK_CACHE = "categoryFirstLink";
   private static final String CATEGORY_LINKS_CACHE = "categoryLinks";
+  private static final String CATEGORY_PREFIX = "homeCategories_";
+  private static final int BATCH_SIZE = 1000;
 
   @Autowired
   private AllCatRepository allCatRepository;
@@ -45,46 +50,79 @@ public class CategoryService {
 
   @Autowired
   private CacheService cacheService;
+  
+  @Autowired
+  private JedisPool jedisPool;
 
   @Value("${category.recent-links-days:90}")
   private int recentLinksDays;
 
-  private final ExecutorService executorService = Executors.newFixedThreadPool(5);
+  private final ExecutorService executorService = Executors.newFixedThreadPool(30);
 
   @PostConstruct
   public void preloadCacheInBackground() {
-    logger.info("Starting background cache preloading for all tenants");
-    
-    // Get all unique tenant IDs
-    List<Integer> tenantIds = LoggingUtil.logOperationTime(
-        logger, 
-        "fetch tenant IDs", 
-        () -> linkRepository.findAll().stream()
-            .map(Link::getTenantId)
-            .distinct()
-            .collect(Collectors.toList())
-    );
-    
-    // Preload cache for each tenant in parallel
-    List<CompletableFuture<Void>> futures = new ArrayList<>();
-    
-    for (Integer tenantId : tenantIds) {
-      CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+    Thread thread = new Thread(() -> {
         try {
-          logger.info("Preloading cache for tenant {}", tenantId);
-          getHomeCategoriesWithLinks(tenantId);
-          logger.info("Completed cache preloading for tenant {}", tenantId);
+            logger.info("Starting cache preloading in background thread...");
+            
+            // Get distinct tenant IDs (optimized query)
+            List<Integer> tenantIds = LoggingUtil.logOperationTime(
+                logger,
+                "fetch distinct tenant IDs",
+                () -> linkRepository.findDistinctTenantIds()
+            );
+            logger.info("Found {} tenants for cache preloading", tenantIds.size());
+            
+            // Process each tenant
+            for (Integer tenantId : tenantIds) {
+                try {
+                    logger.info("Preloading cache for tenant {}", tenantId);
+                    // Get category keys for this tenant
+                    List<String> keysToDelete = LoggingUtil.logOperationTime(
+                        logger,
+                        "get category keys for tenant",
+                        () -> {
+                            try (Jedis jedis = jedisPool.getResource()) {
+                                Set<String> keys = jedis.keys(generateCacheKey(tenantId, "*"));
+                                return keys.stream()
+                                        .filter(key -> key.contains(CATEGORY_PREFIX))
+                                        .collect(Collectors.toList());
+                            }
+                        }
+                    );
+                    
+                    // Delete existing keys
+                    if (!keysToDelete.isEmpty()) {
+                        LoggingUtil.logOperationTime(
+                            logger,
+                            "delete existing category keys",
+                            () -> {
+                                try (Jedis jedis = jedisPool.getResource()) {
+                                    jedis.del(keysToDelete.toArray(new String[0]));
+                                }
+                                return null;
+                            }
+                        );
+                        logger.info("Deleted {} existing category cache keys for tenant {}", keysToDelete.size(), tenantId);
+                    }
+                    
+                    // Get home categories with links - use pagination to avoid memory issues
+                    List<CategoryWithLinkDTO> categories = getHomeCategoriesWithLinks(tenantId);
+                    logger.info("Preloaded {} categories for tenant {}", categories.size(), tenantId);
+                } catch (Exception e) {
+                    logger.error("Error preloading cache for tenant {}: {}", tenantId, e.getMessage());
+                }
+            }
+            
+            logger.info("Completed cache preloading in background thread");
         } catch (Exception e) {
-          logger.error("Error preloading cache for tenant {}: {}", tenantId, e.getMessage(), e);
+            logger.error("Error during cache preloading: {}", e.getMessage(), e);
         }
-      }, executorService);
-      
-      futures.add(future);
-    }
+    });
     
-    // Wait for all futures to complete
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-    logger.info("Completed background cache preloading for all tenants");
+    thread.setName("Cache-Preloader");
+    thread.setDaemon(true);
+    thread.start();
   }
 
   public List<CategoryWithLinkDTO> getHomeCategoriesWithLinks(Integer tenantId) {
@@ -110,46 +148,65 @@ public class CategoryService {
     }
 
     logger.info("Cache miss for home categories, fetching from database for tenant {}", tenantId);
-    List<CategoryWithLinkDTO> result = new ArrayList<>();
-
+    
     // Get all categories with home=1 ordered by home_cat_order
     List<AllCat> categories = LoggingUtil.logOperationTime(
         logger, 
         "fetch home categories from database", 
         () -> allCatRepository.findByTenantIdAndHomeOrderByHomeCatOrder(tenantId, 1)
     );
-
-    for (AllCat category : categories) {
-      // Get the count of links for this category
-      Long linkCount = LoggingUtil.logOperationTime(
-          logger, 
-          "count links for category " + category.getName(), 
-          () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName())
-      );
-
-      // Get the first link using the dedicated method
-      CategoryWithLinkDTO firstLink = getCategoryFirstLink(tenantId, category.getName());
-      if (firstLink == null) {
-        logger.warn("No links found for category {} in tenant {}", category.getName(), tenantId);
-        continue; // Skip if no links found
-      }
-
-      CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
-      dto.setId(category.getId());
-      dto.setName(category.getName());
-      dto.setHomeThumb(category.getHomeThumb());
-      dto.setHeader(category.getHeader());
-      dto.setHomeSEO(category.getHomeSEO());
-      dto.setHomeCatOrder(category.getHomeCatOrder());
-      dto.setDescription(category.getDescription());
-      dto.setLink(firstLink.getLink());
-      dto.setLinkTitle(firstLink.getLinkTitle());
-      dto.setLinkThumbnail(firstLink.getLinkThumbnail());
-      dto.setLinkDuration(firstLink.getLinkDuration());
-      dto.setLinkCount(linkCount);
-
-      result.add(dto);
+    
+    if (categories.isEmpty()) {
+      logger.info("No home categories found for tenant {}", tenantId);
+      return Collections.emptyList();
     }
+    
+    // Process each category in parallel
+    List<CompletableFuture<CategoryWithLinkDTO>> futures = new ArrayList<>();
+    
+    for (AllCat category : categories) {
+      CompletableFuture<CategoryWithLinkDTO> future = CompletableFuture.supplyAsync(() -> {
+        try {
+          // Get the count of links for this category
+          Long linkCount = LoggingUtil.logOperationTime(
+              logger, 
+              "count links for category " + category.getName(), 
+              () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName())
+          );
+
+          // Get the first link using the dedicated method
+          CategoryWithLinkDTO firstLink = getCategoryFirstLink(tenantId, category.getName());
+          if (firstLink == null) {
+            logger.warn("No links found for category {} in tenant {}", category.getName(), tenantId);
+            return null; // Skip if no links found
+          }
+
+          CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+          dto.setId(category.getId());
+          dto.setName(category.getName());
+          dto.setDescription(category.getDescription());
+          dto.setLink(firstLink.getLink());
+          dto.setLinkTitle(firstLink.getLinkTitle());
+          dto.setLinkThumbnail(firstLink.getLinkThumbnail());
+          dto.setLinkThumbPath(firstLink.getLinkThumbPath());
+          dto.setLinkDuration(firstLink.getLinkDuration());
+          dto.setLinkCount(linkCount);
+          
+          return dto;
+        } catch (Exception e) {
+          logger.error("Error processing category {}: {}", category.getName(), e.getMessage(), e);
+          return null;
+        }
+      }, executorService);
+      
+      futures.add(future);
+    }
+    
+    // Wait for all futures to complete and collect results
+    List<CategoryWithLinkDTO> result = futures.stream()
+        .map(CompletableFuture::join)
+        .filter(dto -> dto != null)
+        .collect(Collectors.toList());
 
     // Store in cache
     LoggingUtil.logOperationTime(
@@ -236,14 +293,11 @@ public class CategoryService {
     CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
     dto.setId(category.getId());
     dto.setName(category.getName());
-    dto.setHomeThumb(category.getHomeThumb());
-    dto.setHeader(category.getHeader());
-    dto.setHomeSEO(category.getHomeSEO());
-    dto.setHomeCatOrder(category.getHomeCatOrder());
     dto.setDescription(category.getDescription());
     dto.setLink(link.getLink());
     dto.setLinkTitle(link.getTitle());
     dto.setLinkThumbnail(link.getThumbnail());
+    dto.setLinkThumbPath(link.getThumbPath());
     dto.setLinkDuration(link.getDuration());
     dto.setLinkCount(linkCount);
 
@@ -257,8 +311,6 @@ public class CategoryService {
         }
     );
     
-    logger.info("Stored category first link in cache for tenant {} and category {}", 
-        tenantId, categoryName);
     return dto;
   }
 
@@ -317,7 +369,7 @@ public class CategoryService {
           // Get link entity for exclusion from subsequent query
           Link linkEntity = null;
           try {
-            linkEntity = linkRepository.findByTenantIdAndLink(tenantId, firstLink.getLink());
+            linkEntity = linkRepository.findByTenantIdAndLinkAndThumbPathProcessedTrue(tenantId, firstLink.getLink());
           } catch (Exception e) {
             logger.warn("Error fetching link entity: {}", e.getMessage());
           }
@@ -325,46 +377,35 @@ public class CategoryService {
           // For first page, get one less item from DB and exclude the first link's ID
           Integer firstLinkId = linkEntity != null ? linkEntity.getId() : null;
           
-          if (firstLinkId != null) {
-            // Get remaining items for first page, excluding the first link
-            List<LinkCategory> remainingItems = LoggingUtil.logOperationTime(
-                logger, 
-                "fetch remaining items for first page", 
-                () -> linkCategoryRepository.findByCategoryWithFiltersExcludingLinkPageable(
-                    tenantId, 
-                    categoryName, 
-                    maxDuration, 
-                    quality,
-                    firstLinkId,
-                    0, // still start from beginning
-                    pageable.getPageSize() - 1 // one less item
-                )
-            );
-            
-            // Add remaining items to page content
-            pageContent.addAll(createDTOsFromLinkCategories(remainingItems, category));
-            
-            return new PageImpl<>(pageContent, pageable, totalCount);
-          }
+          // Adjust offset and limit for the subsequent query
+          int adjustedOffset = 0;
+          int limit = pageable.getPageSize() - 1;
+          
+          // Get the remaining items for the first page
+          List<LinkCategory> dbItems = LoggingUtil.logOperationTime(
+              logger, 
+              "fetch items with pagination excluding first link", 
+              () -> linkCategoryRepository.findByCategoryWithFiltersExcludingLinkPageable(
+                  tenantId, 
+                  categoryName, 
+                  maxDuration, 
+                  quality, 
+                  firstLinkId, 
+                  adjustedOffset, 
+                  limit
+              )
+          );
+          
+          pageContent.addAll(createDTOsFromLinkCategories(dbItems, category));
+          return new PageImpl<>(pageContent, pageable, totalCount);
         }
       }
     }
     
-    // For pages other than first page (or if first link couldn't be included)
-    // Calculate correct offset, adjusting for first link if needed
+    // For non-first pages or when filters are applied, use regular pagination
     int offset = (int) pageable.getOffset();
-    final int limit = pageable.getPageSize();
+    int limit = pageable.getPageSize();
     
-    // For first page, if we didn't add a first link, use normal pagination
-    // For subsequent pages, adjust offset to account for the first link on page 0
-    final int adjustedOffset;
-    if (pageable.getPageNumber() > 0 && pageContent.isEmpty()) {
-      adjustedOffset = offset - 1; // Reduce offset by 1 to account for first link on page 0
-    } else {
-      adjustedOffset = offset;
-    }
-    
-    // Fetch items from database with pagination
     List<LinkCategory> dbItems = LoggingUtil.logOperationTime(
         logger, 
         "fetch items with pagination", 
@@ -373,7 +414,7 @@ public class CategoryService {
             categoryName, 
             maxDuration, 
             quality, 
-            adjustedOffset, 
+            offset, 
             limit
         )
     );
@@ -406,14 +447,11 @@ public class CategoryService {
       CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
       dto.setId(category.getId());
       dto.setName(category.getName());
-      dto.setHomeThumb(category.getHomeThumb());
-      dto.setHeader(category.getHeader());
-      dto.setHomeSEO(category.getHomeSEO());
-      dto.setHomeCatOrder(category.getHomeCatOrder());
       dto.setDescription(category.getDescription());
       dto.setLink(link.getLink());
       dto.setLinkTitle(link.getTitle());
       dto.setLinkThumbnail(link.getThumbnail());
+      dto.setLinkThumbPath(link.getThumbPath());
       dto.setLinkDuration(link.getDuration());
       dto.setLinkCount(linkCategoryRepository.countByTenantIdAndCategory(category.getTenantId(), category.getName()));
       
@@ -446,46 +484,65 @@ public class CategoryService {
     }
 
     logger.info("Cache miss for home SEO categories, fetching from database for tenant {}", tenantId);
-    List<CategoryWithLinkDTO> result = new ArrayList<>();
-
+    
     // Get all categories with homeSEO=true
     List<AllCat> categories = LoggingUtil.logOperationTime(
         logger, 
         "fetch home SEO categories from database", 
         () -> allCatRepository.findAllHomeSEOCategories(tenantId)
     );
-
-    for (AllCat category : categories) {
-      // Get the count of links for this category
-      Long linkCount = LoggingUtil.logOperationTime(
-          logger, 
-          "count links for category " + category.getName(), 
-          () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName())
-      );
-
-      // Get the first link using the dedicated method
-      CategoryWithLinkDTO firstLink = getCategoryFirstLink(tenantId, category.getName());
-      if (firstLink == null) {
-        logger.warn("No links found for category {} in tenant {}", category.getName(), tenantId);
-        continue; // Skip if no links found
-      }
-
-      CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
-      dto.setId(category.getId());
-      dto.setName(category.getName());
-      dto.setHomeThumb(category.getHomeThumb());
-      dto.setHeader(category.getHeader());
-      dto.setHomeSEO(category.getHomeSEO());
-      dto.setHomeCatOrder(category.getHomeCatOrder());
-      dto.setDescription(category.getDescription());
-      dto.setLink(firstLink.getLink());
-      dto.setLinkTitle(firstLink.getLinkTitle());
-      dto.setLinkThumbnail(firstLink.getLinkThumbnail());
-      dto.setLinkDuration(firstLink.getLinkDuration());
-      dto.setLinkCount(linkCount);
-
-      result.add(dto);
+    
+    if (categories.isEmpty()) {
+      logger.info("No home SEO categories found for tenant {}", tenantId);
+      return Collections.emptyList();
     }
+    
+    // Process each category in parallel
+    List<CompletableFuture<CategoryWithLinkDTO>> futures = new ArrayList<>();
+    
+    for (AllCat category : categories) {
+      CompletableFuture<CategoryWithLinkDTO> future = CompletableFuture.supplyAsync(() -> {
+        try {
+          // Get the count of links for this category
+          Long linkCount = LoggingUtil.logOperationTime(
+              logger, 
+              "count links for category " + category.getName(), 
+              () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName())
+          );
+
+          // Get the first link using the dedicated method
+          CategoryWithLinkDTO firstLink = getCategoryFirstLink(tenantId, category.getName());
+          if (firstLink == null) {
+            logger.warn("No links found for category {} in tenant {}", category.getName(), tenantId);
+            return null; // Skip if no links found
+          }
+
+          CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+          dto.setId(category.getId());
+          dto.setName(category.getName());
+          dto.setDescription(category.getDescription());
+          dto.setLink(firstLink.getLink());
+          dto.setLinkTitle(firstLink.getLinkTitle());
+          dto.setLinkThumbnail(firstLink.getLinkThumbnail());
+          dto.setLinkThumbPath(firstLink.getLinkThumbPath());
+          dto.setLinkDuration(firstLink.getLinkDuration());
+          dto.setLinkCount(linkCount);
+          
+          return dto;
+        } catch (Exception e) {
+          logger.error("Error processing category {}: {}", category.getName(), e.getMessage(), e);
+          return null;
+        }
+      }, executorService);
+      
+      futures.add(future);
+    }
+    
+    // Wait for all futures to complete and collect results
+    List<CategoryWithLinkDTO> result = futures.stream()
+        .map(CompletableFuture::join)
+        .filter(dto -> dto != null)
+        .collect(Collectors.toList());
 
     // Store in cache
     LoggingUtil.logOperationTime(
@@ -499,5 +556,9 @@ public class CategoryService {
     
     logger.info("Stored {} home SEO categories in cache for tenant {}", result.size(), tenantId);
     return result;
+  }
+
+  private String generateCacheKey(Integer tenantId, String key) {
+    return CATEGORY_PREFIX + tenantId + "_" + key;
   }
 } 
