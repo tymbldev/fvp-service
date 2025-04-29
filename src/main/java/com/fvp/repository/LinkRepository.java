@@ -28,4 +28,13 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
 
     // Find a link by URL and tenant ID
     Link findByLinkAndTenantId(String link, Integer tenantId);
+
+    /**
+     * Find all links with pagination
+     * @param offset Starting position
+     * @param limit Maximum number of records to return
+     * @return List of links
+     */
+    @Query(value = "SELECT l FROM Link l ORDER BY l.id")
+    List<Link> findAllWithPagination(@Param("offset") int offset, @Param("limit") int limit);
 } 

@@ -5,6 +5,8 @@ import com.fvp.entity.Link;
 import com.fvp.entity.ProcessedSheet;
 import com.fvp.repository.ProcessedSheetRepository;
 import com.fvp.repository.LinkRepository;
+import com.fvp.service.ElasticsearchClientService;
+import com.fvp.service.LinkProcessingService;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
@@ -32,41 +34,41 @@ public class GoogleSheetProcessingService {
   private static final String SHEET_NAME_COLUMN = "SheetName";
   private static final String APPROVED_STATUS = "Yes";
 
-  @Value("${google.sheets.date-format-pattern:dd.MM.yy}")
-  private String dateFormatPattern;
-
-  @Value("${google.sheets.spreadsheet.id}")
-  private String spreadsheetId;
-
-  @Value("${google.sheets.api.key}")
-  private String apiKey;
-
-  @Value("${google.sheets.application.name}")
-  private String applicationName;
-
-  @Value("${google.sheets.batch-size:100}")
-  private int batchSize;
-
-  @Autowired
-  private LinkProcessingService linkProcessingService;
-
-  @Autowired
-  private ProcessedSheetRepository processedSheetRepository;
-
-  @Autowired
-  private LinkRepository linkRepository;
-
-  @Autowired
-  private ElasticsearchClientService elasticsearchClientService;
-
+  private final String dateFormatPattern;
+  private final String spreadsheetId;
+  private final String apiKey;
+  private final String applicationName;
+  private final int batchSize;
+  private final LinkProcessingService linkProcessingService;
+  private final ProcessedSheetRepository processedSheetRepository;
+  private final LinkRepository linkRepository;
+  private final ElasticsearchClientService elasticsearchClientService;
   private final Map<String, Boolean> sheetStatusCache = new HashMap<>();
-  private Pattern datePattern;
+  private final Pattern datePattern;
 
   @Autowired
   public GoogleSheetProcessingService(
-      @Value("${google.sheets.date-format-pattern:dd.MM.yy}") String pattern) {
+      @Value("${google.sheets.date-format-pattern:dd.MM.yy}") String dateFormatPattern,
+      @Value("${google.sheets.spreadsheet.id}") String spreadsheetId,
+      @Value("${google.sheets.api.key}") String apiKey,
+      @Value("${google.sheets.application.name}") String applicationName,
+      @Value("${google.sheets.batch-size:100}") int batchSize,
+      LinkProcessingService linkProcessingService,
+      ProcessedSheetRepository processedSheetRepository,
+      LinkRepository linkRepository,
+      ElasticsearchClientService elasticsearchClientService) {
+    this.dateFormatPattern = dateFormatPattern;
+    this.spreadsheetId = spreadsheetId;
+    this.apiKey = apiKey;
+    this.applicationName = applicationName;
+    this.batchSize = batchSize;
+    this.linkProcessingService = linkProcessingService;
+    this.processedSheetRepository = processedSheetRepository;
+    this.linkRepository = linkRepository;
+    this.elasticsearchClientService = elasticsearchClientService;
+
     // Convert SimpleDateFormat pattern to regex pattern
-    String regexPattern = pattern
+    String regexPattern = dateFormatPattern
         .replace("dd", "\\d{2}")
         .replace("MM", "\\d{2}")
         .replace("yy", "\\d{2}")
