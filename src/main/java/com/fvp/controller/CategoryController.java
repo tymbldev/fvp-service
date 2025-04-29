@@ -31,6 +31,13 @@ public class CategoryController {
         return ResponseEntity.ok(categories);
     }
 
+    @GetMapping("/home-seo")
+    public ResponseEntity<List<CategoryWithLinkDTO>> getHomeSeoCategories(
+            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
+        List<CategoryWithLinkDTO> categories = categoryService.getHomeSeoCategories(tenantId);
+        return ResponseEntity.ok(categories);
+    }
+
     @GetMapping("/{categoryName}/first")
     public ResponseEntity<CategoryWithLinkDTO> getCategoryFirstLink(
             @PathVariable String categoryName,

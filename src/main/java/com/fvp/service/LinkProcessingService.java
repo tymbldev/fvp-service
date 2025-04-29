@@ -190,7 +190,7 @@ public class LinkProcessingService {
           }
           
           // If no match at all, mark for creation
-          if (!substringMatch) {
+          if (!exactMatch && !substringMatch) {
             categoriesToCreate.add(category);
           }
         }

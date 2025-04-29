@@ -422,4 +422,82 @@ public class CategoryService {
     
     return dtos;
   }
+
+  public List<CategoryWithLinkDTO> getHomeSeoCategories(Integer tenantId) {
+    String cacheKey = "homeSeoCategories_" + tenantId;
+    
+    TypeReference<List<CategoryWithLinkDTO>> typeRef = new TypeReference<List<CategoryWithLinkDTO>>() {};
+    
+    // Try to get from cache first
+    Optional<List<CategoryWithLinkDTO>> cachedResult = LoggingUtil.logOperationTime(
+        logger, 
+        "get home SEO categories from cache", 
+        () -> cacheService.getCollectionFromCache(
+            CacheService.CACHE_NAME_CATEGORIES,
+            cacheKey,
+            typeRef
+        )
+    );
+
+    if (cachedResult.isPresent() && !cachedResult.get().isEmpty()) {
+      logger.info("Retrieved {} home SEO categories from cache for tenant {}", 
+          cachedResult.get().size(), tenantId);
+      return cachedResult.get();
+    }
+
+    logger.info("Cache miss for home SEO categories, fetching from database for tenant {}", tenantId);
+    List<CategoryWithLinkDTO> result = new ArrayList<>();
+
+    // Get all categories with homeSEO=true
+    List<AllCat> categories = LoggingUtil.logOperationTime(
+        logger, 
+        "fetch home SEO categories from database", 
+        () -> allCatRepository.findAllHomeSEOCategories(tenantId)
+    );
+
+    for (AllCat category : categories) {
+      // Get the count of links for this category
+      Long linkCount = LoggingUtil.logOperationTime(
+          logger, 
+          "count links for category " + category.getName(), 
+          () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName())
+      );
+
+      // Get the first link using the dedicated method
+      CategoryWithLinkDTO firstLink = getCategoryFirstLink(tenantId, category.getName());
+      if (firstLink == null) {
+        logger.warn("No links found for category {} in tenant {}", category.getName(), tenantId);
+        continue; // Skip if no links found
+      }
+
+      CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+      dto.setId(category.getId());
+      dto.setName(category.getName());
+      dto.setHomeThumb(category.getHomeThumb());
+      dto.setHeader(category.getHeader());
+      dto.setHomeSEO(category.getHomeSEO());
+      dto.setHomeCatOrder(category.getHomeCatOrder());
+      dto.setDescription(category.getDescription());
+      dto.setLink(firstLink.getLink());
+      dto.setLinkTitle(firstLink.getLinkTitle());
+      dto.setLinkThumbnail(firstLink.getLinkThumbnail());
+      dto.setLinkDuration(firstLink.getLinkDuration());
+      dto.setLinkCount(linkCount);
+
+      result.add(dto);
+    }
+
+    // Store in cache
+    LoggingUtil.logOperationTime(
+        logger, 
+        "store home SEO categories in cache", 
+        () -> {
+          cacheService.putInCache(CacheService.CACHE_NAME_CATEGORIES, cacheKey, result);
+          return null;
+        }
+    );
+    
+    logger.info("Stored {} home SEO categories in cache for tenant {}", result.size(), tenantId);
+    return result;
+  }
 } 
