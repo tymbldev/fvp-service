@@ -16,11 +16,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.List;
 
 @Data
 @Entity
 @Table(name = "link")
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Link implements Serializable {
     
     private static final long serialVersionUID = 1L;
@@ -67,7 +73,8 @@ public class Link implements Serializable {
     private String trailer;
     
     @ToString.Exclude
-    @OneToMany(mappedBy = "link", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "link", cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
+    @JsonIgnore
     private Set<LinkCategory> linkCategories = new HashSet<>();
 
     @Column(name = "quality")
