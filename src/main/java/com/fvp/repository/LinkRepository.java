@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LinkRepository extends JpaRepository<Link, Integer> {
@@ -78,4 +79,6 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
      */
     @Query(value = "SELECT COUNT(*) FROM link l WHERE l.tenant_id = :tenantId AND l.thumb_path_processed = 1", nativeQuery = true)
     Long countByTenantId(@Param("tenantId") Integer tenantId);
+
+    long countByTenantId(Integer tenantId);
 } 

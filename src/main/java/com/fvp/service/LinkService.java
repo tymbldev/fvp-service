@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -168,6 +169,11 @@ public class LinkService {
         return LoggingUtil.logOperationTime(logger, "save and flush link", () -> 
             linkRepository.saveAndFlush(link)
         );
+    }
+
+    @Transactional(readOnly = true)
+    public long getTotalLinkCount(Integer tenantId) {
+        return linkRepository.countByTenantId(tenantId);
     }
 
     private String generateCacheKey(Integer tenantId, String suffix) {

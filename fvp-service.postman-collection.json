@@ -186,6 +186,30 @@
 			]
 		},
 		{
+			"name": "Links",
+			"item": [
+				{
+					"name": "Get Total Link Count",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Tenant-Id",
+								"value": "{{tenant_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/links/count",
+							"host": ["{{base_url}}"],
+							"path": ["api", "links", "count"]
+						},
+						"description": "Get total count of links for a tenant"
+					}
+				}
+			]
+		},
+		{
 			"name": "Elasticsearch",
 			"item": [
 				{
