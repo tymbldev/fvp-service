@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_GETman_id": "fvp-service-collection",
+		"_postman_id": "fvp-service-collection",
 		"name": "FVP Service",
 		"description": "Collection for FVP Service API endpoints",
-		"schema": "https://schema.getGETman.com/json/collection/v2.1.0/collection.json"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
 		{
@@ -191,7 +191,7 @@
 				{
 					"name": "Build System Cache",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [
 							{
 								"key": "X-Tenant-Id",
@@ -313,7 +313,7 @@
 				{
 					"name": "Build Model Cache",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [
 							{
 								"key": "X-Tenant-Id",
@@ -406,7 +406,7 @@
 				{
 					"name": "Sync Elasticsearch",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/elasticsearch/sync",
@@ -437,7 +437,7 @@
 				{
 					"name": "Clear All Caches",
 					"request": {
-						"method": "GET",
+						"method": "DELETE",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/cache/clear",
@@ -450,7 +450,7 @@
 				{
 					"name": "Clear Specific Cache",
 					"request": {
-						"method": "GET",
+						"method": "DELETE",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/cache/clear/:cacheName",
@@ -475,7 +475,7 @@
 				{
 					"name": "Process Google Sheets",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/google-sheets/process",
@@ -526,7 +526,7 @@
 				{
 					"name": "Process Categories and Models",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/links/batch/process-categories-models?page=0&size=100",
@@ -551,7 +551,7 @@
 				{
 					"name": "Process All Categories and Models",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/links/batch/process-all-categories-models",
@@ -564,7 +564,7 @@
 				{
 					"name": "Process By Tenant ID",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/links/batch/process-by-tenant/:tenantId?page=0&size=100",
@@ -596,7 +596,7 @@
 				{
 					"name": "Process By Date Range",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/links/batch/process-by-date-range?startDate=2023-01-01T00:00:00&endDate=2023-12-31T23:59:59&page=0&size=100",
@@ -631,7 +631,7 @@
 				{
 					"name": "Process By Category",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/links/batch/process-by-category?category=exampleCategory&page=0&size=100",
