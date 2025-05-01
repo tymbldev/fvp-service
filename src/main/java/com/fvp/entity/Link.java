@@ -19,7 +19,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.util.List;
 
 @Data
 @Entity
@@ -51,7 +50,7 @@ public class Link implements Serializable {
     private String thumbnail;
     
     @Column(length = 100, nullable = false)
-    private String thumbPath;
+    private String thumbpath;
     
     @Column(length = 100, nullable = false)
     private String sheetName;

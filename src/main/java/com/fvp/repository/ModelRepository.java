@@ -3,6 +3,7 @@ package com.fvp.repository;
 import com.fvp.entity.Model;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -10,7 +11,12 @@ import java.util.List;
 @Repository
 public interface ModelRepository extends JpaRepository<Model, Integer> {
     
+    List<Model> findByTenantId(Integer tenantId);
+    
     Model findByTenantIdAndName(Integer tenantId, String name);
+    
+    @Query("SELECT m FROM Model m WHERE m.tenantId = :tenantId AND m.name IN :names")
+    List<Model> findByTenantIdAndNameIn(@Param("tenantId") Integer tenantId, @Param("names") List<String> names);
     
     @Query("SELECT m FROM Model m WHERE m.tenantId = :tenantId AND m.country = :country")
     List<Model> findByCountry(Integer tenantId, String country);
@@ -20,6 +26,4 @@ public interface ModelRepository extends JpaRepository<Model, Integer> {
     
     @Query("SELECT DISTINCT m.country FROM Model m WHERE m.tenantId = :tenantId AND m.country IS NOT NULL")
     List<String> findAllDistinctCountries(Integer tenantId);
-    
-    List<Model> findByTenantId(Integer tenantId);
 } 

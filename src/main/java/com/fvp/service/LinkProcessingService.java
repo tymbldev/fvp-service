@@ -12,7 +12,6 @@ import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import java.lang.reflect.Type;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -119,7 +118,7 @@ public class LinkProcessingService {
         existingLink.setThumbnail(link.getThumbnail());
         existingLink.setDuration(link.getDuration());
         existingLink.setQuality(link.getQuality());
-        existingLink.setThumbPath(link.getThumbPath());
+        existingLink.setThumbpath(link.getThumbpath());
         existingLink.setSheetName(link.getSheetName());
         existingLink.setSource(link.getSource());
         // Don't update createdOn to preserve original creation date

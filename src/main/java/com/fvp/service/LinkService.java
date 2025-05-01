@@ -21,6 +21,7 @@ public class LinkService {
     private static final Logger logger = LoggingUtil.getLogger(LinkService.class);
     private static final String LINK_CACHE_PREFIX = "link_";
     private static final int CACHE_EXPIRY_MINUTES = 60;
+    private static final String LINK_COUNT_TOTAL_CACHE = "linkCountTotal";
 
     @Autowired
     private LinkRepository linkRepository;
@@ -171,9 +172,52 @@ public class LinkService {
         );
     }
 
-    @Transactional(readOnly = true)
+    //@Transactional(readOnly = true)
     public long getTotalLinkCount(Integer tenantId) {
-        return linkRepository.countByTenantId(tenantId);
+        if (tenantId == null) {
+            return 0;
+        }
+        
+        String cacheKey = generateCacheKey(tenantId, "total");
+        
+        // Try to get from cache first
+        Optional<Long> cachedCount = LoggingUtil.logOperationTime(
+            logger,
+            "get total link count from cache",
+            () -> cacheService.getFromCache(LINK_COUNT_TOTAL_CACHE, cacheKey, Long.class)
+        );
+        
+        if (cachedCount.isPresent()) {
+            logger.debug("Cache hit for total link count: tenant={}", tenantId);
+            return cachedCount.get();
+        }
+        
+        logger.debug("Cache miss for total link count: tenant={}", tenantId);
+        
+        // Get count from DB
+        Long count = LoggingUtil.logOperationTime(
+            logger,
+            "count links for tenant",
+            () -> linkRepository.countByTenantId(tenantId)
+        );
+        
+        // Cache the result
+        LoggingUtil.logOperationTime(
+            logger,
+            "cache total link count",
+            () -> {
+                cacheService.putInCacheWithExpiry(
+                    LINK_COUNT_TOTAL_CACHE,
+                    cacheKey,
+                    count,
+                    24,
+                    TimeUnit.HOURS
+                );
+                return null;
+            }
+        );
+        
+        return count;
     }
 
     private String generateCacheKey(Integer tenantId, String suffix) {

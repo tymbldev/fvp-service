@@ -2,6 +2,7 @@ package com.fvp.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.dto.CategoryWithLinkDTO;
+import com.fvp.dto.CategoryWithCountDTO;
 import com.fvp.entity.AllCat;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
@@ -20,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -39,6 +41,7 @@ public class CategoryService {
   private static final String CATEGORY_PREFIX = "homeCategories_";
   private static final int BATCH_SIZE = 1000;
   private static final int CHUNK_SIZE = 100;
+  private static final String ALL_CATEGORIES_CACHE = "allCategories";
 
   @Autowired
   private AllCatRepository allCatRepository;
@@ -60,6 +63,9 @@ public class CategoryService {
 
   @Autowired
   private LinkService linkService;
+
+  @Autowired
+  private LinkCountCacheService linkCountCacheService;
 
   @Value("${category.recent-links-days:90}")
   private int recentLinksDays;
@@ -157,7 +163,7 @@ public class CategoryService {
     }
 
     logger.info("Cache miss for home categories, fetching from database for tenant {}", tenantId);
-        
+
     // Get all categories with home=1 ordered by home_cat_order
     List<AllCat> categories = LoggingUtil.logOperationTime(
         logger,
@@ -209,7 +215,7 @@ public class CategoryService {
     }
 
     String cacheKey = tenantId + "_" + categoryName;
-    
+
     // Try to get from cache first
     Optional<CategoryWithLinkDTO> cachedResult = LoggingUtil.logOperationTime(
         logger,
@@ -270,7 +276,7 @@ public class CategoryService {
           link.getTenantId(), tenantId);
       return null;
     }
-            
+
     CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
     dto.setId(category.getId());
     dto.setName(category.getName());
@@ -278,10 +284,12 @@ public class CategoryService {
     dto.setLink(link.getLink());
     dto.setLinkTitle(link.getTitle());
     dto.setLinkThumbnail(link.getThumbnail());
-    dto.setLinkThumbPath(link.getThumbPath());
+    dto.setLinkThumbPath(link.getThumbpath());
+    dto.setLinkSource(link.getSource());
+    dto.setLinkTrailer(link.getTrailer());
     dto.setLinkDuration(link.getDuration());
     dto.setLinkCount(linkCount);
-            
+
     // Store in cache
     LoggingUtil.logOperationTime(
         logger,
@@ -295,39 +303,24 @@ public class CategoryService {
     return dto;
   }
 
-  private List<CategoryWithLinkDTO> processCategoryChunk(Integer tenantId, List<String> categoryChunk) {
+  private List<CategoryWithLinkDTO> processChunk(Integer tenantId, List<String> categoryChunk,
+      Map<String, AllCat> categoryMap, List<LinkCategory> linkCategories) {
     List<CategoryWithLinkDTO> chunkResults = new ArrayList<>();
-    Map<String, AllCat> categoryMap = new HashMap<>();
-    
-    // Fetch categories in bulk for this chunk
-    List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId, categoryChunk);
-    categoryMap = categories.stream()
-        .collect(Collectors.toMap(AllCat::getName, cat -> cat));
-    
-    // Fetch link categories in bulk for this chunk
-    List<LinkCategory> linkCategories = linkCategoryRepository.findRandomLinksByCategoryNames(tenantId, categoryChunk);
-    
-    // Fetch link counts in bulk for this chunk
-    Map<String, Long> linkCountMap = new HashMap<>();
-    List<Object[]> counts = linkCategoryRepository.countByTenantIdAndCategories(tenantId, categoryChunk);
-    for (Object[] count : counts) {
-      String categoryName = (String) count[0];
-      Long countValue = ((Number) count[1]).longValue();
-      linkCountMap.put(categoryName, countValue);
-    }
-    
-    // Process results for this chunk
+
+    // Get link counts from cache
+    Map<String, Long> linkCountMap = linkCountCacheService.getLinkCounts(tenantId, categoryChunk);
+
     for (LinkCategory linkCategory : linkCategories) {
       String categoryName = linkCategory.getCategory();
       AllCat category = categoryMap.get(categoryName);
       Link link = linkCategory.getLink();
-      
+
       if (category == null || link == null || !link.getTenantId().equals(tenantId)) {
         continue;
       }
-      
+
       Long linkCount = linkCountMap.getOrDefault(categoryName, 0L);
-      
+
       CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
       dto.setId(category.getId());
       dto.setName(category.getName());
@@ -335,20 +328,23 @@ public class CategoryService {
       dto.setLink(link.getLink());
       dto.setLinkTitle(link.getTitle());
       dto.setLinkThumbnail(link.getThumbnail());
-      dto.setLinkThumbPath(link.getThumbPath());
+      dto.setLinkThumbPath(link.getThumbpath());
+      dto.setLinkSource(link.getSource());
+      dto.setLinkTrailer(link.getTrailer());
       dto.setLinkDuration(link.getDuration());
       dto.setLinkCount(linkCount);
-      
+
       chunkResults.add(dto);
-      
+
       String cacheKey = tenantId + "_" + categoryName;
       cacheService.putInCache(CATEGORY_FIRST_LINK_CACHE, cacheKey, dto);
     }
-    
+
     return chunkResults;
   }
 
-  public List<CategoryWithLinkDTO> getCategoryFirstLinks(Integer tenantId, List<String> categoryNames) {
+  public List<CategoryWithLinkDTO> getCategoryFirstLinks(Integer tenantId,
+      List<String> categoryNames) {
     if (tenantId == null || categoryNames == null || categoryNames.isEmpty()) {
       logger.warn("Invalid parameters: tenantId={}, categoryNames={}", tenantId, categoryNames);
       return Collections.emptyList();
@@ -360,7 +356,7 @@ public class CategoryService {
     // First try to get all from cache
     for (String categoryName : categoryNames) {
       String cacheKey = tenantId + "_" + categoryName;
-      
+
       Optional<CategoryWithLinkDTO> cachedResult = LoggingUtil.logOperationTime(
           logger,
           "get category first link from cache for " + categoryName,
@@ -372,11 +368,11 @@ public class CategoryService {
       );
 
       if (cachedResult.isPresent()) {
-        logger.debug("Cache hit for category first link: tenant={}, category={}", 
+        logger.debug("Cache hit for category first link: tenant={}, category={}",
             tenantId, categoryName);
         results.add(cachedResult.get());
       } else {
-        logger.debug("Cache miss for category first link: tenant={}, category={}", 
+        logger.debug("Cache miss for category first link: tenant={}, category={}",
             tenantId, categoryName);
         missedCategories.add(categoryName);
       }
@@ -384,23 +380,36 @@ public class CategoryService {
 
     // If we have cache misses, process them in chunks
     if (!missedCategories.isEmpty()) {
-      logger.info("Processing {} missed categories in chunks for tenant {}", 
+      logger.info("Processing {} missed categories in chunks for tenant {}",
           missedCategories.size(), tenantId);
-      
+
       // Split missed categories into chunks
       List<List<String>> chunks = new ArrayList<>();
       for (int i = 0; i < missedCategories.size(); i += CHUNK_SIZE) {
         chunks.add(missedCategories.subList(i, Math.min(i + CHUNK_SIZE, missedCategories.size())));
       }
-      
+
       // Process chunks in parallel
       List<CompletableFuture<List<CategoryWithLinkDTO>>> futures = chunks.stream()
           .map(chunk -> CompletableFuture.supplyAsync(
-              () -> processCategoryChunk(tenantId, chunk),
+              () -> {
+                // Get link categories
+                List<LinkCategory> linkCategories = linkCategoryRepository.findRandomLinksByCategoryNames(
+                    tenantId, chunk);
+                
+                // Get categories and build a map by name
+                Map<String, AllCat> categoryMap = new HashMap<>();
+                List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId, chunk);
+                for (AllCat category : categories) {
+                  categoryMap.put(category.getName(), category);
+                }
+                
+                return processChunk(tenantId, chunk, categoryMap, linkCategories);
+              },
               executorService
           ))
           .collect(Collectors.toList());
-      
+
       // Wait for all chunks to complete and collect results
       for (CompletableFuture<List<CategoryWithLinkDTO>> future : futures) {
         try {
@@ -410,7 +419,7 @@ public class CategoryService {
         }
       }
     }
-    
+
     return results;
   }
 
@@ -496,7 +505,9 @@ public class CategoryService {
       dto.setLink(link.getLink());
       dto.setLinkTitle(link.getTitle());
       dto.setLinkThumbnail(link.getThumbnail());
-      dto.setLinkThumbPath(link.getThumbPath());
+      dto.setLinkThumbPath(link.getThumbpath());
+      dto.setLinkSource(link.getSource());
+      dto.setLinkTrailer(link.getTrailer());
       dto.setLinkDuration(link.getDuration());
       dtos.add(dto);
     }
@@ -506,5 +517,85 @@ public class CategoryService {
 
   private String generateCacheKey(Integer tenantId, String key) {
     return CATEGORY_PREFIX + tenantId + "_" + key;
+  }
+
+  public List<CategoryWithCountDTO> getAllCategoriesWithLinkCounts(Integer tenantId) {
+    if (tenantId == null) {
+      logger.warn("Invalid tenant ID: null");
+      return Collections.emptyList();
+    }
+
+    String cacheKey = CacheService.generateCacheKey(ALL_CATEGORIES_CACHE, tenantId);
+    TypeReference<List<CategoryWithCountDTO>> typeRef = new TypeReference<List<CategoryWithCountDTO>>() {
+    };
+
+    // Try to get from cache first
+    Optional<List<CategoryWithCountDTO>> cachedResult = LoggingUtil.logOperationTime(
+        logger,
+        "get all categories from cache",
+        () -> cacheService.getCollectionFromCache(
+            CacheService.CACHE_NAME_CATEGORIES,
+            cacheKey,
+            typeRef
+        )
+    );
+
+    if (cachedResult.isPresent() && !cachedResult.get().isEmpty()) {
+      logger.info("Retrieved {} categories from cache for tenant {}",
+          cachedResult.get().size(), tenantId);
+      return cachedResult.get();
+    }
+
+    logger.info("Cache miss for all categories, fetching from database for tenant {}", tenantId);
+
+    // Get all categories from database
+    List<AllCat> categories = LoggingUtil.logOperationTime(
+        logger,
+        "fetch all categories from database",
+        () -> allCatRepository.findByTenantId(tenantId)
+    );
+
+    if (categories.isEmpty()) {
+      logger.info("No categories found for tenant {}", tenantId);
+      return Collections.emptyList();
+    }
+
+    // Extract category names
+    List<String> categoryNames = categories.stream()
+        .map(AllCat::getName)
+        .collect(Collectors.toList());
+
+    // Get link counts from cache service
+    Map<String, Long> linkCountMap = linkCountCacheService.getLinkCounts(tenantId, categoryNames);
+
+    // Create DTOs with only required fields
+    List<CategoryWithCountDTO> result = categories.stream()
+        .map(category -> {
+          CategoryWithCountDTO dto = new CategoryWithCountDTO();
+          dto.setName(category.getName());
+          dto.setDescription(category.getDescription());
+          dto.setLinkCount(linkCountMap.getOrDefault(category.getName(), 0L));
+          return dto;
+        })
+        .collect(Collectors.toList());
+
+    // Store in cache
+    LoggingUtil.logOperationTime(
+        logger,
+        "store all categories in cache",
+        () -> {
+          cacheService.putInCacheWithExpiry(
+              CacheService.CACHE_NAME_CATEGORIES,
+              cacheKey,
+              result,
+              24,
+              TimeUnit.HOURS
+          );
+          return null;
+        }
+    );
+
+    logger.info("Stored {} categories in cache for tenant {}", result.size(), tenantId);
+    return result;
   }
 } 

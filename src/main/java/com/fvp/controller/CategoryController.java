@@ -1,6 +1,7 @@
 package com.fvp.controller;
 
 import com.fvp.dto.CategoryWithLinkDTO;
+import com.fvp.dto.CategoryWithCountDTO;
 import com.fvp.service.CategoryService;
 import com.fvp.service.CategoryUtilService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,10 +61,11 @@ public class CategoryController {
     public ResponseEntity<Page<CategoryWithLinkDTO>> getCategoryLinks(
             @PathVariable String categoryName,
             @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId,
+            @RequestParam(required = false) Integer minDuration,
             @RequestParam(required = false) Integer maxDuration,
             @RequestParam(required = false) String quality,
             @PageableDefault(size = 20, sort = "randomOrder") Pageable pageable) {
-        Page<CategoryWithLinkDTO> links = categoryUtilService.getCategoryLinks(tenantId, categoryName, pageable, maxDuration, quality);
+        Page<CategoryWithLinkDTO> links = categoryUtilService.getCategoryLinks(tenantId, categoryName, pageable, minDuration, maxDuration, quality);
         return ResponseEntity.ok(links);
     }
 
@@ -72,7 +74,10 @@ public class CategoryController {
     public ResponseEntity<String> buildSystemCache(
             @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
         logger.info("Starting system cache build for tenant {}", tenantId);
-        
+
+        categoryService.getAllCategoriesWithLinkCounts(tenantId);
+        logger.info("Built All categories cache");
+
         // Build home categories cache
         List<CategoryWithLinkDTO> homeCategories = categoryService.getHomeCategoriesWithLinks(tenantId);
         logger.info("Built home categories cache with {} categories", homeCategories.size());
@@ -90,7 +95,7 @@ public class CategoryController {
         Pageable firstPage = PageRequest.of(0, 20, Sort.by("randomOrder"));
         for (String categoryName : allCategoryNames) {
             try {
-                categoryUtilService.getCategoryLinks(tenantId, categoryName, firstPage, null, null);
+                categoryUtilService.getCategoryLinks(tenantId, categoryName, firstPage, null, null, null);
                 logger.info("Built cache for category: {}", categoryName);
             } catch (Exception e) {
                 logger.error("Error building cache for category {}: {}", categoryName, e.getMessage());
@@ -100,5 +105,12 @@ public class CategoryController {
         String message = String.format("System cache built successfully. Processed %d categories", allCategoryNames.size());
         logger.info(message);
         return ResponseEntity.ok(message);
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<CategoryWithCountDTO>> getAllCategories(
+            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
+        List<CategoryWithCountDTO> categories = categoryService.getAllCategoriesWithLinkCounts(tenantId);
+        return ResponseEntity.ok(categories);
     }
 } 

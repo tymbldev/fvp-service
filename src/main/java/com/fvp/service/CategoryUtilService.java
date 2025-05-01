@@ -9,10 +9,8 @@ import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,23 +44,24 @@ public class CategoryUtilService {
   private int recentLinksDays;
 
   public Page<CategoryWithLinkDTO> getCategoryLinks(Integer tenantId, String categoryName,
-      Pageable pageable, Integer maxDuration, String quality) {
+      Pageable pageable, Integer minDuration, Integer maxDuration, String quality) {
     if (tenantId == null || categoryName == null) {
       logger.warn("Invalid parameters: tenantId={}, categoryName={}", tenantId, categoryName);
       return Page.empty();
     }
 
     logger.info(
-        "Fetching category links for tenant {} and category {}, page: {}, size: {}, maxDuration: {}, quality: {}",
-        tenantId, categoryName, pageable.getPageNumber(), pageable.getPageSize(), maxDuration,
+        "Fetching category links for tenant {} and category {}, page: {}, size: {}, minDuration: {}, maxDuration: {}, quality: {}",
+        tenantId, categoryName, pageable.getPageNumber(), pageable.getPageSize(), minDuration, maxDuration,
         quality);
 
     // Generate cache key based on all parameters
-    String cacheKey = String.format("%s_%s_%d_%d_%s_%s",
+    String cacheKey = String.format("%s_%s_%d_%d_%s_%s_%s",
         tenantId,
         categoryName,
         pageable.getPageNumber(),
         pageable.getPageSize(),
+        minDuration != null ? minDuration : "null",
         maxDuration != null ? maxDuration : "null",
         quality != null ? quality : "null"
     );
@@ -99,7 +98,7 @@ public class CategoryUtilService {
     Long totalCount = LoggingUtil.logOperationTime(
         logger,
         "count links with filters",
-        () -> linkCategoryRepository.countByCategoryWithFilters(tenantId, categoryName, maxDuration,
+        () -> linkCategoryRepository.countByCategoryWithFilters(tenantId, categoryName, minDuration, maxDuration,
             quality)
     );
 
@@ -116,7 +115,7 @@ public class CategoryUtilService {
 
       if (firstLink != null) {
         // Only include the first link when no filters are applied (default landing)
-        boolean includeFirstLink = (maxDuration == null && quality == null);
+        boolean includeFirstLink = (minDuration == null && maxDuration == null && quality == null);
 
         if (includeFirstLink) {
           pageContent.add(firstLink);
@@ -152,6 +151,7 @@ public class CategoryUtilService {
               () -> linkCategoryRepository.findByCategoryWithFiltersExcludingLinkPageable(
                   tenantId,
                   categoryName,
+                  minDuration,
                   maxDuration,
                   quality,
                   firstLinkId,
@@ -179,6 +179,7 @@ public class CategoryUtilService {
         () -> linkCategoryRepository.findByCategoryWithFiltersPageable(
             tenantId,
             categoryName,
+            minDuration,
             maxDuration,
             quality,
             offset,
@@ -221,7 +222,7 @@ public class CategoryUtilService {
       dto.setLink(link.getLink());
       dto.setLinkTitle(link.getTitle());
       dto.setLinkThumbnail(link.getThumbnail());
-      dto.setLinkThumbPath(link.getThumbPath());
+      dto.setLinkThumbPath(link.getThumbpath());
       dto.setLinkDuration(link.getDuration());
       dtos.add(dto);
     }

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "models")
+@Table(name = "model")
 @NoArgsConstructor
 public class Model {
     
@@ -17,11 +17,17 @@ public class Model {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     
-    @Column(name = "tenant_id", nullable = false)
+    @Column(name = "tenant_id")
     private Integer tenantId;
     
-    @Column(unique = true, nullable = false)
+    @Column(name = "name")
     private String name;
+    
+    @Column(name = "description")
+    private String description;
+    
+    @Column(name = "country")
+    private String country;
     
     @Column(nullable = false)
     private String thumbnail;
@@ -31,12 +37,6 @@ public class Model {
     
     @Column(nullable = false)
     private Integer age = 0;
-    
-    @Column(length = 100)
-    private String country;
-    
-    @Column(length = 1000)
-    private String description;
     
     @CreationTimestamp
     @Column(name = "created_at")

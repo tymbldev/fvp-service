@@ -3,7 +3,7 @@ package com.fvp.dto;
 import lombok.Data;
 
 @Data
-public class CategoryWithLinkDTO {
+public class ModelWithLinkDTO {
     private Integer id;
     private String name;
     private String description;
@@ -11,8 +11,6 @@ public class CategoryWithLinkDTO {
     private String linkTitle;
     private String linkThumbnail;
     private String linkThumbPath;
-    private String linkSource;
-    private String linkTrailer;
     private Integer linkDuration;
-    private Long linkCount;  // Number of links in this category
+    private Integer linkCount;
 } 

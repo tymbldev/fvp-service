@@ -90,6 +90,7 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     
     @Query(value = "SELECT lc.* FROM link_category lc JOIN link l ON lc.link_id = l.id " +
         "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
+        "AND (:minDuration IS NULL OR l.duration >= :minDuration) " +
         "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
         "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
         "AND l.thumb_path_processed = 1 " +
@@ -98,6 +99,7 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     List<LinkCategory> findByCategoryWithFiltersPageable(
         @Param("tenantId") Integer tenantId,
         @Param("category") String category,
+        @Param("minDuration") Integer minDuration,
         @Param("maxDuration") Integer maxDuration,
         @Param("quality") String quality,
         @Param("offset") int offset,
@@ -106,6 +108,7 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     
     @Query(value = "SELECT COUNT(lc.id) FROM link_category lc JOIN link l ON lc.link_id = l.id " +
         "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
+        "AND (:minDuration IS NULL OR l.duration >= :minDuration) " +
         "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
         "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
         "AND l.thumb_path_processed = 1", 
@@ -113,12 +116,14 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     Long countByCategoryWithFilters(
         @Param("tenantId") Integer tenantId,
         @Param("category") String category,
+        @Param("minDuration") Integer minDuration,
         @Param("maxDuration") Integer maxDuration,
         @Param("quality") String quality
     );
 
     @Query(value = "SELECT lc.* FROM link_category lc JOIN link l ON lc.link_id = l.id " +
         "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
+        "AND (:minDuration IS NULL OR l.duration >= :minDuration) " +
         "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
         "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
         "AND l.id != :excludeId " +
@@ -128,6 +133,7 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
     List<LinkCategory> findByCategoryWithFiltersExcludingLinkPageable(
         @Param("tenantId") Integer tenantId,
         @Param("category") String category,
+        @Param("minDuration") Integer minDuration,
         @Param("maxDuration") Integer maxDuration,
         @Param("quality") String quality,
         @Param("excludeId") Integer excludeId,

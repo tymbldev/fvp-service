@@ -36,4 +36,73 @@ public interface LinkModelRepository extends JpaRepository<LinkModel, Integer> {
     
     @Transactional
     void deleteByLinkId(Integer linkId);
+
+    @Query(value = "SELECT lm.* FROM link_model lm JOIN link l ON lm.link_id = l.id " +
+        "WHERE lm.tenant_id = :tenantId " +
+        "AND lm.model IN :modelNames " +
+        "AND l.thumb_path_processed = 1 " +
+        "GROUP BY lm.model " +
+        "ORDER BY RAND()", 
+        nativeQuery = true)
+    List<LinkModel> findRandomLinksByModelNames(
+        @Param("tenantId") Integer tenantId,
+        @Param("modelNames") List<String> modelNames
+    );
+
+    @Query(value = "SELECT lm.model, COUNT(lm.id) as count FROM link_model lm JOIN link l ON lm.link_id = l.id " +
+        "WHERE lm.tenant_id = :tenantId AND lm.model IN :modelNames " +
+        "AND l.thumb_path_processed = 1 " +
+        "GROUP BY lm.model", 
+        nativeQuery = true)
+    List<Object[]> countByTenantIdAndModels(
+        @Param("tenantId") Integer tenantId,
+        @Param("modelNames") List<String> modelNames
+    );
+
+    @Query(value = "SELECT COUNT(lm.id) FROM link_model lm JOIN link l ON lm.link_id = l.id " +
+        "WHERE lm.tenant_id = :tenantId AND lm.model = :model " +
+        "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
+        "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
+        "AND l.thumb_path_processed = 1", 
+        nativeQuery = true)
+    Long countByModelWithFilters(
+        @Param("tenantId") Integer tenantId,
+        @Param("model") String model,
+        @Param("maxDuration") Integer maxDuration,
+        @Param("quality") String quality
+    );
+
+    @Query(value = "SELECT lm.* FROM link_model lm JOIN link l ON lm.link_id = l.id " +
+        "WHERE lm.tenant_id = :tenantId AND lm.model = :model " +
+        "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
+        "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
+        "AND l.id != :excludeId " +
+        "AND l.thumb_path_processed = 1 " +
+        "ORDER BY lm.random_order LIMIT :limit OFFSET :offset", 
+        nativeQuery = true)
+    List<LinkModel> findByModelWithFiltersExcludingLinkPageable(
+        @Param("tenantId") Integer tenantId,
+        @Param("model") String model,
+        @Param("maxDuration") Integer maxDuration,
+        @Param("quality") String quality,
+        @Param("excludeId") Integer excludeId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
+
+    @Query(value = "SELECT lm.* FROM link_model lm JOIN link l ON lm.link_id = l.id " +
+        "WHERE lm.tenant_id = :tenantId AND lm.model = :model " +
+        "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
+        "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
+        "AND l.thumb_path_processed = 1 " +
+        "ORDER BY lm.random_order LIMIT :limit OFFSET :offset", 
+        nativeQuery = true)
+    List<LinkModel> findByModelWithFiltersPageable(
+        @Param("tenantId") Integer tenantId,
+        @Param("model") String model,
+        @Param("maxDuration") Integer maxDuration,
+        @Param("quality") String quality,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
 } 

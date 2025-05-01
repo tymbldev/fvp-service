@@ -5,8 +5,6 @@ import com.fvp.entity.Link;
 import com.fvp.entity.ProcessedSheet;
 import com.fvp.repository.ProcessedSheetRepository;
 import com.fvp.repository.LinkRepository;
-import com.fvp.service.ElasticsearchClientService;
-import com.fvp.service.LinkProcessingService;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
@@ -365,7 +363,7 @@ public class GoogleSheetProcessingService {
       link.setSource(source);
       
       // Set default thumbPath if it's required and not provided
-      link.setThumbPath(link.getSheetName() + "/" + UUID.randomUUID().toString());
+      link.setThumbpath(link.getSheetName() + "/" + UUID.randomUUID().toString());
       
       // Set createdOn timestamp
       link.setCreatedOn(LocalDateTime.now());
