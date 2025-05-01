@@ -163,6 +163,25 @@
 						},
 						"description": "Get links for a specific category with pagination and filtering"
 					}
+				},
+				{
+					"name": "Build System Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tenant-Id",
+								"value": "{{tenant_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories/build-cache",
+							"host": ["{{base_url}}"],
+							"path": ["api", "categories", "build-cache"]
+						},
+						"description": "Build the complete system cache by calling home, home-seo, and first page of all categories"
+					}
 				}
 			]
 		},

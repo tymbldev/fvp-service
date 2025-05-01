@@ -2,6 +2,7 @@ package com.fvp.controller;
 
 import com.fvp.dto.CategoryWithLinkDTO;
 import com.fvp.service.CategoryService;
+import com.fvp.service.CategoryUtilService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -9,19 +10,28 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final CategoryUtilService categoryUtilService;
+    private static final Logger logger = LoggerFactory.getLogger(CategoryController.class);
 
     @Autowired
-    public CategoryController(CategoryService categoryService) {
+    public CategoryController(CategoryService categoryService, CategoryUtilService categoryUtilService) {
         this.categoryService = categoryService;
+        this.categoryUtilService = categoryUtilService;
     }
 
     @GetMapping("/home")
@@ -53,7 +63,42 @@ public class CategoryController {
             @RequestParam(required = false) Integer maxDuration,
             @RequestParam(required = false) String quality,
             @PageableDefault(size = 20, sort = "randomOrder") Pageable pageable) {
-        Page<CategoryWithLinkDTO> links = categoryService.getCategoryLinks(tenantId, categoryName, pageable, maxDuration, quality);
+        Page<CategoryWithLinkDTO> links = categoryUtilService.getCategoryLinks(tenantId, categoryName, pageable, maxDuration, quality);
         return ResponseEntity.ok(links);
+    }
+
+    @Async
+    @PostMapping("/build-cache")
+    public ResponseEntity<String> buildSystemCache(
+            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
+        logger.info("Starting system cache build for tenant {}", tenantId);
+        
+        // Build home categories cache
+        List<CategoryWithLinkDTO> homeCategories = categoryService.getHomeCategoriesWithLinks(tenantId);
+        logger.info("Built home categories cache with {} categories", homeCategories.size());
+        
+        // Build home SEO categories cache
+        List<CategoryWithLinkDTO> homeSeoCategories = categoryService.getHomeSeoCategories(tenantId);
+        logger.info("Built home SEO categories cache with {} categories", homeSeoCategories.size());
+        
+        // Get all distinct category names
+        Set<String> allCategoryNames = new HashSet<>();
+        allCategoryNames.addAll(homeCategories.stream().map(CategoryWithLinkDTO::getName).collect(Collectors.toSet()));
+        allCategoryNames.addAll(homeSeoCategories.stream().map(CategoryWithLinkDTO::getName).collect(Collectors.toSet()));
+        
+        // Build cache for each category's first page
+        Pageable firstPage = PageRequest.of(0, 20, Sort.by("randomOrder"));
+        for (String categoryName : allCategoryNames) {
+            try {
+                categoryUtilService.getCategoryLinks(tenantId, categoryName, firstPage, null, null);
+                logger.info("Built cache for category: {}", categoryName);
+            } catch (Exception e) {
+                logger.error("Error building cache for category {}: {}", categoryName, e.getMessage());
+            }
+        }
+        
+        String message = String.format("System cache built successfully. Processed %d categories", allCategoryNames.size());
+        logger.info(message);
+        return ResponseEntity.ok(message);
     }
 } 

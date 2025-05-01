@@ -40,7 +40,12 @@ public class ElasticsearchClientService {
     @Autowired
     public ElasticsearchClientService(RestHighLevelClient esClient) {
         this.esClient = esClient;
-        ensureIndexExists();
+        try{
+            ensureIndexExists();
+        }catch (Exception e){
+            logger.error("Error ensuring index exists: {}", e.getMessage(), e);
+        }
+
     }
 
     private void ensureIndexExists() {

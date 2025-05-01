@@ -50,7 +50,11 @@ public class LoggingUtil {
             runnable.run();
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            logger.info("Completed {} operation in {} ms", operationName, duration);
+            if(duration < 100){
+                logger.info("Completed {} operation in {} ms", operationName, duration);
+            }else{
+                logger.info("High time Completed {} operation in {} ms", operationName, duration);
+            }
         } catch (Exception e) {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;

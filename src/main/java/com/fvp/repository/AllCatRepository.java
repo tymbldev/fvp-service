@@ -1,11 +1,11 @@
 package com.fvp.repository;
 
 import com.fvp.entity.AllCat;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 @Repository
 public interface AllCatRepository extends JpaRepository<AllCat, Integer> {
@@ -28,4 +28,10 @@ public interface AllCatRepository extends JpaRepository<AllCat, Integer> {
     
     @Query("SELECT DISTINCT a.tenantId FROM AllCat a")
     List<Integer> findAllDistinctTenantIds();
+
+    @Query("SELECT ac FROM AllCat ac WHERE ac.tenantId = :tenantId AND ac.name IN :names")
+    List<AllCat> findByTenantIdAndNameIn(
+        @Param("tenantId") Integer tenantId,
+        @Param("names") List<String> names
+    );
 } 
