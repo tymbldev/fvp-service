@@ -31,7 +31,7 @@ public class LinkBatchProcessingController {
     @Autowired
     private LinkProcessingService linkProcessingService;
 
-    @PostMapping("/process-categories-models")
+    @GetMapping("/process-categories-models")
     public ResponseEntity<Map<String, Object>> processCategoriesAndModels(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
@@ -80,7 +80,7 @@ public class LinkBatchProcessingController {
         return ResponseEntity.ok(response);
     }
     
-    @PostMapping("/process-all-categories-models")
+    @GetMapping("/process-all-categories-models")
     @Async
     public ResponseEntity<Map<String, Object>> processAllCategoriesAndModels() {
         logger.info("Starting background processing of all links for categories and models");
@@ -146,7 +146,7 @@ public class LinkBatchProcessingController {
                 totalProcessed.get(), totalSuccess.get(), totalError.get());
     }
     
-    @PostMapping("/process-by-tenant/{tenantId}")
+    @GetMapping("/process-by-tenant/{tenantId}")
     public ResponseEntity<Map<String, Object>> processByTenantId(
             @PathVariable Integer tenantId,
             @RequestParam(defaultValue = "0") int page,
@@ -205,69 +205,7 @@ public class LinkBatchProcessingController {
                 tenantId, processedCount.get(), successCount.get(), errorCount.get());
     }
     
-    @PostMapping("/process-by-date-range")
-    public ResponseEntity<Map<String, Object>> processByDateRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
-        
-        logger.info("Starting background processing of categories and models for links between {} and {}", 
-                startDate, endDate);
-        
-        // Start the background processing
-        processByDateRangeAsync(startDate, endDate, page, size);
-        
-        // Return immediate response
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "started");
-        response.put("startDate", startDate);
-        response.put("endDate", endDate);
-        response.put("message", "Background processing for date range has been started");
-        
-        return ResponseEntity.accepted().body(response);
-    }
-    
-    /**
-     * Process links within a date range in the background
-     */
-    @Async("taskExecutor")
-    protected void processByDateRangeAsync(LocalDateTime startDate, LocalDateTime endDate, int page, int size) {
-        logger.info("Background processing for date range {} to {} started", startDate, endDate);
-        
-        Page<Link> linkPage = linkRepository.findByCreatedOnBetween(startDate, endDate, PageRequest.of(page, size));
-        AtomicInteger processedCount = new AtomicInteger(0);
-        AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger errorCount = new AtomicInteger(0);
-        
-        linkPage.getContent().forEach(link -> {
-            try {
-                processedCount.incrementAndGet();
-                
-                // Process categories if present
-                if (link.getCategory() != null && !link.getCategory().isEmpty()) {
-                    logger.info("Processing categories for link ID: {}", link.getId());
-                    linkProcessingService.processCategories(link, link.getCategory());
-                }
-                
-                // Process models if present
-                if (link.getStar() != null && !link.getStar().isEmpty()) {
-                    logger.info("Processing models for link ID: {}", link.getId());
-                    linkProcessingService.processModels(link, link.getStar());
-                }
-                
-                successCount.incrementAndGet();
-            } catch (Exception e) {
-                errorCount.incrementAndGet();
-                logger.error("Error processing link ID: {} - {}", link.getId(), e.getMessage());
-            }
-        });
-        
-        logger.info("Completed background processing for date range: {} processed, {} successful, {} errors", 
-                processedCount.get(), successCount.get(), errorCount.get());
-    }
-    
-    @PostMapping("/process-by-category")
+    @GetMapping("/process-by-category")
     public ResponseEntity<Map<String, Object>> processByCategory(
             @RequestParam String category,
             @RequestParam(defaultValue = "0") int page,

@@ -70,7 +70,7 @@ public class CategoryController {
     }
 
     @Async
-    @PostMapping("/build-cache")
+    @GetMapping("/build-cache")
     public ResponseEntity<String> buildSystemCache(
             @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
         logger.info("Starting system cache build for tenant {}", tenantId);

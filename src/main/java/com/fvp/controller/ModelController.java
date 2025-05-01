@@ -59,7 +59,7 @@ public class ModelController {
     }
 
     @Async
-    @PostMapping("/build-cache")
+    @GetMapping("/build-cache")
     public ResponseEntity<String> buildSystemCache(
             @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
         logger.info("Starting model cache build for tenant {}", tenantId);
