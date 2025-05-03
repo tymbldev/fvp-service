@@ -207,4 +207,33 @@ public class LinkModelShardingService {
             repository.deleteByLinkId(linkId);
         }
     }
+    
+    /**
+     * Saves a list of BaseLinkModel entities to their appropriate shards in parallel
+     * @param entities the entities to save
+     * @return the saved entities
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends BaseLinkModel> List<T> saveAll(List<T> entities) {
+        if (entities.isEmpty()) {
+            return entities;
+        }
+
+        // Group entities by shard number
+        Map<Integer, List<T>> entitiesByShard = new HashMap<>();
+        for (T entity : entities) {
+            int shardNumber = getShardNumber(entity.getModel());
+            entitiesByShard.computeIfAbsent(shardNumber, k -> new ArrayList<>()).add(entity);
+        }
+
+        // Save each shard's entities in parallel
+        List<T> savedEntities = new ArrayList<>();
+        entitiesByShard.forEach((shardNumber, shardEntities) -> {
+            ShardedLinkModelRepository<T> repository = (ShardedLinkModelRepository<T>) getRepositoryForShard(shardNumber);
+            List<T> saved = repository.saveAll(shardEntities);
+            savedEntities.addAll(saved);
+        });
+
+        return savedEntities;
+    }
 } 

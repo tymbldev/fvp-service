@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,21 +71,80 @@ public class LinkModelMigrationService {
      * @param batch the batch of entities to process
      * @return the number of records migrated
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int processBatch(List<LinkModel> batch) {
+        long startTime = System.currentTimeMillis();
         int count = 0;
+        List<Integer> migratedIds = new ArrayList<>();
         
+        logger.info("Starting batch processing of {} records", batch.size());
+        
+        // Track time for conversion and saving
+        long conversionTime = 0;
+        long saveTime = 0;
+        int conversionCount = 0;
+        int saveCount = 0;
+        
+        // Convert all entities first
+        List<BaseLinkModel> shardEntities = new ArrayList<>();
         for (LinkModel linkModel : batch) {
             try {
+                // Track conversion time
+                long conversionStart = System.currentTimeMillis();
                 BaseLinkModel shardEntity = shardingService.convertToShardEntity(linkModel);
-                shardingService.save(shardEntity);
+                conversionTime += System.currentTimeMillis() - conversionStart;
+                conversionCount++;
+                
+                shardEntities.add(shardEntity);
+                migratedIds.add(linkModel.getId());
                 count++;
+                
+                // Log progress every 100 records
+                if (count % 100 == 0) {
+                    logger.info("Converted {} records in current batch", count);
+                }
             } catch (Exception e) {
-                logger.error("Error migrating LinkModel with ID: " + linkModel.getId(), e);
+                logger.error("Error converting LinkModel with ID: " + linkModel.getId(), e);
             }
         }
         
-        logger.info("Migrated {} records in batch", count);
+        // Save all converted entities in batch
+        if (!shardEntities.isEmpty()) {
+            try {
+                long saveStart = System.currentTimeMillis();
+                shardingService.saveAll(shardEntities);
+                saveTime = System.currentTimeMillis() - saveStart;
+                saveCount = shardEntities.size();
+                
+                logger.info("Saved {} entities to sharded tables in {} ms", 
+                    saveCount, saveTime);
+            } catch (Exception e) {
+                logger.error("Error saving batch to sharded tables", e);
+                throw e;
+            }
+        }
+        
+        // Delete successfully migrated records from original table
+        long deleteStart = System.currentTimeMillis();
+        int deletedCount = 0;
+        if (!migratedIds.isEmpty()) {
+            try {
+                deletedCount = linkModelRepository.deleteByIdIn(migratedIds);
+                logger.info("Deleted {} records from original LinkModel table in {} ms", 
+                    deletedCount, System.currentTimeMillis() - deleteStart);
+            } catch (Exception e) {
+                logger.error("Error deleting migrated records from original table", e);
+                throw e; // Re-throw to ensure transaction rollback
+            }
+        }
+        
+        long totalTime = System.currentTimeMillis() - startTime;
+        logger.info("Batch processing completed in {} ms: {} records processed ({} converted, {} saved, {} deleted). " +
+                   "Average times: conversion={} ms, save={} ms", 
+                   totalTime, count, conversionCount, saveCount, deletedCount,
+                   conversionCount > 0 ? conversionTime/conversionCount : 0,
+                   saveCount > 0 ? saveTime/saveCount : 0);
+        
         return count;
     }
     

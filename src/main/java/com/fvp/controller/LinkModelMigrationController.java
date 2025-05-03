@@ -3,6 +3,7 @@ package com.fvp.controller;
 import com.fvp.service.LinkModelMigrationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -17,6 +18,7 @@ public class LinkModelMigrationController {
     private LinkModelMigrationService migrationService;
 
     @PostMapping("/link-model/all")
+    @Async
     public ResponseEntity<?> migrateAllLinkModels() {
         int migrated = migrationService.migrateAllData();
         
