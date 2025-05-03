@@ -1,0 +1,160 @@
+{
+  "info": {
+    "name": "FVP Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get Home Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/home",
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories", "home"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Home SEO Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/home-seo",
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories", "home-seo"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category First Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/:categoryName/first",
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories", ":categoryName", "first"],
+              "variable": [
+                {
+                  "key": "categoryName",
+                  "value": "your-category-name"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category Links",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/:categoryName/links?maxDuration=:maxDuration&quality=:quality&page=:page&size=:size",
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories", ":categoryName", "links"],
+              "query": [
+                {
+                  "key": "maxDuration",
+                  "value": ":maxDuration"
+                },
+                {
+                  "key": "quality",
+                  "value": ":quality"
+                },
+                {
+                  "key": "page",
+                  "value": ":page"
+                },
+                {
+                  "key": "size",
+                  "value": ":size"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "categoryName",
+                  "value": "your-category-name"
+                },
+                {
+                  "key": "maxDuration",
+                  "value": "null"
+                },
+                {
+                  "key": "quality",
+                  "value": "null"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Build System Cache",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/build-cache",
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories", "build-cache"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    }
+  ]
+} 

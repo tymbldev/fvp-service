@@ -32,7 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LinkProcessingService {
@@ -182,7 +181,8 @@ public class LinkProcessingService {
     Set<String> categoriesToCreate = new HashSet<>();
 
     Gson gson = new Gson();
-    Type listType = new TypeToken<List<String>>() {}.getType();
+    Type listType = new TypeToken<List<String>>() {
+    }.getType();
     List<String> values = gson.fromJson(categories, listType);
 
     List<AllCat> allCategories = getCategoriesForTenant(link.getTenantId());
@@ -259,9 +259,9 @@ public class LinkProcessingService {
 
     // Create LinkCategory entries for all valid categories
     if (!categorySet.isEmpty()) {
-      logger.info("Saving to sharded link_category tables: {} entries for link ID {}", 
+      logger.info("Saving to sharded link_category tables: {} entries for link ID {}",
           categorySet.size(), link.getId());
-      
+
       int savedCount = 0;
       for (String categoryName : categorySet) {
         try {
@@ -272,18 +272,18 @@ public class LinkProcessingService {
           linkCategory.setCategory(categoryName);
           linkCategory.setCreatedOn(link.getCreatedOn());
           linkCategory.setRandomOrder(link.getRandomOrder());
-          
+
           // Convert and save to appropriate shard
           BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
           shardingService.save(shardEntity);
           savedCount++;
         } catch (Exception e) {
-          logger.error("Error saving category '{}' for link ID {}: {}", 
+          logger.error("Error saving category '{}' for link ID {}: {}",
               categoryName, link.getId(), e.getMessage());
         }
       }
-      
-      logger.info("Saved {} entries to sharded link_category tables for link ID {}", 
+
+      logger.info("Saved {} entries to sharded link_category tables for link ID {}",
           savedCount, link.getId());
     }
   }

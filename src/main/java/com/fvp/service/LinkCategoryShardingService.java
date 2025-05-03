@@ -34,318 +34,364 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LinkCategoryShardingService {
-    private static final Logger logger = LoggerFactory.getLogger(LinkCategoryShardingService.class);
-    private static final int TOTAL_SHARDS = 10;
-    
-    // Cache for category-to-shard mapping
-    private final Map<String, Integer> categoryShardMap = new ConcurrentHashMap<>();
-    
-    @Autowired
-    private LinkCategoryShard1Repository shard1Repository;
-    
-    @Autowired
-    private LinkCategoryShard2Repository shard2Repository;
-    
-    @Autowired
-    private LinkCategoryShard3Repository shard3Repository;
-    
-    @Autowired
-    private LinkCategoryShard4Repository shard4Repository;
-    
-    @Autowired
-    private LinkCategoryShard5Repository shard5Repository;
-    
-    @Autowired
-    private LinkCategoryShard6Repository shard6Repository;
-    
-    @Autowired
-    private LinkCategoryShard7Repository shard7Repository;
-    
-    @Autowired
-    private LinkCategoryShard8Repository shard8Repository;
-    
-    @Autowired
-    private LinkCategoryShard9Repository shard9Repository;
-    
-    @Autowired
-    private LinkCategoryShard10Repository shard10Repository;
-    
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-    
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-    
-    /**
-     * Determines the shard number for a given category name using consistent hashing
-     * @param category the category name
-     * @return the shard number (1-10)
-     */
-    @Cacheable(value = "categoryShardMapping", key = "#category")
-    public int getShardNumber(String category) {
-        // First check the cache
-        if (categoryShardMap.containsKey(category)) {
-            return categoryShardMap.get(category);
-        }
-        
-        // Calculate shard number based on category name hash
-        int shardNumber = (Math.abs(category.hashCode()) % TOTAL_SHARDS) + 1;
-        
-        // Cache the result
-        categoryShardMap.put(category, shardNumber);
-        
-        logger.debug("Category '{}' mapped to shard {}", category, shardNumber);
-        return shardNumber;
-    }
-    
-    /**
-     * Gets the appropriate repository for a given category name
-     * @param category the category name
-     * @return the repository for the determined shard
-     */
-    public ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> getRepositoryForCategory(String category) {
-        int shardNumber = getShardNumber(category);
-        return getRepositoryForShard(shardNumber);
-    }
-    
-    /**
-     * Gets the repository for a specific shard number
-     * @param shardNumber the shard number (1-10)
-     * @return the repository for the specified shard
-     */
-    @SuppressWarnings("unchecked")
-    public ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> getRepositoryForShard(int shardNumber) {
-        switch (shardNumber) {
-            case 1: return shard1Repository;
-            case 2: return shard2Repository;
-            case 3: return shard3Repository;
-            case 4: return shard4Repository;
-            case 5: return shard5Repository;
-            case 6: return shard6Repository;
-            case 7: return shard7Repository;
-            case 8: return shard8Repository;
-            case 9: return shard9Repository;
-            case 10: return shard10Repository;
-            default: throw new IllegalArgumentException("Invalid shard number: " + shardNumber);
-        }
-    }
-    
-    /**
-     * Converts a LinkCategory entity to its appropriate shard entity
-     * @param source the source LinkCategory entity
-     * @return the target shard entity
-     */
-    public BaseLinkCategory convertToShardEntity(LinkCategory source) {
-        int shardNumber = getShardNumber(source.getCategory());
-        BaseLinkCategory target = createShardEntity(shardNumber);
-        
-        // Copy properties
-        target.setLinkId(source.getLinkId());
-        target.setTenantId(source.getTenantId());
-        target.setCategory(source.getCategory());
-        target.setCreatedOn(source.getCreatedOn());
-        target.setRandomOrder(source.getRandomOrder());
-        
-        return target;
-    }
-    
-    /**
-     * Creates a new instance of the appropriate shard entity
-     * @param shardNumber the shard number (1-10)
-     * @return a new instance of the appropriate shard entity
-     */
-    private BaseLinkCategory createShardEntity(int shardNumber) {
-        switch (shardNumber) {
-            case 1: return new LinkCategoryShard1();
-            case 2: return new LinkCategoryShard2();
-            case 3: return new LinkCategoryShard3();
-            case 4: return new LinkCategoryShard4();
-            case 5: return new LinkCategoryShard5();
-            case 6: return new LinkCategoryShard6();
-            case 7: return new LinkCategoryShard7();
-            case 8: return new LinkCategoryShard8();
-            case 9: return new LinkCategoryShard9();
-            case 10: return new LinkCategoryShard10();
-            default: throw new IllegalArgumentException("Invalid shard number: " + shardNumber);
-        }
-    }
-    
-    /**
-     * Saves a BaseLinkCategory entity to its appropriate shard
-     * @param entity the entity to save
-     * @return the saved entity
-     */
-    @SuppressWarnings("unchecked")
-    @Transactional
-    public <T extends BaseLinkCategory> T save(T entity) {
-        int shardNumber = getShardNumber(entity.getCategory());
-        ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
-        return repository.save(entity);
-    }
-    
-    /**
-     * Deletes a BaseLinkCategory entity from its appropriate shard
-     * @param entity the entity to delete
-     */
-    @SuppressWarnings("unchecked")
-    public <T extends BaseLinkCategory> void delete(T entity) {
-        int shardNumber = getShardNumber(entity.getCategory());
-        ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
-        repository.delete(entity);
-    }
-    
-    /**
-     * Finds all LinkCategory entities by category across all shards
-     * @param categoryName the category name to find
-     * @return a list of all matching entities from all shards
-     */
-    public List<BaseLinkCategory> findByCategory(String categoryName) {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(getShardNumber(categoryName));
-        return (List<BaseLinkCategory>) repository.findByCategoryAndTenantId(categoryName, null);
-    }
-    
-    /**
-     * Finds all LinkCategory entities by category and tenant ID
-     * @param categoryName the category name to find
-     * @param tenantId the tenant ID to find
-     * @return a list of all matching entities
-     */
-    public List<BaseLinkCategory> findByCategoryAndTenantId(String categoryName, Integer tenantId) {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(getShardNumber(categoryName));
-        return (List<BaseLinkCategory>) repository.findByCategoryAndTenantId(categoryName, tenantId);
-    }
-    
-    /**
-     * Finds all LinkCategory entities by link ID across all shards
-     * This requires querying all shards since we don't know which shard contains the link
-     * @param linkId the link ID to find
-     * @return a list of all matching entities from all shards
-     */
-    public List<BaseLinkCategory> findByLinkId(Integer linkId) {
-        List<BaseLinkCategory> result = new ArrayList<>();
-        
-        for (int i = 1; i <= TOTAL_SHARDS; i++) {
-            ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(i);
-            result.addAll((List<BaseLinkCategory>) repository.findByLinkId(linkId));
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Deletes all LinkCategory entities by link ID across all shards
-     * This requires querying all shards since we don't know which shard contains the link
-     * @param linkId the link ID to delete
-     */
-    public void deleteByLinkId(Integer linkId) {
-        for (int i = 1; i <= TOTAL_SHARDS; i++) {
-            ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(i);
-            repository.deleteByLinkId(linkId);
-        }
-    }
-    
-    /**
-     * Gets the total number of shards
-     * @return the total number of shards
-     */
-    public int getTotalShards() {
-        return TOTAL_SHARDS;
+
+  private static final Logger logger = LoggerFactory.getLogger(LinkCategoryShardingService.class);
+  private static final int TOTAL_SHARDS = 10;
+
+  // Cache for category-to-shard mapping
+  private final Map<String, Integer> categoryShardMap = new ConcurrentHashMap<>();
+
+  @Autowired
+  private LinkCategoryShard1Repository shard1Repository;
+
+  @Autowired
+  private LinkCategoryShard2Repository shard2Repository;
+
+  @Autowired
+  private LinkCategoryShard3Repository shard3Repository;
+
+  @Autowired
+  private LinkCategoryShard4Repository shard4Repository;
+
+  @Autowired
+  private LinkCategoryShard5Repository shard5Repository;
+
+  @Autowired
+  private LinkCategoryShard6Repository shard6Repository;
+
+  @Autowired
+  private LinkCategoryShard7Repository shard7Repository;
+
+  @Autowired
+  private LinkCategoryShard8Repository shard8Repository;
+
+  @Autowired
+  private LinkCategoryShard9Repository shard9Repository;
+
+  @Autowired
+  private LinkCategoryShard10Repository shard10Repository;
+
+  @Autowired
+  private JdbcTemplate jdbcTemplate;
+
+  @Autowired
+  private PlatformTransactionManager transactionManager;
+
+  /**
+   * Determines the shard number for a given category name using consistent hashing
+   *
+   * @param category the category name
+   * @return the shard number (1-10)
+   */
+  @Cacheable(value = "categoryShardMapping", key = "#category")
+  public int getShardNumber(String category) {
+    // First check the cache
+    if (categoryShardMap.containsKey(category)) {
+      return categoryShardMap.get(category);
     }
 
-    /**
-     * Saves a BaseLinkCategory entity to its appropriate shard using native SQL
-     * @param entity the entity to save
-     * @return the saved entity
-     */
-    @Transactional
-    @SuppressWarnings("unchecked")
-    public <T extends BaseLinkCategory> T saveWithNativeQuery(T entity) {
-        int shardNumber = getShardNumber(entity.getCategory());
-        String tableName = "link_category_shard_" + shardNumber;
-        
-        // Format the created_on timestamp
-        String createdOnStr = entity.getCreatedOn() != null ? 
-            "'" + entity.getCreatedOn().toString() + "'" : "CURRENT_TIMESTAMP";
-        
-        // Build the native SQL query with actual values
-        String sql = String.format(
-            "INSERT INTO %s (tenant_id, link_id, category, created_on, random_order) " +
+    // Calculate shard number based on category name hash
+    int shardNumber = (Math.abs(category.hashCode()) % TOTAL_SHARDS) + 1;
+
+    // Cache the result
+    categoryShardMap.put(category, shardNumber);
+
+    logger.debug("Category '{}' mapped to shard {}", category, shardNumber);
+    return shardNumber;
+  }
+
+  /**
+   * Gets the appropriate repository for a given category name
+   *
+   * @param category the category name
+   * @return the repository for the determined shard
+   */
+  public ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> getRepositoryForCategory(
+      String category) {
+    int shardNumber = getShardNumber(category);
+    return getRepositoryForShard(shardNumber);
+  }
+
+  /**
+   * Gets the repository for a specific shard number
+   *
+   * @param shardNumber the shard number (1-10)
+   * @return the repository for the specified shard
+   */
+  @SuppressWarnings("unchecked")
+  public ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> getRepositoryForShard(
+      int shardNumber) {
+    switch (shardNumber) {
+      case 1:
+        return shard1Repository;
+      case 2:
+        return shard2Repository;
+      case 3:
+        return shard3Repository;
+      case 4:
+        return shard4Repository;
+      case 5:
+        return shard5Repository;
+      case 6:
+        return shard6Repository;
+      case 7:
+        return shard7Repository;
+      case 8:
+        return shard8Repository;
+      case 9:
+        return shard9Repository;
+      case 10:
+        return shard10Repository;
+      default:
+        throw new IllegalArgumentException("Invalid shard number: " + shardNumber);
+    }
+  }
+
+  /**
+   * Converts a LinkCategory entity to its appropriate shard entity
+   *
+   * @param source the source LinkCategory entity
+   * @return the target shard entity
+   */
+  public BaseLinkCategory convertToShardEntity(LinkCategory source) {
+    int shardNumber = getShardNumber(source.getCategory());
+    BaseLinkCategory target = createShardEntity(shardNumber);
+
+    // Copy properties
+    target.setLinkId(source.getLinkId());
+    target.setTenantId(source.getTenantId());
+    target.setCategory(source.getCategory());
+    target.setCreatedOn(source.getCreatedOn());
+    target.setRandomOrder(source.getRandomOrder());
+
+    return target;
+  }
+
+  /**
+   * Creates a new instance of the appropriate shard entity
+   *
+   * @param shardNumber the shard number (1-10)
+   * @return a new instance of the appropriate shard entity
+   */
+  private BaseLinkCategory createShardEntity(int shardNumber) {
+    switch (shardNumber) {
+      case 1:
+        return new LinkCategoryShard1();
+      case 2:
+        return new LinkCategoryShard2();
+      case 3:
+        return new LinkCategoryShard3();
+      case 4:
+        return new LinkCategoryShard4();
+      case 5:
+        return new LinkCategoryShard5();
+      case 6:
+        return new LinkCategoryShard6();
+      case 7:
+        return new LinkCategoryShard7();
+      case 8:
+        return new LinkCategoryShard8();
+      case 9:
+        return new LinkCategoryShard9();
+      case 10:
+        return new LinkCategoryShard10();
+      default:
+        throw new IllegalArgumentException("Invalid shard number: " + shardNumber);
+    }
+  }
+
+  /**
+   * Saves a BaseLinkCategory entity to its appropriate shard
+   *
+   * @param entity the entity to save
+   * @return the saved entity
+   */
+  @SuppressWarnings("unchecked")
+  @Transactional
+  public <T extends BaseLinkCategory> T save(T entity) {
+    int shardNumber = getShardNumber(entity.getCategory());
+    ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(
+        shardNumber);
+    return repository.save(entity);
+  }
+
+  /**
+   * Deletes a BaseLinkCategory entity from its appropriate shard
+   *
+   * @param entity the entity to delete
+   */
+  @SuppressWarnings("unchecked")
+  public <T extends BaseLinkCategory> void delete(T entity) {
+    int shardNumber = getShardNumber(entity.getCategory());
+    ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(
+        shardNumber);
+    repository.delete(entity);
+  }
+
+  /**
+   * Finds all LinkCategory entities by category across all shards
+   *
+   * @param categoryName the category name to find
+   * @return a list of all matching entities from all shards
+   */
+  public List<BaseLinkCategory> findByCategory(String categoryName) {
+    ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
+        getShardNumber(categoryName));
+    return (List<BaseLinkCategory>) repository.findByCategoryAndTenantId(categoryName, null);
+  }
+
+  /**
+   * Finds all LinkCategory entities by category and tenant ID
+   *
+   * @param categoryName the category name to find
+   * @param tenantId the tenant ID to find
+   * @return a list of all matching entities
+   */
+  public List<BaseLinkCategory> findByCategoryAndTenantId(String categoryName, Integer tenantId) {
+    ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
+        getShardNumber(categoryName));
+    return (List<BaseLinkCategory>) repository.findByCategoryAndTenantId(categoryName, tenantId);
+  }
+
+  /**
+   * Finds all LinkCategory entities by link ID across all shards This requires querying all shards
+   * since we don't know which shard contains the link
+   *
+   * @param linkId the link ID to find
+   * @return a list of all matching entities from all shards
+   */
+  public List<BaseLinkCategory> findByLinkId(Integer linkId) {
+    List<BaseLinkCategory> result = new ArrayList<>();
+
+    for (int i = 1; i <= TOTAL_SHARDS; i++) {
+      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
+          i);
+      result.addAll((List<BaseLinkCategory>) repository.findByLinkId(linkId));
+    }
+
+    return result;
+  }
+
+  /**
+   * Deletes all LinkCategory entities by link ID across all shards This requires querying all
+   * shards since we don't know which shard contains the link
+   *
+   * @param linkId the link ID to delete
+   */
+  public void deleteByLinkId(Integer linkId) {
+    for (int i = 1; i <= TOTAL_SHARDS; i++) {
+      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
+          i);
+      repository.deleteByLinkId(linkId);
+    }
+  }
+
+  /**
+   * Gets the total number of shards
+   *
+   * @return the total number of shards
+   */
+  public int getTotalShards() {
+    return TOTAL_SHARDS;
+  }
+
+  /**
+   * Saves a BaseLinkCategory entity to its appropriate shard using native SQL
+   *
+   * @param entity the entity to save
+   * @return the saved entity
+   */
+  @Transactional
+  @SuppressWarnings("unchecked")
+  public <T extends BaseLinkCategory> T saveWithNativeQuery(T entity) {
+    int shardNumber = getShardNumber(entity.getCategory());
+    String tableName = "link_category_shard_" + shardNumber;
+
+    // Format the created_on timestamp
+    String createdOnStr = entity.getCreatedOn() != null ?
+        "'" + entity.getCreatedOn().toString() + "'" : "CURRENT_TIMESTAMP";
+
+    // Build the native SQL query with actual values
+    String sql = String.format(
+        "INSERT INTO %s (tenant_id, link_id, category, created_on, random_order) " +
             "VALUES (%d, %d, '%s', %s, %d)",
-            tableName,
-            entity.getTenantId(),
-            entity.getLinkId(),
-            entity.getCategory().replace("'", "''"), // Escape single quotes
-            createdOnStr,
-            entity.getRandomOrder() != null ? entity.getRandomOrder() : 0
-        );
-        
-        try {
-            logger.debug("Executing native SQL: {}", sql);
-            
-            // Execute the insert
-            int rowsAffected = jdbcTemplate.update(sql);
-            logger.debug("Rows affected by insert: {}", rowsAffected);
-            
-            if (rowsAffected == 0) {
-                logger.warn("No rows were affected by the insert operation");
-            }
-            
-            // Get the generated ID
-            String idSql = "SELECT LAST_INSERT_ID()";
-            Integer id = jdbcTemplate.queryForObject(idSql, Integer.class);
-            entity.setId(id);
-            
-            logger.debug("Successfully inserted record with ID: {}", id);
-            
-            // Verify the insert
-            String verifySql = String.format(
-                "SELECT COUNT(*) FROM %s WHERE link_id = %d AND category = '%s'",
-                tableName,
-                entity.getLinkId(),
-                entity.getCategory().replace("'", "''")
-            );
-            Integer count = jdbcTemplate.queryForObject(verifySql, Integer.class);
-            logger.debug("Verification count after insert: {}", count);
-            
-            return entity;
-        } catch (Exception e) {
-            logger.error("Error saving to shard {} using native query: {}\nSQL: {}", 
-                shardNumber, e.getMessage(), sql, e);
-            throw e;
-        }
+        tableName,
+        entity.getTenantId(),
+        entity.getLinkId(),
+        entity.getCategory().replace("'", "''"), // Escape single quotes
+        createdOnStr,
+        entity.getRandomOrder() != null ? entity.getRandomOrder() : 0
+    );
+
+    try {
+      logger.debug("Executing native SQL: {}", sql);
+
+      // Execute the insert
+      int rowsAffected = jdbcTemplate.update(sql);
+      logger.debug("Rows affected by insert: {}", rowsAffected);
+
+      if (rowsAffected == 0) {
+        logger.warn("No rows were affected by the insert operation");
+      }
+
+      // Get the generated ID
+      String idSql = "SELECT LAST_INSERT_ID()";
+      Integer id = jdbcTemplate.queryForObject(idSql, Integer.class);
+      entity.setId(id);
+
+      logger.debug("Successfully inserted record with ID: {}", id);
+
+      // Verify the insert
+      String verifySql = String.format(
+          "SELECT COUNT(*) FROM %s WHERE link_id = %d AND category = '%s'",
+          tableName,
+          entity.getLinkId(),
+          entity.getCategory().replace("'", "''")
+      );
+      Integer count = jdbcTemplate.queryForObject(verifySql, Integer.class);
+      logger.debug("Verification count after insert: {}", count);
+
+      return entity;
+    } catch (Exception e) {
+      logger.error("Error saving to shard {} using native query: {}\nSQL: {}",
+          shardNumber, e.getMessage(), sql, e);
+      throw e;
+    }
+  }
+
+  /**
+   * Saves a list of BaseLinkCategory entities to their appropriate shards in parallel
+   *
+   * @param entities the entities to save
+   * @return the saved entities
+   */
+  @SuppressWarnings("unchecked")
+  public <T extends BaseLinkCategory> List<T> saveAll(List<T> entities) {
+    if (entities.isEmpty()) {
+      return entities;
     }
 
-    /**
-     * Saves a list of BaseLinkCategory entities to their appropriate shards in parallel
-     * @param entities the entities to save
-     * @return the saved entities
-     */
-    @SuppressWarnings("unchecked")
-    public <T extends BaseLinkCategory> List<T> saveAll(List<T> entities) {
-        if (entities.isEmpty()) {
-            return entities;
-        }
-
-        // Group entities by shard number
-        Map<Integer, List<T>> entitiesByShard = new HashMap<>();
-        for (T entity : entities) {
-            int shardNumber = getShardNumber(entity.getCategory());
-            entitiesByShard.computeIfAbsent(shardNumber, k -> new ArrayList<>()).add(entity);
-        }
-
-        // Save each shard's entities in parallel
-        List<T> savedEntities = new ArrayList<>();
-        entitiesByShard.forEach((shardNumber, shardEntities) -> {
-            ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
-            List<T> saved = repository.saveAll(shardEntities);
-            savedEntities.addAll(saved);
-        });
-
-        return savedEntities;
+    // Group entities by shard number
+    Map<Integer, List<T>> entitiesByShard = new HashMap<>();
+    for (T entity : entities) {
+      int shardNumber = getShardNumber(entity.getCategory());
+      entitiesByShard.computeIfAbsent(shardNumber, k -> new ArrayList<>()).add(entity);
     }
+
+    // Save each shard's entities in parallel
+    List<T> savedEntities = new ArrayList<>();
+    entitiesByShard.forEach((shardNumber, shardEntities) -> {
+      ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(
+          shardNumber);
+      List<T> saved = repository.saveAll(shardEntities);
+      savedEntities.addAll(saved);
+    });
+
+    return savedEntities;
+  }
 } 

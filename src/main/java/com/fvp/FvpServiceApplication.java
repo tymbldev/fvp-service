@@ -7,7 +7,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class FvpServiceApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(FvpServiceApplication.class, args);
-    }
+
+  public static void main(String[] args) {
+    SpringApplication.run(FvpServiceApplication.class, args);
+  }
 } 

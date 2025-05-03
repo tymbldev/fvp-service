@@ -3,25 +3,32 @@ package com.fvp.service;
 import com.fvp.document.LinkDocument;
 import com.fvp.entity.Link;
 import com.fvp.entity.ProcessedSheet;
-import com.fvp.repository.ProcessedSheetRepository;
 import com.fvp.repository.LinkRepository;
+import com.fvp.repository.ProcessedSheetRepository;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.time.LocalDateTime;
 
 @Service
 public class GoogleSheetProcessingService {
@@ -83,81 +90,82 @@ public class GoogleSheetProcessingService {
       Sheets sheetsService = getSheetsService();
       // First, get the status of all sheets to identify which ones to process
       Map<String, Boolean> sheetApprovalStatus = fetchSheetStatuses(sheetsService);
-      
+
       // Process each sheet that is approved and hasn't been processed yet
       processApprovedSheets(sheetsService, sheetApprovalStatus);
-      
+
       logger.info("Completed Google Sheets processing");
     } catch (Exception e) {
       logger.error("Error in Google Sheets processing", e);
       throw new RuntimeException("Failed to process Google Sheets", e);
     }
   }
-  
+
   private Map<String, Boolean> fetchSheetStatuses(Sheets sheetsService) throws IOException {
     Map<String, Boolean> sheetStatuses = new HashMap<>();
-    
+
     // Fetch the status sheet
     List<Map<String, String>> statusRows = fetchSheet(sheetsService, STATUS_SHEET_NAME, true);
-    
+
     // Process status sheet to determine which sheets are approved
     for (Map<String, String> row : statusRows) {
       String sheetName = row.get(SHEET_NAME_COLUMN);
       String vetStatus = row.get(VET_STATUS_COLUMN);
-      
+
       if (sheetName == null || vetStatus == null || sheetName.equals(STATUS_SHEET_NAME)) {
         continue;
       }
-      
+
       boolean isApproved = vetStatus.toLowerCase().equals(APPROVED_STATUS.toLowerCase());
       sheetStatuses.put(sheetName, isApproved);
-      
+
       // Cache the status
       sheetStatusCache.put(sheetName.toLowerCase(), isApproved);
     }
-    
+
     return sheetStatuses;
   }
-  
-  private void processApprovedSheets(Sheets sheetsService, Map<String, Boolean> sheetApprovalStatus) throws IOException {
+
+  private void processApprovedSheets(Sheets sheetsService, Map<String, Boolean> sheetApprovalStatus)
+      throws IOException {
     List<Link> allLinks = new ArrayList<>();
-    
+
     // Process each approved sheet that hasn't been processed yet
     for (Map.Entry<String, Boolean> entry : sheetApprovalStatus.entrySet()) {
       String sheetName = entry.getKey();
       boolean isApproved = entry.getValue();
-      
+
       // Skip if not approved
       if (!isApproved) {
         logger.info("Skipping unapproved sheet: {}", sheetName);
-        
+
         // Record that we've checked this sheet and it's not approved
         markSheetAsProcessed(sheetName, false, 0);
         continue;
       }
-      
+
       // Skip if not in date format
       if (!isDateFormattedSheet(sheetName)) {
         logger.info("Skipping non-date-formatted sheet: {}", sheetName);
         continue;
       }
-      
+
       // Skip if already processed
       if (isSheetAlreadyProcessed(sheetName)) {
         logger.info("Skipping already processed sheet: {}", sheetName);
         continue;
       }
-      
+
       // Fetch and process the sheet
       logger.info("Processing approved sheet: {}", sheetName);
       List<Map<String, String>> rows = fetchSheet(sheetsService, sheetName, false);
       List<Link> sheetLinks = processSheet(spreadsheetId, sheetName, rows);
       allLinks.addAll(sheetLinks);
-      
+
       // Mark sheet as processed
       markSheetAsProcessed(sheetName, true, rows.size());
     }
-    
+
     // Save all links in batches
     if (!allLinks.isEmpty()) {
       saveLinksInBatches(allLinks);
@@ -168,7 +176,7 @@ public class GoogleSheetProcessingService {
   private boolean isSheetAlreadyProcessed(String sheetName) {
     return processedSheetRepository.existsBySheetNameAndWorkbookId(sheetName, spreadsheetId);
   }
-  
+
   private void markSheetAsProcessed(String sheetName, boolean isApproved, int recordsProcessed) {
     ProcessedSheet processedSheet = new ProcessedSheet(
         sheetName,
@@ -285,16 +293,16 @@ public class GoogleSheetProcessingService {
       List<Map<String, String>> rows) {
     logger.info("Processing approved sheet: {} with {} rows", sheetName, rows.size());
     List<Link> links = new ArrayList<>();
-    
+
     // Track total processing time
     long totalProcessingTimeMs = 0;
     int successCount = 0;
     int failureCount = 0;
-    
+
     // Process each row individually
     for (Map<String, String> row : rows) {
       long startTimeMs = System.currentTimeMillis();
-      
+
       try {
         Link link = createLinkFromRow(workbookId, sheetName, row);
         if (link != null) {
@@ -305,14 +313,14 @@ public class GoogleSheetProcessingService {
           // Process the link with its categories and models
           linkProcessingService.processLink(link, categories, models);
           links.add(link);
-          
+
           // Calculate and log time taken for this row
           long endTimeMs = System.currentTimeMillis();
           long processingTimeMs = endTimeMs - startTimeMs;
           totalProcessingTimeMs += processingTimeMs;
           successCount++;
-          
-          logger.info("Row processed successfully in {} ms: {} (title: {})", 
+
+          logger.info("Row processed successfully in {} ms: {} (title: {})",
               processingTimeMs, link.getLink(), link.getTitle());
         }
       } catch (Exception e) {
@@ -321,19 +329,22 @@ public class GoogleSheetProcessingService {
         long processingTimeMs = endTimeMs - startTimeMs;
         totalProcessingTimeMs += processingTimeMs;
         failureCount++;
-        
-        logger.error("Error processing row in sheet {} (took {} ms): {}", 
+
+        logger.error("Error processing row in sheet {} (took {} ms): {}",
             sheetName, processingTimeMs, e.getMessage());
       }
     }
-    
+
     // Log overall statistics
     if (rows.size() > 0) {
-      double avgProcessingTimeMs = rows.size() > 0 ? (double) totalProcessingTimeMs / rows.size() : 0;
-      logger.info("Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row)",
-          sheetName, rows.size(), successCount, failureCount, totalProcessingTimeMs, avgProcessingTimeMs);
+      double avgProcessingTimeMs =
+          rows.size() > 0 ? (double) totalProcessingTimeMs / rows.size() : 0;
+      logger.info(
+          "Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row)",
+          sheetName, rows.size(), successCount, failureCount, totalProcessingTimeMs,
+          avgProcessingTimeMs);
     }
-    
+
     return links;
   }
 
@@ -353,7 +364,7 @@ public class GoogleSheetProcessingService {
       link.setDuration(parseDuration(row.get("duration")));
       link.setQuality(row.get("quality"));
       link.setSheetName(sheetName);
-      
+
       // Set source field with either the value from the row or a default value
       String source = row.get("source");
       if (source == null || source.isEmpty() || "null".equalsIgnoreCase(source)) {
@@ -361,16 +372,16 @@ public class GoogleSheetProcessingService {
         logger.info("Using default source value for link: {}", link.getLink());
       }
       link.setSource(source);
-      
+
       // Set default thumbPath if it's required and not provided
       link.setThumbpath(link.getSheetName() + "/" + UUID.randomUUID().toString());
-      
+
       // Set createdOn timestamp
       link.setCreatedOn(LocalDateTime.now());
-      
+
       // Set random order for sorting
       link.setRandomOrder(new Random().nextInt(10000));
-      
+
       return link;
     } catch (Exception e) {
       logger.error("Error creating link from row: {}", e.getMessage());
@@ -382,12 +393,12 @@ public class GoogleSheetProcessingService {
     if (links.isEmpty()) {
       return;
     }
-    
+
     try {
       List<Link> savedLinks = linkRepository.saveAll(links);
       linkRepository.flush(); // Explicitly flush to ensure they're written to DB
       logger.info("Saved {} links to database", savedLinks.size());
-    
+
       // Save to Elasticsearch in batches
       for (Link link : savedLinks) {
         try {

@@ -6,21 +6,20 @@ import com.fvp.entity.AllCat;
 import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
-import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.BeanUtils;
-import java.util.stream.Collectors;
 
 @Service
 public class CategoryUtilService {
@@ -55,7 +54,8 @@ public class CategoryUtilService {
 
     logger.info(
         "Fetching category links for tenant {} and category {}, page: {}, size: {}, minDuration: {}, maxDuration: {}, quality: {}",
-        tenantId, categoryName, pageable.getPageNumber(), pageable.getPageSize(), minDuration, maxDuration,
+        tenantId, categoryName, pageable.getPageNumber(), pageable.getPageSize(), minDuration,
+        maxDuration,
         quality);
 
     // Generate cache key based on all parameters
@@ -121,9 +121,10 @@ public class CategoryUtilService {
         BaseLinkCategory baseLinkCategory = firstLinkBase.get();
         LinkCategory firstLink = new LinkCategory();
         BeanUtils.copyProperties(baseLinkCategory, firstLink);
-        
+
         Link link = firstLink.getLink();
-        if (link != null && link.getThumbpath() != null && link.getThumbpath().contains("processed")) {
+        if (link != null && link.getThumbpath() != null && link.getThumbpath()
+            .contains("processed")) {
           includeFirstLink = true;
           CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
           dto.setId(category.getId());
@@ -182,9 +183,9 @@ public class CategoryUtilService {
 
         List<LinkCategory> dbItems = dbItemsBase.stream()
             .map(baseLinkCategory -> {
-                LinkCategory linkCategory = new LinkCategory();
-                BeanUtils.copyProperties(baseLinkCategory, linkCategory);
-                return linkCategory;
+              LinkCategory linkCategory = new LinkCategory();
+              BeanUtils.copyProperties(baseLinkCategory, linkCategory);
+              return linkCategory;
             })
             .collect(Collectors.toList());
 
@@ -217,9 +218,9 @@ public class CategoryUtilService {
 
     List<LinkCategory> dbItems = dbItemsBase.stream()
         .map(baseLinkCategory -> {
-            LinkCategory linkCategory = new LinkCategory();
-            BeanUtils.copyProperties(baseLinkCategory, linkCategory);
-            return linkCategory;
+          LinkCategory linkCategory = new LinkCategory();
+          BeanUtils.copyProperties(baseLinkCategory, linkCategory);
+          return linkCategory;
         })
         .collect(Collectors.toList());
 

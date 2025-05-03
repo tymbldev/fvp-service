@@ -1,8 +1,8 @@
 package com.fvp.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fvp.dto.CategoryWithLinkDTO;
 import com.fvp.dto.CategoryWithCountDTO;
+import com.fvp.dto.CategoryWithLinkDTO;
 import com.fvp.entity.AllCat;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
@@ -42,11 +42,11 @@ public class CategoryService {
   private static final int CHUNK_SIZE = 100;
   private static final String ALL_CATEGORIES_CACHE = "allCategories";
 
-    @Autowired
-    private AllCatRepository allCatRepository;
+  @Autowired
+  private AllCatRepository allCatRepository;
 
-    @Autowired
-    private LinkRepository linkRepository;
+  @Autowired
+  private LinkRepository linkRepository;
 
   @Autowired
   private CacheService cacheService;
@@ -319,20 +319,20 @@ public class CategoryService {
       }
 
       Long linkCount = linkCountMap.getOrDefault(categoryName, 0L);
-            
-            CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
-            dto.setId(category.getId());
-            dto.setName(category.getName());
-            dto.setDescription(category.getDescription());
-            dto.setLink(link.getLink());
-            dto.setLinkTitle(link.getTitle());
-            dto.setLinkThumbnail(link.getThumbnail());
+
+      CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+      dto.setId(category.getId());
+      dto.setName(category.getName());
+      dto.setDescription(category.getDescription());
+      dto.setLink(link.getLink());
+      dto.setLinkTitle(link.getTitle());
+      dto.setLinkThumbnail(link.getThumbnail());
       dto.setLinkThumbPath(link.getThumbpath());
       dto.setLinkSource(link.getSource());
       dto.setLinkTrailer(link.getTrailer());
-            dto.setLinkDuration(link.getDuration());
-            dto.setLinkCount(linkCount);
-            
+      dto.setLinkDuration(link.getDuration());
+      dto.setLinkCount(linkCount);
+
       chunkResults.add(dto);
 
       String cacheKey = tenantId + "_" + categoryName;
@@ -395,14 +395,14 @@ public class CategoryService {
                 // Get link categories
                 List<LinkCategory> linkCategories = linkCategoryService.findRandomLinksByCategoryNames(
                     tenantId, chunk);
-                
+
                 // Get categories and build a map by name
                 Map<String, AllCat> categoryMap = new HashMap<>();
                 List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId, chunk);
                 for (AllCat category : categories) {
                   categoryMap.put(category.getName(), category);
                 }
-                
+
                 return processChunk(tenantId, chunk, categoryMap, linkCategories);
               },
               executorService
@@ -595,6 +595,6 @@ public class CategoryService {
     );
 
     logger.info("Stored {} categories in cache for tenant {}", result.size(), tenantId);
-        return result;
-    }
+    return result;
+  }
 } 

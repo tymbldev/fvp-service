@@ -1,5 +1,8 @@
 package com.fvp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -16,9 +19,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 
 @Data
 @Entity
@@ -27,64 +27,64 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Link implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-    
-    @Column(name = "tenant_id", nullable = false)
-    private Integer tenantId;
-    
-    @Column(nullable = false)
-    private String title;
-    
-    @Column(columnDefinition = "json")
-    private String category;
-    
-    @Column(nullable = false)
-    private Integer duration;
-    
-    @Column(length = 500, nullable = false)
-    private String thumbnail;
-    
-    @Column(length = 100, nullable = false)
-    private String thumbpath;
-    
-    @Column(length = 100, nullable = false)
-    private String sheetName;
-    
-    @Column(length = 500, nullable = false, unique = true)
-    private String link;
-    
-    @Column(length = 100, nullable = false)
-    private String source;
-    
-    @Column(columnDefinition = "json")
-    private String star;
 
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
-    @Column(length = 500)
-    private String trailer;
-    
-    @ToString.Exclude
-    @OneToMany(mappedBy = "link", cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
-    @JsonIgnore
-    private Set<LinkCategory> linkCategories = new HashSet<>();
+  private static final long serialVersionUID = 1L;
 
-    @Column(name = "quality")
-    private String quality;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Integer id;
 
-    @Column(name = "created_on")
-    private LocalDateTime createdOn;
+  @Column(name = "tenant_id", nullable = false)
+  private Integer tenantId;
 
-    @Column(name = "random_order")
-    private Integer randomOrder;
-    
-    @Column(name = "thumb_path_processed")
-    private Integer thumbPathProcessed = 0;
+  @Column(nullable = false)
+  private String title;
+
+  @Column(columnDefinition = "json")
+  private String category;
+
+  @Column(nullable = false)
+  private Integer duration;
+
+  @Column(length = 500, nullable = false)
+  private String thumbnail;
+
+  @Column(length = 100, nullable = false)
+  private String thumbpath;
+
+  @Column(length = 100, nullable = false)
+  private String sheetName;
+
+  @Column(length = 500, nullable = false, unique = true)
+  private String link;
+
+  @Column(length = 100, nullable = false)
+  private String source;
+
+  @Column(columnDefinition = "json")
+  private String star;
+
+  @CreationTimestamp
+  @Column(name = "created_at")
+  private LocalDateTime createdAt;
+
+  @Column(length = 500)
+  private String trailer;
+
+  @ToString.Exclude
+  @OneToMany(mappedBy = "link", cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
+  @JsonIgnore
+  private Set<LinkCategory> linkCategories = new HashSet<>();
+
+  @Column(name = "quality")
+  private String quality;
+
+  @Column(name = "created_on")
+  private LocalDateTime createdOn;
+
+  @Column(name = "random_order")
+  private Integer randomOrder;
+
+  @Column(name = "thumb_path_processed")
+  private Integer thumbPathProcessed = 0;
 } 
