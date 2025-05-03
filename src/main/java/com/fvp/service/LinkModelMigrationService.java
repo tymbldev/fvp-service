@@ -223,19 +223,68 @@ public class LinkModelMigrationService {
             logger.info("Processing chunk {}/{} for model '{}' (size: {})", 
                       chunkIndex + 1, totalChunks, modelName, chunk.size());
             
-            // Process the chunk
+            // Track time for conversion and saving
+            long conversionTime = 0;
+            long saveTime = 0;
+            int conversionCount = 0;
+            int saveCount = 0;
+            
+            // Convert all entities first
+            List<BaseLinkModel> shardEntities = new ArrayList<>();
+            List<Integer> migratedIds = new ArrayList<>();
+            
             for (LinkModel linkModel : chunk) {
                 try {
+                    // Track conversion time
+                    long conversionStart = System.currentTimeMillis();
                     BaseLinkModel shardEntity = shardingService.convertToShardEntity(linkModel);
-                    shardingService.save(shardEntity);
-                    totalMigrated.incrementAndGet();
+                    conversionTime += System.currentTimeMillis() - conversionStart;
+                    conversionCount++;
+                    
+                    shardEntities.add(shardEntity);
+                    migratedIds.add(linkModel.getId());
                 } catch (Exception e) {
-                    logger.error("Error migrating LinkModel with ID: " + linkModel.getId(), e);
+                    logger.error("Error converting LinkModel with ID: " + linkModel.getId(), e);
                 }
             }
             
-            logger.info("Completed chunk {}/{} for model '{}' - migrated {} records", 
-                      chunkIndex + 1, totalChunks, modelName, chunk.size());
+            // Save all converted entities in batch
+            if (!shardEntities.isEmpty()) {
+                try {
+                    long saveStart = System.currentTimeMillis();
+                    shardingService.saveAll(shardEntities);
+                    saveTime = System.currentTimeMillis() - saveStart;
+                    saveCount = shardEntities.size();
+                    
+                    logger.info("Saved {} entities to sharded tables in {} ms", 
+                        saveCount, saveTime);
+                } catch (Exception e) {
+                    logger.error("Error saving batch to sharded tables", e);
+                    throw e;
+                }
+            }
+            
+            // Delete successfully migrated records from original table
+            long deleteStart = System.currentTimeMillis();
+            int deletedCount = 0;
+            if (!migratedIds.isEmpty()) {
+                try {
+                    deletedCount = linkModelRepository.deleteByIdIn(migratedIds);
+                    logger.info("Deleted {} records from original LinkModel table in {} ms", 
+                        deletedCount, System.currentTimeMillis() - deleteStart);
+                } catch (Exception e) {
+                    logger.error("Error deleting migrated records from original table", e);
+                    throw e; // Re-throw to ensure transaction rollback
+                }
+            }
+            
+            totalMigrated.addAndGet(deletedCount);
+            
+            logger.info("Chunk {}/{} completed: {} records processed ({} converted, {} saved, {} deleted). " +
+                       "Average times: conversion={} ms, save={} ms", 
+                       chunkIndex + 1, totalChunks, chunk.size(), conversionCount, saveCount, deletedCount,
+                       conversionCount > 0 ? conversionTime/conversionCount : 0,
+                       saveCount > 0 ? saveTime/saveCount : 0);
         }
         
         int count = totalMigrated.get();

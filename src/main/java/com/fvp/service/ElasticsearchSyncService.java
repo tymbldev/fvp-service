@@ -78,18 +78,33 @@ public class ElasticsearchSyncService {
                     return "No links found to sync";
                 }
                 
-                // Process in batches
-                int batchSize = syncConfig.getBatchSize();
+                // Use a smaller batch size for memory efficiency
+                int batchSize = 1000; // Reduced from default to prevent OOM
                 int processedCount = 0;
+                long lastLogTime = System.currentTimeMillis();
                 
                 for (int offset = 0; offset < totalLinks; offset += batchSize) {
+                    // Clear any existing references to help GC
+                    System.gc();
+                    
+                    // Process batch
                     List<Link> links = linkRepository.findAllWithPagination(offset, batchSize);
                     processLinksBatch(links);
                     processedCount += links.size();
                     
-                    logger.info("Processed {}/{} links ({}%)", 
-                            processedCount, totalLinks, 
-                            Math.round((processedCount * 100.0) / totalLinks));
+                    // Clear references after processing
+                    links.clear();
+                    
+                    // Log progress every 30 seconds or every 10,000 records
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - lastLogTime > 30000 || processedCount % 10000 == 0) {
+                        logger.info("Processed {}/{} links ({}%) - Memory: {}MB", 
+                            processedCount, 
+                            totalLinks, 
+                            Math.round((processedCount * 100.0) / totalLinks),
+                            Runtime.getRuntime().totalMemory() / (1024 * 1024));
+                        lastLogTime = currentTime;
+                    }
                 }
                 
                 long duration = System.currentTimeMillis() - startTime;
@@ -111,14 +126,29 @@ public class ElasticsearchSyncService {
      */
     @Transactional(readOnly = true)
     private void processLinksBatch(List<Link> links) {
+        List<LinkDocument> documents = new ArrayList<>(links.size());
+        
+        // First, create all documents
         for (Link link : links) {
             try {
                 LinkDocument doc = createLinkDocument(link);
-                elasticsearchClientService.saveLinkDocument(doc);
+                documents.add(doc);
             } catch (Exception e) {
-                logger.error("Error processing link ID {}: {}", link.getId(), e.getMessage(), e);
+                logger.error("Error creating document for link ID {}: {}", link.getId(), e.getMessage(), e);
             }
         }
+        
+        // Then, save all documents in a single batch
+        for (LinkDocument doc : documents) {
+            try {
+                elasticsearchClientService.saveLinkDocument(doc);
+            } catch (Exception e) {
+                logger.error("Error saving document for link ID {}: {}", doc.getId(), e.getMessage(), e);
+            }
+        }
+        
+        // Clear references
+        documents.clear();
     }
     
     /**
@@ -243,31 +273,32 @@ public class ElasticsearchSyncService {
     }
     
     /**
-     * Start a full sync of all models from MySQL to Elasticsearch
-     * @return CompletableFuture with the result of the sync operation
+     * Sanitize a string for use in document IDs by removing or replacing illegal characters
+     * @param input The string to sanitize
+     * @return Sanitized string
      */
+    private String sanitizeForDocumentId(String input) {
+        if (input == null) {
+            return "";
+        }
+        // Replace spaces with underscores and remove other special characters
+        return input.replaceAll("[^a-zA-Z0-9_]", "_");
+    }
+
     @Async
     public CompletableFuture<String> syncAllModelsToElasticsearch() {
         return CompletableFuture.supplyAsync(() -> {
-            if (!syncConfig.isEnabled()) {
-                logger.info("Elasticsearch sync is disabled. Skipping model sync operation.");
-                return "Elasticsearch sync is disabled";
-            }
-            
-            logger.info("Starting full sync of models to Elasticsearch");
             long startTime = System.currentTimeMillis();
+            int processedCount = 0;
             
             try {
-                // Get distinct models across all tenants
-                List<Object[]> modelResults = jdbcTemplate.query(
-                    "SELECT DISTINCT model, tenant_id FROM link_model ORDER BY model",
-                    (rs, rowNum) -> new Object[] {
-                        rs.getString("model"), 
-                        rs.getInt("tenant_id")
-                    }
-                );
+                // Get all distinct models across all tenants
+                String sql = "SELECT DISTINCT model, tenant_id FROM link_model WHERE model IS NOT NULL";
+                List<Object[]> modelResults = jdbcTemplate.query(sql, (rs, rowNum) -> {
+                    return new Object[] { rs.getString("model"), rs.getInt("tenant_id") };
+                });
                 
-                int processedCount = 0;
+                logger.info("Found {} distinct models to sync", modelResults.size());
                 
                 for (Object[] result : modelResults) {
                     String model = (String) result[0];
@@ -282,7 +313,7 @@ public class ElasticsearchSyncService {
                         Long count = linkModelRepository.countByTenantIdAndModel(tenantId, model);
                         
                         ModelDocument doc = new ModelDocument();
-                        doc.setId(tenantId + "_" + model.replace(" ", "_"));
+                        doc.setId(tenantId + "_" + sanitizeForDocumentId(model));
                         doc.setTenantId(tenantId);
                         doc.setName(model);
                         doc.setLinkCount(count.intValue());

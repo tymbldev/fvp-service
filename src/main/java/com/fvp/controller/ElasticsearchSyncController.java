@@ -4,6 +4,7 @@ import com.fvp.config.ElasticsearchSyncConfig;
 import com.fvp.service.ElasticsearchSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +35,7 @@ public class ElasticsearchSyncController {
      * Trigger a full sync of all links from MySQL to Elasticsearch
      * @return Response with sync status
      */
+    @Async
     @GetMapping("/sync")
     public ResponseEntity<Map<String, Object>> syncAllLinks() {
         Map<String, Object> response = new HashMap<>();
