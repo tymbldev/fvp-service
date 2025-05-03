@@ -279,7 +279,7 @@ public class LinkProcessingService {
           savedCount++;
         } catch (Exception e) {
           logger.error("Error saving category '{}' for link ID {}: {}",
-              categoryName, link.getId(), e.getMessage());
+              categoryName, link.getId(), e.getMessage(), e);
         }
       }
 

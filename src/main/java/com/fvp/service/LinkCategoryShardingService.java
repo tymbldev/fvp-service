@@ -38,7 +38,7 @@ public class LinkCategoryShardingService {
    * Determines the shard number for a given category name using consistent hashing
    *
    * @param category the category name
-   * @return the shard number (11-50)
+   * @return the shard number (1-50)
    */
   @Cacheable(value = "categoryShardMapping", key = "#category")
   public int getShardNumber(String category) {
@@ -49,6 +49,9 @@ public class LinkCategoryShardingService {
 
     // Use the ShardHashingUtil to calculate shard number
     int shardNumber = ShardHashingUtil.calculateShard(category.hashCode());
+    
+    // Ensure shard number is between 1 and 50
+    shardNumber = ((shardNumber - 1) % TOTAL_SHARDS) + 1;
 
     // Cache the result
     categoryShardMap.put(category, shardNumber);
