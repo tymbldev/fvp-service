@@ -887,6 +887,51 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Shard Info",
+			"item": [
+				{
+					"name": "Get Category Shard Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/shard-info/category?category=exampleCategory",
+							"host": ["{{base_url}}"],
+							"path": ["api", "shard-info", "category"],
+							"query": [
+								{
+									"key": "category",
+									"value": "exampleCategory",
+									"description": "Name of the category"
+								}
+							]
+						},
+						"description": "Get the shard number and total shards for a category"
+					}
+				},
+				{
+					"name": "Get Model Shard Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/shard-info/model?model=exampleModel",
+							"host": ["{{base_url}}"],
+							"path": ["api", "shard-info", "model"],
+							"query": [
+								{
+									"key": "model",
+									"value": "exampleModel",
+									"description": "Name of the model"
+								}
+							]
+						},
+						"description": "Get the shard number and total shards for a model"
+					}
+				}
+			]
 		}
 	]
 } 

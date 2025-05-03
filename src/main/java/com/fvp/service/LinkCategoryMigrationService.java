@@ -72,34 +72,67 @@ public class LinkCategoryMigrationService {
      * @param batch the batch of entities to process
      * @return the number of records migrated
      */
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int processBatch(List<LinkCategory> batch) {
+        long startTime = System.currentTimeMillis();
         int count = 0;
         List<Integer> migratedIds = new ArrayList<>();
         
+        logger.info("Starting batch processing of {} records", batch.size());
+        
+        // Track time for conversion and saving
+        long conversionTime = 0;
+        long saveTime = 0;
+        int conversionCount = 0;
+        int saveCount = 0;
+        
         for (LinkCategory linkCategory : batch) {
             try {
+                // Track conversion time
+                long conversionStart = System.currentTimeMillis();
                 BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
+                conversionTime += System.currentTimeMillis() - conversionStart;
+                conversionCount++;
+                
+                // Track save time
+                long saveStart = System.currentTimeMillis();
                 shardingService.save(shardEntity);
+                saveTime += System.currentTimeMillis() - saveStart;
+                saveCount++;
+                
                 migratedIds.add(linkCategory.getId());
                 count++;
+                
+                // Log progress every 100 records
+                if (count % 100 == 0) {
+                    logger.info("Processed {} records in current batch", count);
+                }
             } catch (Exception e) {
                 logger.error("Error migrating LinkCategory with ID: " + linkCategory.getId(), e);
             }
         }
         
         // Delete successfully migrated records from original table
+        long deleteStart = System.currentTimeMillis();
+        int deletedCount = 0;
         if (!migratedIds.isEmpty()) {
             try {
-                int deletedCount = linkCategoryRepository.deleteByIdIn(migratedIds);
-                logger.info("Deleted {} records from original LinkCategory table", deletedCount);
+                deletedCount = linkCategoryRepository.deleteByIdIn(migratedIds);
+                logger.info("Deleted {} records from original LinkCategory table in {} ms", 
+                    deletedCount, System.currentTimeMillis() - deleteStart);
             } catch (Exception e) {
                 logger.error("Error deleting migrated records from original table", e);
                 throw e; // Re-throw to ensure transaction rollback
             }
         }
         
-        logger.info("Migrated {} records in batch", count);
+        long totalTime = System.currentTimeMillis() - startTime;
+        logger.info("Batch processing completed in {} ms: {} records processed ({} converted, {} saved, {} deleted). " +
+                   "Average times: conversion={} ms, save={} ms", 
+                   totalTime, count, conversionCount, saveCount, deletedCount,
+                   conversionCount > 0 ? conversionTime/conversionCount : 0,
+                   saveCount > 0 ? saveTime/saveCount : 0);
+        
         return count;
     }
     
