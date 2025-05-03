@@ -8,16 +8,47 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:8080",
+			"value": "{{base_url}}",
 			"type": "string"
 		},
 		{
 			"key": "tenant_id",
-			"value": "1",
+			"value": "{{tenant_id}}",
 			"type": "string"
 		}
 	],
 	"item": [
+		{
+			"name": "Environments",
+			"item": [
+				{
+					"name": "Local Environment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "health"]
+						},
+						"description": "Local environment configuration:\nbase_url: http://localhost:8080/fvp-service\ntenant_id: 1"
+					}
+				},
+				{
+					"name": "Production Environment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "health"]
+						},
+						"description": "Production environment configuration:\nbase_url: https://www.freeviewporn.com/fvp-service\ntenant_id: 1"
+					}
+				}
+			]
+		},
 		{
 			"name": "Health",
 			"item": [
