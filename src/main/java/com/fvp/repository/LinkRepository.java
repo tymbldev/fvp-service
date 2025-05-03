@@ -77,6 +77,6 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
      * @param tenantId The tenant ID
      * @return Count of link
      */
-    @Query(value = "SELECT COUNT(*) FROM link l WHERE l.tenant_id = :tenantId AND l.thumb_path_processed = 1", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) AS count FROM link l WHERE l.tenant_id = :tenantId AND l.thumb_path_processed = 1", nativeQuery = true)
     Long countByTenantId(@Param("tenantId") Integer tenantId);
 } 

@@ -3,6 +3,7 @@ package com.fvp.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.dto.CategoryWithLinkDTO;
 import com.fvp.entity.AllCat;
+import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
 import com.fvp.repository.LinkCategoryRepository;
@@ -18,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.BeanUtils;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoryUtilService {
@@ -26,7 +29,7 @@ public class CategoryUtilService {
   private static final String CATEGORY_LINKS_CACHE = "categoryLinks";
 
   @Autowired
-  private LinkCategoryRepository linkCategoryRepository;
+  private LinkCategoryShardingService shardingService;
 
   @Autowired
   private AllCatService allCatService;
@@ -98,74 +101,98 @@ public class CategoryUtilService {
     Long totalCount = LoggingUtil.logOperationTime(
         logger,
         "count links with filters",
-        () -> linkCategoryRepository.countByCategoryWithFilters(tenantId, categoryName, minDuration, maxDuration,
-            quality)
+        () -> shardingService.getRepositoryForCategory(categoryName)
+            .countByCategoryWithFilters(tenantId, categoryName, minDuration, maxDuration, quality)
     );
-
-    if (totalCount == 0) {
-      logger.info("No links found for category {} with given filters", categoryName);
-      return Page.empty();
-    }
 
     List<CategoryWithLinkDTO> pageContent = new ArrayList<>();
 
-    // For first page, include the "first link" as the first item
+    // For first page, try to get a random recent link first
     if (pageable.getPageNumber() == 0) {
-      CategoryWithLinkDTO firstLink = categoryService.getCategoryFirstLink(tenantId, categoryName);
+      Optional<? extends BaseLinkCategory> firstLinkBase = LoggingUtil.logOperationTime(
+          logger,
+          "find random recent link",
+          () -> shardingService.getRepositoryForCategory(categoryName)
+              .findRandomRecentLinkByCategory(tenantId, categoryName)
+      );
 
-      if (firstLink != null) {
-        // Only include the first link when no filters are applied (default landing)
-        boolean includeFirstLink = (minDuration == null && maxDuration == null && quality == null);
+      boolean includeFirstLink = false;
+      if (firstLinkBase.isPresent()) {
+        BaseLinkCategory baseLinkCategory = firstLinkBase.get();
+        LinkCategory firstLink = new LinkCategory();
+        BeanUtils.copyProperties(baseLinkCategory, firstLink);
+        
+        Link link = firstLink.getLink();
+        if (link != null && link.getThumbpath() != null && link.getThumbpath().contains("processed")) {
+          includeFirstLink = true;
+          CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+          dto.setId(category.getId());
+          dto.setName(category.getName());
+          dto.setDescription(category.getDescription());
+          dto.setLink(link.getLink());
+          dto.setLinkTitle(link.getTitle());
+          dto.setLinkThumbnail(link.getThumbnail());
+          dto.setLinkThumbPath(link.getThumbpath());
+          dto.setLinkDuration(link.getDuration());
+          pageContent.add(dto);
+        }
+      }
 
-        if (includeFirstLink) {
-          pageContent.add(firstLink);
-
-          // If first page has only one item (pageSize=1), we're done
-          if (pageable.getPageSize() == 1) {
-            Page<CategoryWithLinkDTO> result = new PageImpl<>(pageContent, pageable, totalCount);
-            cacheService.putInCacheWithExpiry(CATEGORY_LINKS_CACHE, cacheKey, result, 1,
-                TimeUnit.HOURS);
-            return result;
-          }
-
-          // Get link entity for exclusion from subsequent query
-          Link linkEntity = null;
-          try {
-            linkEntity = linkService.findByTenantIdAndLinkAndThumbPathProcessedTrue(tenantId,
-                firstLink.getLink());
-          } catch (Exception e) {
-            logger.warn("Error fetching link entity: {}", e.getMessage());
-          }
-
-          // For first page, get one less item from DB and exclude the first link's ID
-          Integer firstLinkId = linkEntity != null ? linkEntity.getId() : null;
-
-          // Adjust offset and limit for the subsequent query
-          int adjustedOffset = 0;
-          int limit = pageable.getPageSize() - 1;
-
-          // Get the remaining items for the first page
-          List<LinkCategory> dbItems = LoggingUtil.logOperationTime(
-              logger,
-              "fetch items with pagination excluding first link",
-              () -> linkCategoryRepository.findByCategoryWithFiltersExcludingLinkPageable(
-                  tenantId,
-                  categoryName,
-                  minDuration,
-                  maxDuration,
-                  quality,
-                  firstLinkId,
-                  adjustedOffset,
-                  limit
-              )
-          );
-
-          pageContent.addAll(createDTOsFromLinkCategories(dbItems, category));
+      if (includeFirstLink) {
+        // If first page has only one item (pageSize=1), we're done
+        if (pageable.getPageSize() == 1) {
           Page<CategoryWithLinkDTO> result = new PageImpl<>(pageContent, pageable, totalCount);
           cacheService.putInCacheWithExpiry(CATEGORY_LINKS_CACHE, cacheKey, result, 1,
               TimeUnit.HOURS);
           return result;
         }
+
+        // Get link entity for exclusion from subsequent query
+        Link linkEntity = null;
+        try {
+          linkEntity = linkService.findByTenantIdAndLinkAndThumbPathProcessedTrue(tenantId,
+              firstLinkBase.get().getLink().getLink());
+        } catch (Exception e) {
+          logger.warn("Error fetching link entity: {}", e.getMessage());
+        }
+
+        // For first page, get one less item from DB and exclude the first link's ID
+        Integer firstLinkId = linkEntity != null ? linkEntity.getId() : null;
+
+        // Adjust offset and limit for the subsequent query
+        int adjustedOffset = 0;
+        int limit = pageable.getPageSize() - 1;
+
+        // Get the remaining items for the first page
+        List<? extends BaseLinkCategory> dbItemsBase = LoggingUtil.logOperationTime(
+            logger,
+            "fetch items with pagination excluding first link",
+            () -> shardingService.getRepositoryForCategory(categoryName)
+                .findByCategoryWithFiltersExcludingLinkPageable(
+                    tenantId,
+                    categoryName,
+                    minDuration,
+                    maxDuration,
+                    quality,
+                    firstLinkId,
+                    adjustedOffset,
+                    limit
+                )
+        );
+
+        List<LinkCategory> dbItems = dbItemsBase.stream()
+            .map(baseLinkCategory -> {
+                LinkCategory linkCategory = new LinkCategory();
+                BeanUtils.copyProperties(baseLinkCategory, linkCategory);
+                return linkCategory;
+            })
+            .collect(Collectors.toList());
+
+        pageContent.addAll(createDTOsFromLinkCategories(dbItems, category));
+        Page<CategoryWithLinkDTO> result = new PageImpl<>(pageContent, pageable, totalCount);
+        cacheService.putInCacheWithExpiry(CATEGORY_LINKS_CACHE, cacheKey, result, 1,
+            TimeUnit.HOURS);
+        return result;
       }
     }
 
@@ -173,19 +200,28 @@ public class CategoryUtilService {
     int offset = (int) pageable.getOffset();
     int limit = pageable.getPageSize();
 
-    List<LinkCategory> dbItems = LoggingUtil.logOperationTime(
+    List<? extends BaseLinkCategory> dbItemsBase = LoggingUtil.logOperationTime(
         logger,
         "fetch items with pagination",
-        () -> linkCategoryRepository.findByCategoryWithFiltersPageable(
-            tenantId,
-            categoryName,
-            minDuration,
-            maxDuration,
-            quality,
-            offset,
-            limit
-        )
+        () -> shardingService.getRepositoryForCategory(categoryName)
+            .findByCategoryWithFiltersPageable(
+                tenantId,
+                categoryName,
+                minDuration,
+                maxDuration,
+                quality,
+                offset,
+                limit
+            )
     );
+
+    List<LinkCategory> dbItems = dbItemsBase.stream()
+        .map(baseLinkCategory -> {
+            LinkCategory linkCategory = new LinkCategory();
+            BeanUtils.copyProperties(baseLinkCategory, linkCategory);
+            return linkCategory;
+        })
+        .collect(Collectors.toList());
 
     // Add DB items to page content if first page didn't already add items
     if (pageContent.isEmpty()) {

@@ -5,10 +5,11 @@ import com.fvp.dto.ModelWithLinkDTO;
 import com.fvp.entity.Model;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkModel;
+import com.fvp.entity.BaseLinkModel;
 import com.fvp.repository.ModelRepository;
-import com.fvp.repository.LinkModelRepository;
 import com.fvp.util.LoggingUtil;
 import org.slf4j.Logger;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ public class ModelUtilService {
     private ModelRepository modelRepository;
 
     @Autowired
-    private LinkModelRepository linkModelRepository;
+    private LinkModelShardingService shardingService;
 
     @Autowired
     private LinkService linkService;
@@ -49,10 +51,34 @@ public class ModelUtilService {
             List<Model> models = modelRepository.findByTenantIdAndNameIn(tenantId, modelNames);
             
             // Get random links for all models in one query
-            List<LinkModel> linkModels = linkModelRepository.findRandomLinksByModelNames(tenantId, modelNames);
+            List<LinkModel> linkModels = new ArrayList<>();
+            for (String modelName : modelNames) {
+                try {
+                    Optional<? extends BaseLinkModel> randomLink = shardingService.getRepositoryForModel(modelName)
+                        .findRandomLinkByModel(tenantId, modelName);
+                    randomLink.ifPresent(baseLinkModel -> {
+                        LinkModel linkModel = new LinkModel();
+                        BeanUtils.copyProperties(baseLinkModel, linkModel);
+                        linkModels.add(linkModel);
+                    });
+                } catch (Exception e) {
+                    logger.error("Error finding random link for model {} in sharded tables: {}", 
+                        modelName, e.getMessage());
+                }
+            }
             
             // Get link counts for all models in one query
-            List<Object[]> counts = linkModelRepository.countByTenantIdAndModels(tenantId, modelNames);
+            List<Object[]> counts = new ArrayList<>();
+            for (String modelName : modelNames) {
+                try {
+                    List<Object[]> shardedCounts = shardingService.getRepositoryForModel(modelName)
+                        .countByTenantIdAndModels(tenantId, Collections.singletonList(modelName));
+                    counts.addAll(shardedCounts);
+                } catch (Exception e) {
+                    logger.error("Error counting links for model {} in sharded tables: {}", 
+                        modelName, e.getMessage());
+                }
+            }
             
             // Create a map of model name to link count
             Map<String, Long> linkCountMap = new HashMap<>();
@@ -75,13 +101,20 @@ public class ModelUtilService {
                     dto.setDescription(model.getDescription());
                     
                     LinkModel linkModel = linkModelMap.get(model.getName());
-                    if (linkModel != null && linkModel.getLink() != null) {
-                        Link link = linkModel.getLink();
-                        dto.setLink(link.getLink());
-                        dto.setLinkTitle(link.getTitle());
-                        dto.setLinkThumbnail(link.getThumbnail());
-                        dto.setLinkThumbPath(link.getThumbpath());
-                        dto.setLinkDuration(link.getDuration());
+                    if (linkModel != null) {
+                        try {
+                            Link link = linkService.findByTenantIdAndLinkId(tenantId, linkModel.getLinkId());
+                            if (link != null) {
+                                dto.setLink(link.getLink());
+                                dto.setLinkTitle(link.getTitle());
+                                dto.setLinkThumbnail(link.getThumbnail());
+                                dto.setLinkThumbPath(link.getThumbpath());
+                                dto.setLinkDuration(link.getDuration());
+                            }
+                        } catch (Exception e) {
+                            logger.error("Error fetching link details for model {}: {}", 
+                                model.getName(), e.getMessage());
+                        }
                     }
                     
                     dto.setLinkCount(linkCountMap.getOrDefault(model.getName(), 0L).intValue());
@@ -99,31 +132,43 @@ public class ModelUtilService {
             }
 
             // Get random link for the model
-            Optional<LinkModel> randomLinkModel = linkModelRepository.findRandomLinkByModel(tenantId, modelName);
-            if (!randomLinkModel.isPresent()) {
+            Optional<? extends BaseLinkModel> randomLinkBase = shardingService.getRepositoryForModel(modelName)
+                .findRandomLinkByModel(tenantId, modelName);
+            
+            if (!randomLinkBase.isPresent()) {
                 return null;
             }
 
-            Link link = randomLinkModel.get().getLink();
-            if (link == null || !link.getTenantId().equals(tenantId)) {
+            LinkModel randomLink = new LinkModel();
+            BeanUtils.copyProperties(randomLinkBase.get(), randomLink);
+
+            try {
+                Link link = linkService.findByTenantIdAndLinkId(tenantId, randomLink.getLinkId());
+                if (link == null) {
+                    return null;
+                }
+
+                // Get link count for the model
+                Long linkCount = shardingService.getRepositoryForModel(modelName)
+                    .countByTenantIdAndModel(tenantId, modelName);
+
+                ModelWithLinkDTO dto = new ModelWithLinkDTO();
+                dto.setId(model.getId());
+                dto.setName(model.getName());
+                dto.setDescription(model.getDescription());
+                dto.setLink(link.getLink());
+                dto.setLinkTitle(link.getTitle());
+                dto.setLinkThumbnail(link.getThumbnail());
+                dto.setLinkThumbPath(link.getThumbpath());
+                dto.setLinkDuration(link.getDuration());
+                dto.setLinkCount(linkCount.intValue());
+
+                return dto;
+            } catch (Exception e) {
+                logger.error("Error fetching link details for model {}: {}", 
+                    modelName, e.getMessage());
                 return null;
             }
-
-            // Get link count for the model
-            Long linkCount = linkModelRepository.countByTenantIdAndModel(tenantId, modelName);
-
-            ModelWithLinkDTO dto = new ModelWithLinkDTO();
-            dto.setId(model.getId());
-            dto.setName(model.getName());
-            dto.setDescription(model.getDescription());
-            dto.setLink(link.getLink());
-            dto.setLinkTitle(link.getTitle());
-            dto.setLinkThumbnail(link.getThumbnail());
-            dto.setLinkThumbPath(link.getThumbpath());
-            dto.setLinkDuration(link.getDuration());
-            dto.setLinkCount(linkCount.intValue());
-
-            return dto;
         });
     }
 
@@ -167,7 +212,8 @@ public class ModelUtilService {
             }
 
             // Get the total count with filters (for pagination metadata)
-            Long totalCount = linkModelRepository.countByModelWithFilters(tenantId, modelName, maxDuration, quality);
+            Long totalCount = shardingService.getRepositoryForModel(modelName)
+                .countByModelWithFilters(tenantId, modelName, maxDuration, quality);
             if (totalCount == 0) {
                 logger.info("No links found for model {} with given filters", modelName);
                 return Page.empty();
@@ -209,15 +255,24 @@ public class ModelUtilService {
                         int limit = pageable.getPageSize() - 1;
 
                         // Get the remaining items for the first page
-                        List<LinkModel> dbItems = linkModelRepository.findByModelWithFiltersExcludingLinkPageable(
-                            tenantId,
-                            modelName,
-                            maxDuration,
-                            quality,
-                            firstLinkId,
-                            adjustedOffset,
-                            limit
-                        );
+                        List<? extends BaseLinkModel> dbItemsBase = shardingService.getRepositoryForModel(modelName)
+                            .findByModelWithFiltersExcludingLinkPageable(
+                                tenantId,
+                                modelName,
+                                maxDuration,
+                                quality,
+                                firstLinkId,
+                                adjustedOffset,
+                                limit
+                            );
+
+                        List<LinkModel> dbItems = dbItemsBase.stream()
+                            .map(baseLinkModel -> {
+                                LinkModel linkModel = new LinkModel();
+                                BeanUtils.copyProperties(baseLinkModel, linkModel);
+                                return linkModel;
+                            })
+                            .collect(Collectors.toList());
 
                         pageContent.addAll(createDTOsFromLinkModels(dbItems, model));
                     }
@@ -229,14 +284,23 @@ public class ModelUtilService {
                 int offset = (int) pageable.getOffset();
                 int limit = pageable.getPageSize();
 
-                List<LinkModel> dbItems = linkModelRepository.findByModelWithFiltersPageable(
-                    tenantId,
-                    modelName,
-                    maxDuration,
-                    quality,
-                    offset,
-                    limit
-                );
+                List<? extends BaseLinkModel> dbItemsBase = shardingService.getRepositoryForModel(modelName)
+                    .findByModelWithFiltersPageable(
+                        tenantId,
+                        modelName,
+                        maxDuration,
+                        quality,
+                        offset,
+                        limit
+                    );
+
+                List<LinkModel> dbItems = dbItemsBase.stream()
+                    .map(baseLinkModel -> {
+                        LinkModel linkModel = new LinkModel();
+                        BeanUtils.copyProperties(baseLinkModel, linkModel);
+                        return linkModel;
+                    })
+                    .collect(Collectors.toList());
 
                 pageContent.addAll(createDTOsFromLinkModels(dbItems, model));
             }
@@ -254,23 +318,26 @@ public class ModelUtilService {
         List<ModelWithLinkDTO> dtos = new ArrayList<>();
 
         for (LinkModel linkModel : linkModels) {
-            Link link = linkModel.getLink();
+            try {
+                Link link = linkService.findByTenantIdAndLinkId(model.getTenantId(), linkModel.getLinkId());
+                if (link == null) {
+                    continue;
+                }
 
-            // Skip links that don't match the tenant id (additional safety check)
-            if (!link.getTenantId().equals(model.getTenantId())) {
-                continue;
+                ModelWithLinkDTO dto = new ModelWithLinkDTO();
+                dto.setId(model.getId());
+                dto.setName(model.getName());
+                dto.setDescription(model.getDescription());
+                dto.setLink(link.getLink());
+                dto.setLinkTitle(link.getTitle());
+                dto.setLinkThumbnail(link.getThumbnail());
+                dto.setLinkThumbPath(link.getThumbpath());
+                dto.setLinkDuration(link.getDuration());
+                dtos.add(dto);
+            } catch (Exception e) {
+                logger.error("Error fetching link details for link ID {}: {}", 
+                    linkModel.getLinkId(), e.getMessage());
             }
-
-            ModelWithLinkDTO dto = new ModelWithLinkDTO();
-            dto.setId(model.getId());
-            dto.setName(model.getName());
-            dto.setDescription(model.getDescription());
-            dto.setLink(link.getLink());
-            dto.setLinkTitle(link.getTitle());
-            dto.setLinkThumbnail(link.getThumbnail());
-            dto.setLinkThumbPath(link.getThumbpath());
-            dto.setLinkDuration(link.getDuration());
-            dtos.add(dto);
         }
 
         return dtos;

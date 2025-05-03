@@ -7,8 +7,6 @@ import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
 import com.fvp.entity.LinkModel;
 import com.fvp.repository.AllCatRepository;
-import com.fvp.repository.LinkCategoryRepository;
-import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -44,12 +42,12 @@ public class LinkProcessingService {
 
   private final DataSource dataSource;
   private final LinkRepository linkRepository;
-  private final LinkCategoryRepository linkCategoryRepository;
-  private final LinkModelRepository linkModelRepository;
   private final AllCatRepository allCatRepository;
   private final ElasticsearchClientService elasticsearchClientService;
   private final ElasticsearchSyncConfig elasticsearchSyncConfig;
   private final JdbcTemplate jdbcTemplate;
+  private final LinkCategoryService linkCategoryService;
+  private final LinkModelService linkModelService;
 
   // Cache for storing categories by tenant ID
   private final Map<Integer, List<AllCat>> categoriesCache = new ConcurrentHashMap<>();
@@ -58,20 +56,20 @@ public class LinkProcessingService {
   public LinkProcessingService(
       DataSource dataSource,
       LinkRepository linkRepository,
-      LinkCategoryRepository linkCategoryRepository,
-      LinkModelRepository linkModelRepository,
       AllCatRepository allCatRepository,
       ElasticsearchClientService elasticsearchClientService,
       ElasticsearchSyncConfig elasticsearchSyncConfig,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      LinkCategoryService linkCategoryService,
+      LinkModelService linkModelService) {
     this.dataSource = dataSource;
     this.linkRepository = linkRepository;
-    this.linkCategoryRepository = linkCategoryRepository;
-    this.linkModelRepository = linkModelRepository;
     this.allCatRepository = allCatRepository;
     this.elasticsearchClientService = elasticsearchClientService;
     this.elasticsearchSyncConfig = elasticsearchSyncConfig;
     this.jdbcTemplate = jdbcTemplate;
+    this.linkCategoryService = linkCategoryService;
+    this.linkModelService = linkModelService;
   }
 
   @PostConstruct
@@ -106,12 +104,12 @@ public class LinkProcessingService {
         // Clean up old categories and models before adding new ones
         logger.info("Deleting from link_category table: entries for link ID {}",
             existingLink.getId());
-        linkCategoryRepository.deleteByLinkId(existingLink.getId());
-        linkCategoryRepository.flush(); // Explicitly flush to DB
+        linkCategoryService.deleteByLinkId(existingLink.getId());
+        linkCategoryService.flush(); // Explicitly flush to DB
 
         logger.info("Deleting from link_model table: entries for link ID {}", existingLink.getId());
-        linkModelRepository.deleteByLinkId(Integer.valueOf(existingLink.getId()));
-        linkModelRepository.flush(); // Explicitly flush to DB
+        linkModelService.deleteByLinkId(existingLink.getId());
+        linkModelService.flush(); // Explicitly flush to DB
 
         // Update existing link with new data
         existingLink.setTitle(link.getTitle());
@@ -271,8 +269,8 @@ public class LinkProcessingService {
       }
 
       // Save all link categories in a single batch
-      linkCategoryRepository.saveAll(linkCategories);
-      linkCategoryRepository.flush(); // Explicitly flush to DB
+      linkCategoryService.saveAll(linkCategories);
+      linkCategoryService.flush(); // Explicitly flush to DB
       logger.info("Saved {} entries to link_category table for link ID {}", linkCategories.size(),
           link.getId());
     }
@@ -296,15 +294,15 @@ public class LinkProcessingService {
       linkModel.setLinkId(link.getId());
       linkModel.setModel(model);
       linkModel.setCreatedOn(link.getCreatedOn());
-      linkModel.setRandomOrder(link.getRandomOrder());
+      linkModel.setRandomOrder(Double.valueOf(link.getRandomOrder()));
       linkModels.add(linkModel);
       logger.debug("Preparing to save model: {} for link ID {}", model, link.getId());
     }
 
     // Save all models in batch
     if (!linkModels.isEmpty()) {
-      linkModelRepository.saveAll(linkModels);
-      linkModelRepository.flush(); // Explicitly flush to DB
+      linkModelService.saveAll(linkModels);
+      linkModelService.flush(); // Explicitly flush to DB
       logger.info("Saved {} entries to link_model table for link ID {}", modelSet.size(),
           link.getId());
     }
@@ -370,7 +368,7 @@ public class LinkProcessingService {
       doc.setSearchableText(generateSearchableText(link));
 
       // Get categories for the link
-      List<LinkCategory> linkCategories = linkCategoryRepository.findByLinkId(link.getId());
+      List<LinkCategory> linkCategories = linkCategoryService.findByLinkId(link.getId());
       List<String> categories = linkCategories.stream()
           .map(LinkCategory::getCategory)
           .collect(Collectors.toList());
@@ -410,7 +408,7 @@ public class LinkProcessingService {
         doc.setSearchableText(generateSearchableText(link));
 
         // Update categories
-        List<LinkCategory> linkCategories = linkCategoryRepository.findByLinkId(link.getId());
+        List<LinkCategory> linkCategories = linkCategoryService.findByLinkId(link.getId());
         List<String> categories = linkCategories.stream()
             .map(LinkCategory::getCategory)
             .collect(Collectors.toList());
@@ -443,7 +441,7 @@ public class LinkProcessingService {
     }
 
     // Add categories to searchable text
-    List<LinkCategory> linkCategories = linkCategoryRepository.findByLinkId(link.getId());
+    List<LinkCategory> linkCategories = linkCategoryService.findByLinkId(link.getId());
     for (LinkCategory linkCategory : linkCategories) {
       searchableText.append(" ").append(linkCategory.getCategory());
     }

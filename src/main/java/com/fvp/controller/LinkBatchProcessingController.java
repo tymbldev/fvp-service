@@ -197,7 +197,7 @@ public class LinkBatchProcessingController {
                 successCount.incrementAndGet();
             } catch (Exception e) {
                 errorCount.incrementAndGet();
-                logger.error("Error processing link ID: {} - {}", link.getId(), e.getMessage());
+                logger.error("Error processing link ID: {} - {}", link.getId(), e);
             }
         });
         

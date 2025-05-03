@@ -330,7 +330,7 @@ public class GoogleSheetProcessingService {
     // Log overall statistics
     if (rows.size() > 0) {
       double avgProcessingTimeMs = rows.size() > 0 ? (double) totalProcessingTimeMs / rows.size() : 0;
-      logger.info("Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {:.2f} ms/row)",
+      logger.info("Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row)",
           sheetName, rows.size(), successCount, failureCount, totalProcessingTimeMs, avgProcessingTimeMs);
     }
     

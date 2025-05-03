@@ -220,6 +220,31 @@ public class LinkService {
         return count;
     }
 
+    public Link findByTenantIdAndLinkId(Integer tenantId, Integer linkId) {
+        String cacheKey = generateCacheKey(tenantId, "id_" + linkId);
+        
+        return LoggingUtil.logOperationTime(logger, "find link by tenant and ID", () -> {
+            Optional<Link> cachedLink = cacheService.getFromCache(
+                CacheService.CACHE_NAME_LINKS,
+                cacheKey,
+                Link.class
+            );
+            if (cachedLink.isPresent()) {
+                logger.info("Cache hit for link ID: {}", linkId);
+                return cachedLink.get();
+            }
+
+            logger.info("Cache miss for link ID: {}", linkId);
+            Optional<Link> linkOpt = linkRepository.findById(linkId);
+            if (linkOpt.isPresent() && linkOpt.get().getTenantId().equals(tenantId) && linkOpt.get().getThumbPathProcessed() == 1) {
+                Link link = linkOpt.get();
+                cacheService.putInCacheWithExpiry(CacheService.CACHE_NAME_LINKS, cacheKey, link, CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
+                return link;
+            }
+            return null;
+        });
+    }
+
     private String generateCacheKey(Integer tenantId, String suffix) {
         return LINK_CACHE_PREFIX + (tenantId != null ? tenantId + "_" : "") + suffix;
     }

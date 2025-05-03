@@ -7,7 +7,6 @@ import com.fvp.entity.AllCat;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
 import com.fvp.repository.AllCatRepository;
-import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.repository.LinkRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
@@ -43,14 +42,11 @@ public class CategoryService {
   private static final int CHUNK_SIZE = 100;
   private static final String ALL_CATEGORIES_CACHE = "allCategories";
 
-  @Autowired
-  private AllCatRepository allCatRepository;
+    @Autowired
+    private AllCatRepository allCatRepository;
 
-  @Autowired
-  private LinkCategoryRepository linkCategoryRepository;
-
-  @Autowired
-  private LinkRepository linkRepository;
+    @Autowired
+    private LinkRepository linkRepository;
 
   @Autowired
   private CacheService cacheService;
@@ -66,6 +62,9 @@ public class CategoryService {
 
   @Autowired
   private LinkCountCacheService linkCountCacheService;
+
+  @Autowired
+  private LinkCategoryService linkCategoryService;
 
   @Value("${category.recent-links-days:90}")
   private int recentLinksDays;
@@ -253,14 +252,14 @@ public class CategoryService {
     Long linkCount = LoggingUtil.logOperationTime(
         logger,
         "count links for category",
-        () -> linkCategoryRepository.countByTenantIdAndCategory(tenantId, categoryName)
+        () -> linkCategoryService.countByTenantIdAndCategory(tenantId, categoryName)
     );
 
     // Get a random link for this category
     Optional<LinkCategory> randomLinkCategory = LoggingUtil.logOperationTime(
         logger,
         "find random link by category",
-        () -> linkCategoryRepository.findRandomLinkByCategory(tenantId, categoryName)
+        () -> linkCategoryService.findRandomLinkByCategory(tenantId, categoryName)
     );
 
     if (!randomLinkCategory.isPresent()) {
@@ -320,20 +319,20 @@ public class CategoryService {
       }
 
       Long linkCount = linkCountMap.getOrDefault(categoryName, 0L);
-
-      CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
-      dto.setId(category.getId());
-      dto.setName(category.getName());
-      dto.setDescription(category.getDescription());
-      dto.setLink(link.getLink());
-      dto.setLinkTitle(link.getTitle());
-      dto.setLinkThumbnail(link.getThumbnail());
+            
+            CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+            dto.setId(category.getId());
+            dto.setName(category.getName());
+            dto.setDescription(category.getDescription());
+            dto.setLink(link.getLink());
+            dto.setLinkTitle(link.getTitle());
+            dto.setLinkThumbnail(link.getThumbnail());
       dto.setLinkThumbPath(link.getThumbpath());
       dto.setLinkSource(link.getSource());
       dto.setLinkTrailer(link.getTrailer());
-      dto.setLinkDuration(link.getDuration());
-      dto.setLinkCount(linkCount);
-
+            dto.setLinkDuration(link.getDuration());
+            dto.setLinkCount(linkCount);
+            
       chunkResults.add(dto);
 
       String cacheKey = tenantId + "_" + categoryName;
@@ -394,7 +393,7 @@ public class CategoryService {
           .map(chunk -> CompletableFuture.supplyAsync(
               () -> {
                 // Get link categories
-                List<LinkCategory> linkCategories = linkCategoryRepository.findRandomLinksByCategoryNames(
+                List<LinkCategory> linkCategories = linkCategoryService.findRandomLinksByCategoryNames(
                     tenantId, chunk);
                 
                 // Get categories and build a map by name
@@ -596,6 +595,6 @@ public class CategoryService {
     );
 
     logger.info("Stored {} categories in cache for tenant {}", result.size(), tenantId);
-    return result;
-  }
+        return result;
+    }
 } 

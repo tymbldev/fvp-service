@@ -1,5 +1,6 @@
 package com.fvp.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.dto.ModelWithLinkDTO;
 import com.fvp.entity.Model;
 import com.fvp.repository.ModelRepository;
@@ -35,7 +36,7 @@ public class ModelService {
             Optional<List<ModelWithLinkDTO>> cachedModels = cacheService.getCollectionFromCache(
                 CacheService.CACHE_NAME_MODELS,
                 cacheKey,
-                new com.fasterxml.jackson.core.type.TypeReference<List<ModelWithLinkDTO>>() {}
+                new TypeReference<List<ModelWithLinkDTO>>() {}
             );
             if (cachedModels.isPresent()) {
                 logger.info("Cache hit for home models for tenant: {}", tenantId);

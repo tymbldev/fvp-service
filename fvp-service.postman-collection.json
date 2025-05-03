@@ -404,6 +404,66 @@
 					}
 				},
 				{
+					"name": "Search Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/elasticsearch/categories/search?query=example",
+							"host": ["{{base_url}}"],
+							"path": ["api", "elasticsearch", "categories", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "example",
+									"description": "Query to search categories for"
+								}
+							]
+						},
+						"description": "Search for categories by name or description"
+					}
+				},
+				{
+					"name": "Search Models",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/elasticsearch/models/search?query=example",
+							"host": ["{{base_url}}"],
+							"path": ["api", "elasticsearch", "models", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "example",
+									"description": "Query to search models for"
+								}
+							]
+						},
+						"description": "Search for models by name or description"
+					}
+				},
+				{
+					"name": "Autosuggest",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/elasticsearch/autosuggest?query=example",
+							"host": ["{{base_url}}"],
+							"path": ["api", "elasticsearch", "autosuggest"],
+							"query": [
+								{
+									"key": "query",
+									"value": "example",
+									"description": "Query for autosuggest"
+								}
+							]
+						},
+						"description": "Get autosuggest results for links, categories and models"
+					}
+				},
+				{
 					"name": "Sync Elasticsearch",
 					"request": {
 						"method": "POST",
@@ -413,7 +473,33 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "elasticsearch", "sync"]
 						},
-						"description": "Trigger Elasticsearch sync"
+						"description": "Trigger Elasticsearch sync for links, categories and models"
+					}
+				},
+				{
+					"name": "Sync Categories",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/elasticsearch/sync/categories",
+							"host": ["{{base_url}}"],
+							"path": ["api", "elasticsearch", "sync", "categories"]
+						},
+						"description": "Trigger Elasticsearch sync for categories only"
+					}
+				},
+				{
+					"name": "Sync Models",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/elasticsearch/sync/models",
+							"host": ["{{base_url}}"],
+							"path": ["api", "elasticsearch", "sync", "models"]
+						},
+						"description": "Trigger Elasticsearch sync for models only"
 					}
 				},
 				{
@@ -656,6 +742,148 @@
 							]
 						},
 						"description": "Start background processing of models for links with a specific category. Returns a 202 Accepted response immediately."
+					}
+				}
+			]
+		},
+		{
+			"name": "LinkCategory Migration",
+			"item": [
+				{
+					"name": "Migrate All LinkCategories",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-category/all",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-category", "all"]
+						},
+						"description": "Migrate all LinkCategory records to the sharded tables"
+					}
+				},
+				{
+					"name": "Migrate LinkCategories by Tenant",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-category/tenant/:tenantId",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-category", "tenant", ":tenantId"],
+							"variable": [
+								{
+									"key": "tenantId",
+									"value": "1",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Migrate LinkCategory records for a specific tenant to the sharded tables"
+					}
+				},
+				{
+					"name": "Migrate LinkCategories by Category",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-category/category/:categoryName",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-category", "category", ":categoryName"],
+							"variable": [
+								{
+									"key": "categoryName",
+									"value": "example-category",
+									"description": "Name of the category to migrate"
+								}
+							]
+						},
+						"description": "Migrate LinkCategory records for a specific category to the appropriate shard"
+					}
+				},
+				{
+					"name": "Get Categories with Shard Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-category/categories-shard-info",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-category", "categories-shard-info"]
+						},
+						"description": "Get all categories with their target shard information and record counts"
+					}
+				}
+			]
+		},
+		{
+			"name": "LinkModel Migration",
+			"item": [
+				{
+					"name": "Migrate All LinkModels",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-model/all",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-model", "all"]
+						},
+						"description": "Migrate all LinkModel records to the sharded tables"
+					}
+				},
+				{
+					"name": "Migrate LinkModels by Tenant",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-model/tenant/:tenantId",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-model", "tenant", ":tenantId"],
+							"variable": [
+								{
+									"key": "tenantId",
+									"value": "1",
+									"description": "ID of the tenant"
+								}
+							]
+						},
+						"description": "Migrate LinkModel records for a specific tenant to the sharded tables"
+					}
+				},
+				{
+					"name": "Migrate LinkModels by Model",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-model/model/:modelName",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-model", "model", ":modelName"],
+							"variable": [
+								{
+									"key": "modelName",
+									"value": "example-model",
+									"description": "Name of the model to migrate"
+								}
+							]
+						},
+						"description": "Migrate LinkModel records for a specific model to the appropriate shard"
+					}
+				},
+				{
+					"name": "Get Models with Shard Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/migration/link-model/models-shard-info",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "migration", "link-model", "models-shard-info"]
+						},
+						"description": "Get all models with their target shard information and record counts"
 					}
 				}
 			]
