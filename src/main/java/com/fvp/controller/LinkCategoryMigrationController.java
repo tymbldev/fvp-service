@@ -20,6 +20,7 @@ public class LinkCategoryMigrationController {
   @Autowired
   private LinkCategoryMigrationService migrationService;
 
+  @Async
   @PostMapping("/link-category/all")
   public ResponseEntity<?> migrateAllLinkCategories() {
     int migrated = migrationService.migrateAllData();
