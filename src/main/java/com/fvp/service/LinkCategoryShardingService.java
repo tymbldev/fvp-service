@@ -24,6 +24,7 @@ import com.fvp.repository.LinkCategoryShard8Repository;
 import com.fvp.repository.LinkCategoryShard9Repository;
 import com.fvp.repository.ShardedLinkCategoryRepository;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -317,5 +318,34 @@ public class LinkCategoryShardingService {
                 shardNumber, e.getMessage(), sql, e);
             throw e;
         }
+    }
+
+    /**
+     * Saves a list of BaseLinkCategory entities to their appropriate shards in parallel
+     * @param entities the entities to save
+     * @return the saved entities
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends BaseLinkCategory> List<T> saveAll(List<T> entities) {
+        if (entities.isEmpty()) {
+            return entities;
+        }
+
+        // Group entities by shard number
+        Map<Integer, List<T>> entitiesByShard = new HashMap<>();
+        for (T entity : entities) {
+            int shardNumber = getShardNumber(entity.getCategory());
+            entitiesByShard.computeIfAbsent(shardNumber, k -> new ArrayList<>()).add(entity);
+        }
+
+        // Save each shard's entities in parallel
+        List<T> savedEntities = new ArrayList<>();
+        entitiesByShard.forEach((shardNumber, shardEntities) -> {
+            ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
+            List<T> saved = repository.saveAll(shardEntities);
+            savedEntities.addAll(saved);
+        });
+
+        return savedEntities;
     }
 } 

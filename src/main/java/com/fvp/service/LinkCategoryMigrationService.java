@@ -86,6 +86,8 @@ public class LinkCategoryMigrationService {
         int conversionCount = 0;
         int saveCount = 0;
         
+        // Convert all entities first
+        List<BaseLinkCategory> shardEntities = new ArrayList<>();
         for (LinkCategory linkCategory : batch) {
             try {
                 // Track conversion time
@@ -94,21 +96,32 @@ public class LinkCategoryMigrationService {
                 conversionTime += System.currentTimeMillis() - conversionStart;
                 conversionCount++;
                 
-                // Track save time
-                long saveStart = System.currentTimeMillis();
-                shardingService.save(shardEntity);
-                saveTime += System.currentTimeMillis() - saveStart;
-                saveCount++;
-                
+                shardEntities.add(shardEntity);
                 migratedIds.add(linkCategory.getId());
                 count++;
                 
                 // Log progress every 100 records
                 if (count % 100 == 0) {
-                    logger.info("Processed {} records in current batch", count);
+                    logger.info("Converted {} records in current batch", count);
                 }
             } catch (Exception e) {
-                logger.error("Error migrating LinkCategory with ID: " + linkCategory.getId(), e);
+                logger.error("Error converting LinkCategory with ID: " + linkCategory.getId(), e);
+            }
+        }
+        
+        // Save all converted entities in batch
+        if (!shardEntities.isEmpty()) {
+            try {
+                long saveStart = System.currentTimeMillis();
+                shardingService.saveAll(shardEntities);
+                saveTime = System.currentTimeMillis() - saveStart;
+                saveCount = shardEntities.size();
+                
+                logger.info("Saved {} entities to sharded tables in {} ms", 
+                    saveCount, saveTime);
+            } catch (Exception e) {
+                logger.error("Error saving batch to sharded tables", e);
+                throw e;
             }
         }
         
