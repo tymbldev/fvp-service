@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,7 +40,7 @@ public class LinkCategoryMigrationService {
      * Migrates all data from the original LinkCategory table to the sharded tables
      * @return the number of records migrated
      */
-    @Transactional
+
     public int migrateAllData() {
         AtomicInteger totalMigrated = new AtomicInteger(0);
         int page = 0;
@@ -71,17 +72,30 @@ public class LinkCategoryMigrationService {
      * @param batch the batch of entities to process
      * @return the number of records migrated
      */
-    @Transactional
+
     public int processBatch(List<LinkCategory> batch) {
         int count = 0;
+        List<Integer> migratedIds = new ArrayList<>();
         
         for (LinkCategory linkCategory : batch) {
             try {
                 BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
                 shardingService.save(shardEntity);
+                migratedIds.add(linkCategory.getId());
                 count++;
             } catch (Exception e) {
                 logger.error("Error migrating LinkCategory with ID: " + linkCategory.getId(), e);
+            }
+        }
+        
+        // Delete successfully migrated records from original table
+        if (!migratedIds.isEmpty()) {
+            try {
+                int deletedCount = linkCategoryRepository.deleteByIdIn(migratedIds);
+                logger.info("Deleted {} records from original LinkCategory table", deletedCount);
+            } catch (Exception e) {
+                logger.error("Error deleting migrated records from original table", e);
+                throw e; // Re-throw to ensure transaction rollback
             }
         }
         

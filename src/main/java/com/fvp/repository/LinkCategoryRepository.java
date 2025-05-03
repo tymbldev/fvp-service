@@ -4,9 +4,11 @@ import com.fvp.entity.LinkCategory;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Integer> {
@@ -49,4 +51,9 @@ public interface LinkCategoryRepository extends JpaRepository<LinkCategory, Inte
         @Param("offset") int offset, 
         @Param("limit") int limit
     );
+
+    @Modifying
+    @Query("DELETE FROM LinkCategory lc WHERE lc.id IN :ids")
+    @Transactional
+    int deleteByIdIn(@Param("ids") List<Integer> ids);
 } 

@@ -150,4 +150,4 @@ public interface LinkCategoryShard6Repository extends ShardedLinkCategoryReposit
         @Param("tenantId") Integer tenantId,
         @Param("categoryNames") List<String> categoryNames
     );
-} 
+}

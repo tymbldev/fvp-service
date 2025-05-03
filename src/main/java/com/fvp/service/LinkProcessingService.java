@@ -3,6 +3,7 @@ package com.fvp.service;
 import com.fvp.config.ElasticsearchSyncConfig;
 import com.fvp.document.LinkDocument;
 import com.fvp.entity.AllCat;
+import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
 import com.fvp.entity.LinkModel;
@@ -31,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LinkProcessingService {
@@ -48,6 +50,7 @@ public class LinkProcessingService {
   private final JdbcTemplate jdbcTemplate;
   private final LinkCategoryService linkCategoryService;
   private final LinkModelService linkModelService;
+  private final LinkCategoryShardingService shardingService;
 
   // Cache for storing categories by tenant ID
   private final Map<Integer, List<AllCat>> categoriesCache = new ConcurrentHashMap<>();
@@ -61,7 +64,8 @@ public class LinkProcessingService {
       ElasticsearchSyncConfig elasticsearchSyncConfig,
       JdbcTemplate jdbcTemplate,
       LinkCategoryService linkCategoryService,
-      LinkModelService linkModelService) {
+      LinkModelService linkModelService,
+      LinkCategoryShardingService shardingService) {
     this.dataSource = dataSource;
     this.linkRepository = linkRepository;
     this.allCatRepository = allCatRepository;
@@ -70,6 +74,7 @@ public class LinkProcessingService {
     this.jdbcTemplate = jdbcTemplate;
     this.linkCategoryService = linkCategoryService;
     this.linkModelService = linkModelService;
+    this.shardingService = shardingService;
   }
 
   @PostConstruct
@@ -254,25 +259,32 @@ public class LinkProcessingService {
 
     // Create LinkCategory entries for all valid categories
     if (!categorySet.isEmpty()) {
-      logger.info("Saving to link_category table: {} entries for link ID {}", categorySet.size(),
-          link.getId());
-      List<LinkCategory> linkCategories = new ArrayList<>();
-
+      logger.info("Saving to sharded link_category tables: {} entries for link ID {}", 
+          categorySet.size(), link.getId());
+      
+      int savedCount = 0;
       for (String categoryName : categorySet) {
-        LinkCategory linkCategory = new LinkCategory();
-        linkCategory.setTenantId(link.getTenantId());
-        linkCategory.setLinkId(link.getId());
-        linkCategory.setCategory(categoryName);
-        linkCategory.setCreatedOn(link.getCreatedOn());
-        linkCategory.setRandomOrder(link.getRandomOrder());
-        linkCategories.add(linkCategory);
+        try {
+          // Create base entity
+          LinkCategory linkCategory = new LinkCategory();
+          linkCategory.setTenantId(link.getTenantId());
+          linkCategory.setLinkId(link.getId());
+          linkCategory.setCategory(categoryName);
+          linkCategory.setCreatedOn(link.getCreatedOn());
+          linkCategory.setRandomOrder(link.getRandomOrder());
+          
+          // Convert and save to appropriate shard
+          BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
+          shardingService.save(shardEntity);
+          savedCount++;
+        } catch (Exception e) {
+          logger.error("Error saving category '{}' for link ID {}: {}", 
+              categoryName, link.getId(), e.getMessage());
+        }
       }
-
-      // Save all link categories in a single batch
-      linkCategoryService.saveAll(linkCategories);
-      linkCategoryService.flush(); // Explicitly flush to DB
-      logger.info("Saved {} entries to link_category table for link ID {}", linkCategories.size(),
-          link.getId());
+      
+      logger.info("Saved {} entries to sharded link_category tables for link ID {}", 
+          savedCount, link.getId());
     }
   }
 

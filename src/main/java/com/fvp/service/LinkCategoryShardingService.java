@@ -3,6 +3,7 @@ package com.fvp.service;
 import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.LinkCategory;
 import com.fvp.entity.LinkCategoryShard1;
+import com.fvp.entity.LinkCategoryShard10;
 import com.fvp.entity.LinkCategoryShard2;
 import com.fvp.entity.LinkCategoryShard3;
 import com.fvp.entity.LinkCategoryShard4;
@@ -11,7 +12,7 @@ import com.fvp.entity.LinkCategoryShard6;
 import com.fvp.entity.LinkCategoryShard7;
 import com.fvp.entity.LinkCategoryShard8;
 import com.fvp.entity.LinkCategoryShard9;
-import com.fvp.entity.LinkCategoryShard10;
+import com.fvp.repository.LinkCategoryShard10Repository;
 import com.fvp.repository.LinkCategoryShard1Repository;
 import com.fvp.repository.LinkCategoryShard2Repository;
 import com.fvp.repository.LinkCategoryShard3Repository;
@@ -21,20 +22,19 @@ import com.fvp.repository.LinkCategoryShard6Repository;
 import com.fvp.repository.LinkCategoryShard7Repository;
 import com.fvp.repository.LinkCategoryShard8Repository;
 import com.fvp.repository.LinkCategoryShard9Repository;
-import com.fvp.repository.LinkCategoryShard10Repository;
 import com.fvp.repository.ShardedLinkCategoryRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
-
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @Service
 public class LinkCategoryShardingService {
@@ -73,6 +73,12 @@ public class LinkCategoryShardingService {
     
     @Autowired
     private LinkCategoryShard10Repository shard10Repository;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    
+    @Autowired
+    private PlatformTransactionManager transactionManager;
     
     /**
      * Determines the shard number for a given category name using consistent hashing
@@ -174,6 +180,7 @@ public class LinkCategoryShardingService {
      * @return the saved entity
      */
     @SuppressWarnings("unchecked")
+    @Transactional
     public <T extends BaseLinkCategory> T save(T entity) {
         int shardNumber = getShardNumber(entity.getCategory());
         ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
@@ -247,5 +254,68 @@ public class LinkCategoryShardingService {
      */
     public int getTotalShards() {
         return TOTAL_SHARDS;
+    }
+
+    /**
+     * Saves a BaseLinkCategory entity to its appropriate shard using native SQL
+     * @param entity the entity to save
+     * @return the saved entity
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public <T extends BaseLinkCategory> T saveWithNativeQuery(T entity) {
+        int shardNumber = getShardNumber(entity.getCategory());
+        String tableName = "link_category_shard_" + shardNumber;
+        
+        // Format the created_on timestamp
+        String createdOnStr = entity.getCreatedOn() != null ? 
+            "'" + entity.getCreatedOn().toString() + "'" : "CURRENT_TIMESTAMP";
+        
+        // Build the native SQL query with actual values
+        String sql = String.format(
+            "INSERT INTO %s (tenant_id, link_id, category, created_on, random_order) " +
+            "VALUES (%d, %d, '%s', %s, %d)",
+            tableName,
+            entity.getTenantId(),
+            entity.getLinkId(),
+            entity.getCategory().replace("'", "''"), // Escape single quotes
+            createdOnStr,
+            entity.getRandomOrder() != null ? entity.getRandomOrder() : 0
+        );
+        
+        try {
+            logger.debug("Executing native SQL: {}", sql);
+            
+            // Execute the insert
+            int rowsAffected = jdbcTemplate.update(sql);
+            logger.debug("Rows affected by insert: {}", rowsAffected);
+            
+            if (rowsAffected == 0) {
+                logger.warn("No rows were affected by the insert operation");
+            }
+            
+            // Get the generated ID
+            String idSql = "SELECT LAST_INSERT_ID()";
+            Integer id = jdbcTemplate.queryForObject(idSql, Integer.class);
+            entity.setId(id);
+            
+            logger.debug("Successfully inserted record with ID: {}", id);
+            
+            // Verify the insert
+            String verifySql = String.format(
+                "SELECT COUNT(*) FROM %s WHERE link_id = %d AND category = '%s'",
+                tableName,
+                entity.getLinkId(),
+                entity.getCategory().replace("'", "''")
+            );
+            Integer count = jdbcTemplate.queryForObject(verifySql, Integer.class);
+            logger.debug("Verification count after insert: {}", count);
+            
+            return entity;
+        } catch (Exception e) {
+            logger.error("Error saving to shard {} using native query: {}\nSQL: {}", 
+                shardNumber, e.getMessage(), sql, e);
+            throw e;
+        }
     }
 } 
