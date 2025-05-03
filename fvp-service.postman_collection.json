@@ -1,1 +1,1212 @@
 {
+  "info": {
+    "_postman_id": "cd5a5bcc-916e-479f-854e-96102c6b21b6",
+    "name": "FVP Service",
+    "description": "Collection for FVP Service API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "8726097"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Check the health status of the service"
+          },
+          "response": []
+        },
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "health",
+                "ping"
+              ]
+            },
+            "description": "Simple ping endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get Home Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/home",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "home"
+              ]
+            },
+            "description": "Get categories for home page with their links"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Home SEO Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/home-seo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "home-seo"
+              ]
+            },
+            "description": "Get categories with homeSEO=true and their links"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "all"
+              ]
+            },
+            "description": "Get all categories with their link counts"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category First Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/:categoryName/first",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                ":categoryName",
+                "first"
+              ],
+              "variable": [
+                {
+                  "key": "categoryName",
+                  "value": "exampleCategory",
+                  "description": "Name of the category"
+                }
+              ]
+            },
+            "description": "Get the first link for a specific category"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category Links",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/:categoryName/links?page=0&size=20&minDuration=&maxDuration=&quality=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                ":categoryName",
+                "links"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Number of items per page"
+                },
+                {
+                  "key": "minDuration",
+                  "value": "",
+                  "description": "Optional filter for minimum duration"
+                },
+                {
+                  "key": "maxDuration",
+                  "value": "",
+                  "description": "Optional filter for maximum duration"
+                },
+                {
+                  "key": "quality",
+                  "value": "",
+                  "description": "Optional filter for quality"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "categoryName",
+                  "value": "exampleCategory",
+                  "description": "Name of the category"
+                }
+              ]
+            },
+            "description": "Get links for a specific category with pagination and filtering"
+          },
+          "response": []
+        },
+        {
+          "name": "Build System Cache",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categories/build-cache",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "build-cache"
+              ]
+            },
+            "description": "Build the complete system cache by calling home, home-seo, and first page of all categories"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Models",
+      "item": [
+        {
+          "name": "Get All Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/models/all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "models",
+                "all"
+              ]
+            },
+            "description": "Get all models with their first links"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Model First Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/models/:modelName/first",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "models",
+                ":modelName",
+                "first"
+              ],
+              "variable": [
+                {
+                  "key": "modelName",
+                  "value": "exampleModel",
+                  "description": "Name of the model"
+                }
+              ]
+            },
+            "description": "Get the first link for a specific model"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Model Links",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/models/:modelName/links?page=0&size=20&minDuration=&maxDuration=&quality=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "models",
+                ":modelName",
+                "links"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Number of items per page"
+                },
+                {
+                  "key": "minDuration",
+                  "value": "",
+                  "description": "Optional filter for minimum duration"
+                },
+                {
+                  "key": "maxDuration",
+                  "value": "",
+                  "description": "Optional filter for maximum duration"
+                },
+                {
+                  "key": "quality",
+                  "value": "",
+                  "description": "Optional filter for quality"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "modelName",
+                  "value": "exampleModel",
+                  "description": "Name of the model"
+                }
+              ]
+            },
+            "description": "Get links for a specific model with pagination and filtering"
+          },
+          "response": []
+        },
+        {
+          "name": "Build Model Cache",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/models/build-cache",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "models",
+                "build-cache"
+              ]
+            },
+            "description": "Build the complete model cache by calling all models and first page of each model"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Links",
+      "item": [
+        {
+          "name": "Get Total Link Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/links/count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                "count"
+              ]
+            },
+            "description": "Get total count of links for a tenant"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Elasticsearch",
+      "item": [
+        {
+          "name": "Search Links",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/links/search?title=example&searchableText=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "links",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "title",
+                  "value": "example",
+                  "description": "Title to search for"
+                },
+                {
+                  "key": "searchableText",
+                  "value": "",
+                  "description": "Text to search for"
+                }
+              ]
+            },
+            "description": "Search for links by title or searchable text"
+          },
+          "response": []
+        },
+        {
+          "name": "Search Links by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/links/category/:category",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "links",
+                "category",
+                ":category"
+              ],
+              "variable": [
+                {
+                  "key": "category",
+                  "value": "exampleCategory",
+                  "description": "Category to search for"
+                }
+              ]
+            },
+            "description": "Find links by category in Elasticsearch"
+          },
+          "response": []
+        },
+        {
+          "name": "Search Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/categories/search?query=example",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "categories",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "example",
+                  "description": "Query to search categories for"
+                }
+              ]
+            },
+            "description": "Search for categories by name or description"
+          },
+          "response": []
+        },
+        {
+          "name": "Search Models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/models/search?query=example",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "models",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "example",
+                  "description": "Query to search models for"
+                }
+              ]
+            },
+            "description": "Search for models by name or description"
+          },
+          "response": []
+        },
+        {
+          "name": "Autosuggest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/autosuggest?query=example",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "autosuggest"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "example",
+                  "description": "Query for autosuggest"
+                }
+              ]
+            },
+            "description": "Get autosuggest results for links, categories and models"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Elasticsearch",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "sync"
+              ]
+            },
+            "description": "Trigger Elasticsearch sync for links, categories and models"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Categories",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/sync/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "sync",
+                "categories"
+              ]
+            },
+            "description": "Trigger Elasticsearch sync for categories only"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Models",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/sync/models",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "sync",
+                "models"
+              ]
+            },
+            "description": "Trigger Elasticsearch sync for models only"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sync Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/sync/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "sync",
+                "status"
+              ]
+            },
+            "description": "Get Elasticsearch sync status"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cache",
+      "item": [
+        {
+          "name": "Clear All Caches",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cache/clear",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cache",
+                "clear"
+              ]
+            },
+            "description": "Clear all Redis caches"
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Specific Cache",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cache/clear/:cacheName",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cache",
+                "clear",
+                ":cacheName"
+              ],
+              "variable": [
+                {
+                  "key": "cacheName",
+                  "value": "categories",
+                  "description": "Name of the cache to clear"
+                }
+              ]
+            },
+            "description": "Clear a specific cache by name"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Google Sheets",
+      "item": [
+        {
+          "name": "Process Google Sheets",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/google-sheets/process",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "google-sheets",
+                "process"
+              ]
+            },
+            "description": "Trigger the processing of Google Sheets data"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Processed Sheets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/google-sheets/processed",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "google-sheets",
+                "processed"
+              ]
+            },
+            "description": "Get all processed sheets"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Processed Sheets By Workbook",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/google-sheets/processed/:workbookId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "google-sheets",
+                "processed",
+                ":workbookId"
+              ],
+              "variable": [
+                {
+                  "key": "workbookId",
+                  "value": "exampleWorkbookId",
+                  "description": "ID of the workbook"
+                }
+              ]
+            },
+            "description": "Get processed sheets for a specific workbook"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Batch Processing",
+      "item": [
+        {
+          "name": "Process Categories and Models",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/links/batch/process-categories-models?page=0&size=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                "batch",
+                "process-categories-models"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "100",
+                  "description": "Number of items per page"
+                }
+              ]
+            },
+            "description": "Process categories and models for links in a specific page. Returns a 200 OK response with processing results."
+          },
+          "response": []
+        },
+        {
+          "name": "Process All Categories and Models",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/links/batch/process-all-categories-models",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                "batch",
+                "process-all-categories-models"
+              ]
+            },
+            "description": "Start background processing of all links for categories and models. Returns a 202 Accepted response immediately."
+          },
+          "response": []
+        },
+        {
+          "name": "Process By Tenant ID",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/links/batch/process-by-tenant/:tenantId?page=0&size=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                "batch",
+                "process-by-tenant",
+                ":tenantId"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "100",
+                  "description": "Number of items per page"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "1",
+                  "description": "ID of the tenant"
+                }
+              ]
+            },
+            "description": "Start background processing of categories and models for links of a specific tenant. Returns a 202 Accepted response immediately."
+          },
+          "response": []
+        },
+        {
+          "name": "Process By Date Range",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/links/batch/process-by-date-range?startDate=2023-01-01T00:00:00&endDate=2023-12-31T23:59:59&page=0&size=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                "batch",
+                "process-by-date-range"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2023-01-01T00:00:00",
+                  "description": "Start date in ISO format"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2023-12-31T23:59:59",
+                  "description": "End date in ISO format"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "100",
+                  "description": "Number of items per page"
+                }
+              ]
+            },
+            "description": "Start background processing of categories and models for links within a date range. Returns a 202 Accepted response immediately."
+          },
+          "response": []
+        },
+        {
+          "name": "Process By Category",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/links/batch/process-by-category?category=exampleCategory&page=0&size=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                "batch",
+                "process-by-category"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "exampleCategory",
+                  "description": "Category to process"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "100",
+                  "description": "Number of items per page"
+                }
+              ]
+            },
+            "description": "Start background processing of models for links with a specific category. Returns a 202 Accepted response immediately."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "LinkCategory Migration",
+      "item": [
+        {
+          "name": "Migrate All LinkCategories",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-category/all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-category",
+                "all"
+              ]
+            },
+            "description": "Migrate all LinkCategory records to the sharded tables"
+          },
+          "response": []
+        },
+        {
+          "name": "Migrate LinkCategories by Tenant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-category/tenant/:tenantId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-category",
+                "tenant",
+                ":tenantId"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "1",
+                  "description": "ID of the tenant"
+                }
+              ]
+            },
+            "description": "Migrate LinkCategory records for a specific tenant to the sharded tables"
+          },
+          "response": []
+        },
+        {
+          "name": "Migrate LinkCategories by Category",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-category/category/:categoryName",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-category",
+                "category",
+                ":categoryName"
+              ],
+              "variable": [
+                {
+                  "key": "categoryName",
+                  "value": "example-category",
+                  "description": "Name of the category to migrate"
+                }
+              ]
+            },
+            "description": "Migrate LinkCategory records for a specific category to the appropriate shard"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Categories with Shard Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-category/categories-shard-info",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-category",
+                "categories-shard-info"
+              ]
+            },
+            "description": "Get all categories with their target shard information and record counts"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "LinkModel Migration",
+      "item": [
+        {
+          "name": "Migrate All LinkModels",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-model/all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-model",
+                "all"
+              ]
+            },
+            "description": "Migrate all LinkModel records to the sharded tables"
+          },
+          "response": []
+        },
+        {
+          "name": "Migrate LinkModels by Tenant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-model/tenant/:tenantId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-model",
+                "tenant",
+                ":tenantId"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "1",
+                  "description": "ID of the tenant"
+                }
+              ]
+            },
+            "description": "Migrate LinkModel records for a specific tenant to the sharded tables"
+          },
+          "response": []
+        },
+        {
+          "name": "Migrate LinkModels by Model",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-model/model/:modelName",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-model",
+                "model",
+                ":modelName"
+              ],
+              "variable": [
+                {
+                  "key": "modelName",
+                  "value": "example-model",
+                  "description": "Name of the model to migrate"
+                }
+              ]
+            },
+            "description": "Migrate LinkModel records for a specific model to the appropriate shard"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Models with Shard Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/migration/link-model/models-shard-info",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "migration",
+                "link-model",
+                "models-shard-info"
+              ]
+            },
+            "description": "Get all models with their target shard information and record counts"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "tenant_id",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}

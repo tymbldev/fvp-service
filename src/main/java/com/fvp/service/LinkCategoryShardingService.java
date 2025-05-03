@@ -2,27 +2,9 @@ package com.fvp.service;
 
 import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.LinkCategory;
-import com.fvp.entity.LinkCategoryShard1;
-import com.fvp.entity.LinkCategoryShard10;
-import com.fvp.entity.LinkCategoryShard2;
-import com.fvp.entity.LinkCategoryShard3;
-import com.fvp.entity.LinkCategoryShard4;
-import com.fvp.entity.LinkCategoryShard5;
-import com.fvp.entity.LinkCategoryShard6;
-import com.fvp.entity.LinkCategoryShard7;
-import com.fvp.entity.LinkCategoryShard8;
-import com.fvp.entity.LinkCategoryShard9;
-import com.fvp.repository.LinkCategoryShard10Repository;
-import com.fvp.repository.LinkCategoryShard1Repository;
-import com.fvp.repository.LinkCategoryShard2Repository;
-import com.fvp.repository.LinkCategoryShard3Repository;
-import com.fvp.repository.LinkCategoryShard4Repository;
-import com.fvp.repository.LinkCategoryShard5Repository;
-import com.fvp.repository.LinkCategoryShard6Repository;
-import com.fvp.repository.LinkCategoryShard7Repository;
-import com.fvp.repository.LinkCategoryShard8Repository;
-import com.fvp.repository.LinkCategoryShard9Repository;
 import com.fvp.repository.ShardedLinkCategoryRepository;
+import com.fvp.util.ShardHashingUtil;
+import com.fvp.util.SpringContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,40 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class LinkCategoryShardingService {
 
   private static final Logger logger = LoggerFactory.getLogger(LinkCategoryShardingService.class);
-  private static final int TOTAL_SHARDS = 10;
+  private static final int TOTAL_SHARDS = 50;
 
   // Cache for category-to-shard mapping
   private final Map<String, Integer> categoryShardMap = new ConcurrentHashMap<>();
-
-  @Autowired
-  private LinkCategoryShard1Repository shard1Repository;
-
-  @Autowired
-  private LinkCategoryShard2Repository shard2Repository;
-
-  @Autowired
-  private LinkCategoryShard3Repository shard3Repository;
-
-  @Autowired
-  private LinkCategoryShard4Repository shard4Repository;
-
-  @Autowired
-  private LinkCategoryShard5Repository shard5Repository;
-
-  @Autowired
-  private LinkCategoryShard6Repository shard6Repository;
-
-  @Autowired
-  private LinkCategoryShard7Repository shard7Repository;
-
-  @Autowired
-  private LinkCategoryShard8Repository shard8Repository;
-
-  @Autowired
-  private LinkCategoryShard9Repository shard9Repository;
-
-  @Autowired
-  private LinkCategoryShard10Repository shard10Repository;
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
@@ -86,7 +38,7 @@ public class LinkCategoryShardingService {
    * Determines the shard number for a given category name using consistent hashing
    *
    * @param category the category name
-   * @return the shard number (1-10)
+   * @return the shard number (11-50)
    */
   @Cacheable(value = "categoryShardMapping", key = "#category")
   public int getShardNumber(String category) {
@@ -95,8 +47,8 @@ public class LinkCategoryShardingService {
       return categoryShardMap.get(category);
     }
 
-    // Calculate shard number based on category name hash
-    int shardNumber = (Math.abs(category.hashCode()) % TOTAL_SHARDS) + 1;
+    // Use the ShardHashingUtil to calculate shard number
+    int shardNumber = ShardHashingUtil.calculateShard(category.hashCode());
 
     // Cache the result
     categoryShardMap.put(category, shardNumber);
@@ -120,35 +72,20 @@ public class LinkCategoryShardingService {
   /**
    * Gets the repository for a specific shard number
    *
-   * @param shardNumber the shard number (1-10)
+   * @param shardNumber the shard number (11-50)
    * @return the repository for the specified shard
    */
   @SuppressWarnings("unchecked")
   public ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> getRepositoryForShard(
       int shardNumber) {
-    switch (shardNumber) {
-      case 1:
-        return shard1Repository;
-      case 2:
-        return shard2Repository;
-      case 3:
-        return shard3Repository;
-      case 4:
-        return shard4Repository;
-      case 5:
-        return shard5Repository;
-      case 6:
-        return shard6Repository;
-      case 7:
-        return shard7Repository;
-      case 8:
-        return shard8Repository;
-      case 9:
-        return shard9Repository;
-      case 10:
-        return shard10Repository;
-      default:
-        throw new IllegalArgumentException("Invalid shard number: " + shardNumber);
+    try {
+      String repositoryClassName = ShardHashingUtil.getRepositoryClassName(shardNumber, true);
+      Class<?> repositoryClass = Class.forName(repositoryClassName);
+      return (ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer>) 
+          SpringContext.getBean(repositoryClass);
+    } catch (Exception e) {
+      logger.error("Error getting repository for shard {}: {}", shardNumber, e.getMessage());
+      throw new IllegalArgumentException("Invalid shard number: " + shardNumber, e);
     }
   }
 
@@ -173,35 +110,20 @@ public class LinkCategoryShardingService {
   }
 
   /**
-   * Creates a new instance of the appropriate shard entity
+   * Creates a new shard entity instance for the given shard number
    *
-   * @param shardNumber the shard number (1-10)
+   * @param shardNumber the shard number (11-50)
    * @return a new instance of the appropriate shard entity
    */
+  @SuppressWarnings("unchecked")
   private BaseLinkCategory createShardEntity(int shardNumber) {
-    switch (shardNumber) {
-      case 1:
-        return new LinkCategoryShard1();
-      case 2:
-        return new LinkCategoryShard2();
-      case 3:
-        return new LinkCategoryShard3();
-      case 4:
-        return new LinkCategoryShard4();
-      case 5:
-        return new LinkCategoryShard5();
-      case 6:
-        return new LinkCategoryShard6();
-      case 7:
-        return new LinkCategoryShard7();
-      case 8:
-        return new LinkCategoryShard8();
-      case 9:
-        return new LinkCategoryShard9();
-      case 10:
-        return new LinkCategoryShard10();
-      default:
-        throw new IllegalArgumentException("Invalid shard number: " + shardNumber);
+    try {
+      String entityClassName = ShardHashingUtil.getEntityClassName(shardNumber, true);
+      Class<?> entityClass = Class.forName(entityClassName);
+      return (BaseLinkCategory) entityClass.getDeclaredConstructor().newInstance();
+    } catch (Exception e) {
+      logger.error("Error creating shard entity for shard {}: {}", shardNumber, e.getMessage());
+      throw new IllegalArgumentException("Invalid shard number: " + shardNumber, e);
     }
   }
 
@@ -211,12 +133,10 @@ public class LinkCategoryShardingService {
    * @param entity the entity to save
    * @return the saved entity
    */
-  @SuppressWarnings("unchecked")
   @Transactional
   public <T extends BaseLinkCategory> T save(T entity) {
-    int shardNumber = getShardNumber(entity.getCategory());
-    ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(
-        shardNumber);
+    ShardedLinkCategoryRepository<T, Integer> repository = 
+        (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForCategory(entity.getCategory());
     return repository.save(entity);
   }
 
@@ -225,12 +145,49 @@ public class LinkCategoryShardingService {
    *
    * @param entity the entity to delete
    */
-  @SuppressWarnings("unchecked")
+  @Transactional
   public <T extends BaseLinkCategory> void delete(T entity) {
-    int shardNumber = getShardNumber(entity.getCategory());
-    ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(
-        shardNumber);
+    ShardedLinkCategoryRepository<T, Integer> repository = 
+        (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForCategory(entity.getCategory());
     repository.delete(entity);
+  }
+
+  /**
+   * Saves multiple BaseLinkCategory entities to their appropriate shards
+   *
+   * @param entities the entities to save
+   * @return the saved entities
+   */
+  @Transactional
+  public <T extends BaseLinkCategory> List<T> saveAll(List<T> entities) {
+    if (entities.isEmpty()) {
+      return entities;
+    }
+
+    // Group entities by shard number
+    Map<Integer, List<T>> entitiesByShard = new HashMap<>();
+    for (T entity : entities) {
+      int shardNumber = getShardNumber(entity.getCategory());
+      entitiesByShard.computeIfAbsent(shardNumber, k -> new ArrayList<>()).add(entity);
+    }
+
+    // Save each group to its respective shard
+    List<T> savedEntities = new ArrayList<>();
+    for (Map.Entry<Integer, List<T>> entry : entitiesByShard.entrySet()) {
+      int shardNumber = entry.getKey();
+      List<T> shardEntities = entry.getValue();
+      
+      try {
+        ShardedLinkCategoryRepository<T, Integer> repository = 
+            (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
+        savedEntities.addAll(repository.saveAll(shardEntities));
+      } catch (Exception e) {
+        logger.error("Error saving batch to shard {}: {}", shardNumber, e.getMessage());
+        throw e;
+      }
+    }
+
+    return savedEntities;
   }
 
   /**
@@ -259,8 +216,8 @@ public class LinkCategoryShardingService {
   }
 
   /**
-   * Finds all LinkCategory entities by link ID across all shards This requires querying all shards
-   * since we don't know which shard contains the link
+   * Finds all LinkCategory entities by link ID across all shards
+   * This requires querying all shards since we don't know which shard contains the link
    *
    * @param linkId the link ID to find
    * @return a list of all matching entities from all shards
@@ -268,9 +225,8 @@ public class LinkCategoryShardingService {
   public List<BaseLinkCategory> findByLinkId(Integer linkId) {
     List<BaseLinkCategory> result = new ArrayList<>();
 
-    for (int i = 1; i <= TOTAL_SHARDS; i++) {
-      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
-          i);
+    for (int i = 11; i <= TOTAL_SHARDS; i++) {
+      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(i);
       result.addAll((List<BaseLinkCategory>) repository.findByLinkId(linkId));
     }
 
@@ -278,15 +234,14 @@ public class LinkCategoryShardingService {
   }
 
   /**
-   * Deletes all LinkCategory entities by link ID across all shards This requires querying all
-   * shards since we don't know which shard contains the link
+   * Deletes all LinkCategory entities by link ID across all shards
+   * This requires querying all shards since we don't know which shard contains the link
    *
    * @param linkId the link ID to delete
    */
   public void deleteByLinkId(Integer linkId) {
-    for (int i = 1; i <= TOTAL_SHARDS; i++) {
-      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
-          i);
+    for (int i = 11; i <= TOTAL_SHARDS; i++) {
+      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(i);
       repository.deleteByLinkId(linkId);
     }
   }
@@ -328,70 +283,7 @@ public class LinkCategoryShardingService {
         entity.getRandomOrder() != null ? entity.getRandomOrder() : 0
     );
 
-    try {
-      logger.debug("Executing native SQL: {}", sql);
-
-      // Execute the insert
-      int rowsAffected = jdbcTemplate.update(sql);
-      logger.debug("Rows affected by insert: {}", rowsAffected);
-
-      if (rowsAffected == 0) {
-        logger.warn("No rows were affected by the insert operation");
-      }
-
-      // Get the generated ID
-      String idSql = "SELECT LAST_INSERT_ID()";
-      Integer id = jdbcTemplate.queryForObject(idSql, Integer.class);
-      entity.setId(id);
-
-      logger.debug("Successfully inserted record with ID: {}", id);
-
-      // Verify the insert
-      String verifySql = String.format(
-          "SELECT COUNT(*) FROM %s WHERE link_id = %d AND category = '%s'",
-          tableName,
-          entity.getLinkId(),
-          entity.getCategory().replace("'", "''")
-      );
-      Integer count = jdbcTemplate.queryForObject(verifySql, Integer.class);
-      logger.debug("Verification count after insert: {}", count);
-
-      return entity;
-    } catch (Exception e) {
-      logger.error("Error saving to shard {} using native query: {}\nSQL: {}",
-          shardNumber, e.getMessage(), sql, e);
-      throw e;
-    }
-  }
-
-  /**
-   * Saves a list of BaseLinkCategory entities to their appropriate shards in parallel
-   *
-   * @param entities the entities to save
-   * @return the saved entities
-   */
-  @SuppressWarnings("unchecked")
-  public <T extends BaseLinkCategory> List<T> saveAll(List<T> entities) {
-    if (entities.isEmpty()) {
-      return entities;
-    }
-
-    // Group entities by shard number
-    Map<Integer, List<T>> entitiesByShard = new HashMap<>();
-    for (T entity : entities) {
-      int shardNumber = getShardNumber(entity.getCategory());
-      entitiesByShard.computeIfAbsent(shardNumber, k -> new ArrayList<>()).add(entity);
-    }
-
-    // Save each shard's entities in parallel
-    List<T> savedEntities = new ArrayList<>();
-    entitiesByShard.forEach((shardNumber, shardEntities) -> {
-      ShardedLinkCategoryRepository<T, Integer> repository = (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(
-          shardNumber);
-      List<T> saved = repository.saveAll(shardEntities);
-      savedEntities.addAll(saved);
-    });
-
-    return savedEntities;
+    jdbcTemplate.execute(sql);
+    return entity;
   }
 } 
