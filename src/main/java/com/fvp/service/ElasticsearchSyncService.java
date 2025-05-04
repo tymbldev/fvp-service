@@ -5,7 +5,6 @@ import com.fvp.document.CategoryDocument;
 import com.fvp.document.LinkDocument;
 import com.fvp.document.ModelDocument;
 import com.fvp.entity.Link;
-import com.fvp.entity.LinkCategory;
 import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
@@ -19,7 +18,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,6 +33,7 @@ public class ElasticsearchSyncService {
   private final LinkRepository linkRepository;
   private final LinkCategoryRepository linkCategoryRepository;
   private final LinkModelRepository linkModelRepository;
+  private final LinkProcessingService linkProcessingService;
   private final ElasticsearchClientService elasticsearchClientService;
   private final ElasticsearchSyncConfig syncConfig;
   private final ExecutorService executorService;
@@ -45,17 +44,20 @@ public class ElasticsearchSyncService {
   private final AtomicReference<String> categorySyncStatus = new AtomicReference<>("not_started");
   private final AtomicReference<String> modelSyncStatus = new AtomicReference<>("not_started");
 
+
   @Autowired
   public ElasticsearchSyncService(
       LinkRepository linkRepository,
       LinkCategoryRepository linkCategoryRepository,
       LinkModelRepository linkModelRepository,
+      LinkProcessingService linkProcessingService,
       ElasticsearchClientService elasticsearchClientService,
       ElasticsearchSyncConfig syncConfig,
       JdbcTemplate jdbcTemplate) {
     this.linkRepository = linkRepository;
     this.linkCategoryRepository = linkCategoryRepository;
     this.linkModelRepository = linkModelRepository;
+    this.linkProcessingService = linkProcessingService;
     this.elasticsearchClientService = elasticsearchClientService;
     this.syncConfig = syncConfig;
     this.executorService = Executors.newFixedThreadPool(syncConfig.getThreadPoolSize());
@@ -141,79 +143,15 @@ public class ElasticsearchSyncService {
   private void processLinksBatch(List<Link> links) {
     List<LinkDocument> documents = new ArrayList<>(links.size());
 
-    // First, create all documents
     for (Link link : links) {
       try {
-        LinkDocument doc = createLinkDocument(link);
-        documents.add(doc);
+        linkProcessingService.updateElasticsearchDocument(link);
       } catch (Exception e) {
         logger.error("Error creating document for link ID {}: {}", link.getId(), e.getMessage(), e);
       }
     }
-
-    // Then, save all documents in a single batch
-    for (LinkDocument doc : documents) {
-      try {
-        elasticsearchClientService.saveLinkDocument(doc);
-      } catch (Exception e) {
-        logger.error("Error saving document for link ID {}: {}", doc.getId(), e.getMessage(), e);
-      }
-    }
-
-    // Clear references
-    documents.clear();
   }
 
-  /**
-   * Create an Elasticsearch document from a Link entity
-   *
-   * @param link Link entity
-   * @return LinkDocument for Elasticsearch
-   */
-  private LinkDocument createLinkDocument(Link link) {
-    LinkDocument doc = new LinkDocument();
-    doc.setId(link.getId().toString());
-    doc.setTenantId(link.getTenantId());
-    doc.setTitle(link.getTitle());
-    doc.setLink(link.getLink());
-    doc.setThumbnail(link.getThumbnail());
-    doc.setDuration(link.getDuration());
-    doc.setSheetName(link.getSheetName());
-    doc.setCreatedAt(new Date());
-    doc.setSearchableText(generateSearchableText(link));
-
-    // Get categories for the link
-    List<LinkCategory> linkCategories = linkCategoryRepository.findByLinkId(link.getId());
-    List<String> categories = linkCategories.stream()
-        .map(LinkCategory::getCategory)
-        .collect(Collectors.toList());
-    doc.setCategories(categories);
-
-    return doc;
-  }
-
-  /**
-   * Generate searchable text for a link
-   *
-   * @param link Link entity
-   * @return Searchable text string
-   */
-  private String generateSearchableText(Link link) {
-    StringBuilder searchableText = new StringBuilder();
-    searchableText.append(link.getTitle());
-
-    if (link.getSheetName() != null && !link.getSheetName().isEmpty()) {
-      searchableText.append(" ").append(link.getSheetName());
-    }
-
-    // Add categories to searchable text
-    List<LinkCategory> linkCategories = linkCategoryRepository.findByLinkId(link.getId());
-    for (LinkCategory linkCategory : linkCategories) {
-      searchableText.append(" ").append(linkCategory.getCategory());
-    }
-
-    return searchableText.toString().trim();
-  }
 
   /**
    * Start a full sync of all categories from MySQL to Elasticsearch

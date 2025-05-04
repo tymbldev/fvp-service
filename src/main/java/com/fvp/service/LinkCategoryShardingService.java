@@ -49,7 +49,7 @@ public class LinkCategoryShardingService {
 
     // Use the ShardHashingUtil to calculate shard number
     int shardNumber = ShardHashingUtil.calculateShard(category.hashCode());
-    
+
     // Ensure shard number is between 1 and 50
     shardNumber = ((shardNumber - 1) % TOTAL_SHARDS) + 1;
 
@@ -84,7 +84,7 @@ public class LinkCategoryShardingService {
     try {
       String repositoryClassName = ShardHashingUtil.getRepositoryClassName(shardNumber, true);
       Class<?> repositoryClass = Class.forName(repositoryClassName);
-      return (ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer>) 
+      return (ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer>)
           SpringContext.getBean(repositoryClass);
     } catch (Exception e) {
       logger.error("Error getting repository for shard {}: {}", shardNumber, e.getMessage());
@@ -138,7 +138,7 @@ public class LinkCategoryShardingService {
    */
   @Transactional
   public <T extends BaseLinkCategory> T save(T entity) {
-    ShardedLinkCategoryRepository<T, Integer> repository = 
+    ShardedLinkCategoryRepository<T, Integer> repository =
         (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForCategory(entity.getCategory());
     return repository.save(entity);
   }
@@ -150,7 +150,7 @@ public class LinkCategoryShardingService {
    */
   @Transactional
   public <T extends BaseLinkCategory> void delete(T entity) {
-    ShardedLinkCategoryRepository<T, Integer> repository = 
+    ShardedLinkCategoryRepository<T, Integer> repository =
         (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForCategory(entity.getCategory());
     repository.delete(entity);
   }
@@ -179,9 +179,9 @@ public class LinkCategoryShardingService {
     for (Map.Entry<Integer, List<T>> entry : entitiesByShard.entrySet()) {
       int shardNumber = entry.getKey();
       List<T> shardEntities = entry.getValue();
-      
+
       try {
-        ShardedLinkCategoryRepository<T, Integer> repository = 
+        ShardedLinkCategoryRepository<T, Integer> repository =
             (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForShard(shardNumber);
         savedEntities.addAll(repository.saveAll(shardEntities));
       } catch (Exception e) {
@@ -219,8 +219,8 @@ public class LinkCategoryShardingService {
   }
 
   /**
-   * Finds all LinkCategory entities by link ID across all shards
-   * This requires querying all shards since we don't know which shard contains the link
+   * Finds all LinkCategory entities by link ID across all shards This requires querying all shards
+   * since we don't know which shard contains the link
    *
    * @param linkId the link ID to find
    * @return a list of all matching entities from all shards
@@ -229,7 +229,8 @@ public class LinkCategoryShardingService {
     List<BaseLinkCategory> result = new ArrayList<>();
 
     for (int i = 11; i <= TOTAL_SHARDS; i++) {
-      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(i);
+      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
+          i);
       result.addAll((List<BaseLinkCategory>) repository.findByLinkId(linkId));
     }
 
@@ -237,14 +238,15 @@ public class LinkCategoryShardingService {
   }
 
   /**
-   * Deletes all LinkCategory entities by link ID across all shards
-   * This requires querying all shards since we don't know which shard contains the link
+   * Deletes all LinkCategory entities by link ID across all shards This requires querying all
+   * shards since we don't know which shard contains the link
    *
    * @param linkId the link ID to delete
    */
   public void deleteByLinkId(Integer linkId) {
     for (int i = 11; i <= TOTAL_SHARDS; i++) {
-      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(i);
+      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository = getRepositoryForShard(
+          i);
       repository.deleteByLinkId(linkId);
     }
   }

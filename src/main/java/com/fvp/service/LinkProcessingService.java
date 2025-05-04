@@ -4,18 +4,18 @@ import com.fvp.config.ElasticsearchSyncConfig;
 import com.fvp.document.LinkDocument;
 import com.fvp.entity.AllCat;
 import com.fvp.entity.BaseLinkCategory;
+import com.fvp.entity.BaseLinkModel;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkCategory;
 import com.fvp.entity.LinkModel;
+import com.fvp.entity.Model;
 import com.fvp.repository.AllCatRepository;
 import com.fvp.repository.LinkRepository;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +23,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
@@ -50,9 +49,11 @@ public class LinkProcessingService {
   private final LinkCategoryService linkCategoryService;
   private final LinkModelService linkModelService;
   private final LinkCategoryShardingService shardingService;
-
+  private final LinkModelShardingService linkModelShardingService;
+  private final ModelService modelService;
   // Cache for storing categories by tenant ID
   private final Map<Integer, List<AllCat>> categoriesCache = new ConcurrentHashMap<>();
+
 
   @Autowired
   public LinkProcessingService(
@@ -64,7 +65,9 @@ public class LinkProcessingService {
       JdbcTemplate jdbcTemplate,
       LinkCategoryService linkCategoryService,
       LinkModelService linkModelService,
-      LinkCategoryShardingService shardingService) {
+      ModelService modelService,
+      LinkCategoryShardingService shardingService,
+      LinkModelShardingService linkModelShardingService) {
     this.dataSource = dataSource;
     this.linkRepository = linkRepository;
     this.allCatRepository = allCatRepository;
@@ -73,7 +76,9 @@ public class LinkProcessingService {
     this.jdbcTemplate = jdbcTemplate;
     this.linkCategoryService = linkCategoryService;
     this.linkModelService = linkModelService;
+    this.modelService = modelService;
     this.shardingService = shardingService;
+    this.linkModelShardingService = linkModelShardingService;
   }
 
   @PostConstruct
@@ -82,7 +87,7 @@ public class LinkProcessingService {
     System.out.println("JDBC URL: " + jdbcUrl);
   }
 
-  public void processLink(Link link, String categories, String models) {
+  public void processLink(Link link) {
     if (link == null) {
       logger.warn("Cannot process null link");
       return;
@@ -138,21 +143,21 @@ public class LinkProcessingService {
         link = linkRepository.saveAndFlush(link); // Use saveAndFlush instead of save
 
         // Create Elasticsearch document
-        createElasticsearchDocument(link);
+        updateElasticsearchDocument(link);
       }
       saveLinkTimeMs = System.currentTimeMillis() - saveStartMs;
 
       // Process categories if provided
-      if (categories != null && !categories.trim().isEmpty()) {
+      if (link.getCategory() != null && !link.getCategory().trim().isEmpty()) {
         long categoriesStartMs = System.currentTimeMillis();
-        processCategories(link, categories);
+        processCategories(link);
         processCategoriesTimeMs = System.currentTimeMillis() - categoriesStartMs;
       }
 
       // Process models if provided
-      if (models != null && !models.trim().isEmpty()) {
+      if (link.getStar() != null && !link.getStar().trim().isEmpty()) {
         long modelsStartMs = System.currentTimeMillis();
-        processModels(link, models);
+        processModels(link);
         processModelsTimeMs = System.currentTimeMillis() - modelsStartMs;
       }
 
@@ -173,21 +178,14 @@ public class LinkProcessingService {
    * Process categories for a link
    *
    * @param link The link entity
-   * @param categories Comma-separated list of categories
    */
-  public void processCategories(Link link, String categories) {
-    // Tokenize categories using multiple delimiters (space, comma, hyphen)
+  public void processCategories(Link link) {
     Set<String> categorySet = new HashSet<>();
-    Set<String> categoriesToCreate = new HashSet<>();
-
-    Gson gson = new Gson();
-    Type listType = new TypeToken<List<String>>() {
-    }.getType();
-    List<String> values = gson.fromJson(categories, listType);
 
     List<AllCat> allCategories = getCategoriesForTenant(link.getTenantId());
+    List<String> values = tokenize(link.getCategory());
 
-    // For each token from the input
+    // First pass: Collect all categories to be created
     for (String token : values) {
       String category = token.trim();
       if (!category.isEmpty()) {
@@ -196,73 +194,31 @@ public class LinkProcessingService {
         for (AllCat allCat : allCategories) {
           if (allCat.getName().equalsIgnoreCase(category)) {
             categorySet.add(allCat.getName());
-            exactMatch = true;
             break;
           }
         }
-
-        // If no exact match, check for substring matches
-        if (!exactMatch) {
-          boolean substringMatch = false;
-          for (AllCat allCat : allCategories) {
-            if (category.toLowerCase().contains(allCat.getName().toLowerCase())) {
-              categorySet.add(allCat.getName());
-              logger.info("Found substring match: '{}' contains '{}'", category, allCat.getName());
-              substringMatch = true;
+        // Try tokenizing the category name for partial matches
+        String[] words = category.toLowerCase().split(" ");
+        for (String singleToken : words) {
+          if (!singleToken.trim().isEmpty()) {
+            for (AllCat allCat : allCategories) {
+              if (allCat.getName().trim().toLowerCase().equalsIgnoreCase(singleToken.trim())) {
+                categorySet.add(allCat.getName());
+                logger.info("Found substring match: '{}' equals '{}'", category, allCat.getName());
+                break;
+              }
             }
           }
-
-          // If no match at all, mark for creation
-          if (!exactMatch && !substringMatch) {
-            categoriesToCreate.add(category);
-          }
         }
       }
     }
 
-    // Create new categories first
-    if (!categoriesToCreate.isEmpty()) {
-      logger.info("Creating {} new categories in AllCat", categoriesToCreate.size());
-      List<AllCat> newCategories = new ArrayList<>();
-
-      for (String categoryName : categoriesToCreate) {
-        if (categoryName.length() > 1) {
-          AllCat newCategory = new AllCat();
-          newCategory.setTenantId(link.getTenantId());
-          newCategory.setName(categoryName);
-          newCategory.setHomeThumb(false);
-          newCategory.setHeader(false);
-          newCategory.setHomeSEO(false);
-          newCategory.setHomeCatOrder(0);
-          newCategory.setHome(0);
-          newCategory.setDescription(null);
-          newCategory.setCreatedAt(LocalDateTime.now());
-          newCategory.setCreatedViaLink(true);
-          newCategories.add(newCategory);
-        }
-      }
-
-      // Save all new categories in a single batch
-      List<AllCat> savedCategories = allCatRepository.saveAll(newCategories);
-      allCatRepository.flush(); // Explicitly flush to DB
-      logger.info("Created {} new categories in AllCat", savedCategories.size());
-
-      // Add to the set of categories to create link associations
-      for (AllCat savedCategory : savedCategories) {
-        categorySet.add(savedCategory.getName());
-        allCategories.add(savedCategory);
-      }
-
-      // Update the cache with the new categories
-      categoriesCache.put(link.getTenantId(), allCategories);
-    }
-
-    // Create LinkCategory entries for all valid categories
+    // Create LinkCategory entries for all valid categories in a single batch
     if (!categorySet.isEmpty()) {
       logger.info("Saving to sharded link_category tables: {} entries for link ID {}",
           categorySet.size(), link.getId());
 
-      int savedCount = 0;
+      List<BaseLinkCategory> shardEntities = new ArrayList<>();
       for (String categoryName : categorySet) {
         try {
           // Create base entity
@@ -273,13 +229,24 @@ public class LinkProcessingService {
           linkCategory.setCreatedOn(link.getCreatedOn());
           linkCategory.setRandomOrder(link.getRandomOrder());
 
-          // Convert and save to appropriate shard
+          // Convert to shard entity
           BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
+          shardEntities.add(shardEntity);
+        } catch (Exception e) {
+          logger.error("Error creating shard entity for category '{}' and link ID {}: {}",
+              categoryName, link.getId(), e.getMessage(), e);
+        }
+      }
+
+      // Save all shard entities in a single batch
+      int savedCount = 0;
+      for (BaseLinkCategory shardEntity : shardEntities) {
+        try {
           shardingService.save(shardEntity);
           savedCount++;
         } catch (Exception e) {
-          logger.error("Error saving category '{}' for link ID {}: {}",
-              categoryName, link.getId(), e.getMessage(), e);
+          logger.error("Error saving shard entity for link ID {}: {}",
+              link.getId(), e.getMessage(), e);
         }
       }
 
@@ -292,46 +259,56 @@ public class LinkProcessingService {
    * Process models for a link
    *
    * @param link The link entity
-   * @param models Comma-separated list of models
    */
-  public void processModels(Link link, String models) {
-    Set<String> modelSet = tokenize(models);
-    logger.info("Saving to link_model table: {} entries for link ID {}", modelSet.size(),
-        link.getId());
+  public void processModels(Link link) {
+    Set<String> modelSet = new HashSet<>();
 
-    List<LinkModel> linkModels = new ArrayList<>();
-    for (String model : modelSet) {
-      LinkModel linkModel = new LinkModel();
-      linkModel.setTenantId(link.getTenantId());
-      linkModel.setLinkId(link.getId());
-      linkModel.setModel(model);
-      linkModel.setCreatedOn(link.getCreatedOn());
-      linkModel.setRandomOrder(Double.valueOf(link.getRandomOrder()));
-      linkModels.add(linkModel);
-      logger.debug("Preparing to save model: {} for link ID {}", model, link.getId());
-    }
-
-    // Save all models in batch
-    if (!linkModels.isEmpty()) {
-      linkModelService.saveAll(linkModels);
-      linkModelService.flush(); // Explicitly flush to DB
-      logger.info("Saved {} entries to link_model table for link ID {}", modelSet.size(),
-          link.getId());
-    }
-  }
-
-  private Set<String> tokenize(String input) {
-    Set<String> tokens = new HashSet<>();
-    if (input != null && !input.trim().isEmpty()) {
-      String[] words = TOKEN_PATTERN.split(input);
-      for (String word : words) {
-        String token = word.trim();
-        if (!token.isEmpty()) {
-          tokens.add(token);
+    List<String> values = tokenize(link.getStar());
+    // For each token from the input
+    for (String token : values) {
+      String model = token.trim();
+      if (!model.isEmpty()) {
+        try {
+          Map<String, Model> modelMap = modelService.getAllModels();
+          modelSet.add(model);
+        } catch (Exception e) {
+          logger.debug("No exact match found for model: {}", model);
         }
       }
     }
-    return tokens;
+
+    // Save all matched models
+    int savedCount = 0;
+    for (String modelName : modelSet) {
+      try {
+        // Create base entity
+        LinkModel linkModel = new LinkModel();
+        linkModel.setTenantId(link.getTenantId());
+        linkModel.setLinkId(link.getId());
+        linkModel.setModel(modelName);
+        linkModel.setCreatedOn(link.getCreatedOn());
+        linkModel.setRandomOrder(link.getRandomOrder().doubleValue());
+
+        // Convert and save to appropriate shard
+        BaseLinkModel shardEntity = linkModelShardingService.convertToShardEntity(linkModel);
+        linkModelShardingService.save(shardEntity);
+        savedCount++;
+      } catch (Exception e) {
+        logger.error("Error saving model '{}' for link ID {}: {}",
+            modelName, link.getId(), e.getMessage(), e);
+      }
+    }
+
+    logger.info("Saved {} entries to sharded link_model tables for link ID {}",
+        savedCount, link.getId());
+  }
+
+  private List<String> tokenize(String input) {
+    Gson gson = new Gson();
+    Type listType = new TypeToken<List<String>>() {
+    }.getType();
+    List<String> values = gson.fromJson(input, listType);
+    return values;
   }
 
   /**
@@ -358,47 +335,9 @@ public class LinkProcessingService {
   }
 
   /**
-   * Creates a new Elasticsearch document for a link
-   */
-  private void createElasticsearchDocument(Link link) {
-    if (!elasticsearchSyncConfig.isEnabled()) {
-      logger.debug("Elasticsearch sync is disabled, skipping document creation for link ID {}",
-          link.getId());
-      return;
-    }
-
-    try {
-      LinkDocument doc = new LinkDocument();
-      doc.setId(link.getId().toString());
-      doc.setTenantId(link.getTenantId());
-      doc.setTitle(link.getTitle());
-      doc.setLink(link.getLink());
-      doc.setThumbnail(link.getThumbnail());
-      doc.setDuration(link.getDuration());
-      doc.setSheetName(link.getSheetName());
-      doc.setCreatedAt(new Date());
-      doc.setSearchableText(generateSearchableText(link));
-
-      // Get categories for the link
-      List<LinkCategory> linkCategories = linkCategoryService.findByLinkId(link.getId());
-      List<String> categories = linkCategories.stream()
-          .map(LinkCategory::getCategory)
-          .collect(Collectors.toList());
-      doc.setCategories(categories);
-
-      logger.info("Creating Elasticsearch document for link ID {} with {} categories", link.getId(),
-          categories.size());
-      elasticsearchClientService.saveLinkDocument(doc);
-    } catch (Exception e) {
-      logger.error("Error creating Elasticsearch document for link ID {}: {}", link.getId(),
-          e.getMessage(), e);
-    }
-  }
-
-  /**
    * Updates an existing Elasticsearch document for a link
    */
-  private void updateElasticsearchDocument(Link link) {
+  public void updateElasticsearchDocument(Link link) {
     if (!elasticsearchSyncConfig.isEnabled()) {
       logger.debug("Elasticsearch sync is disabled, skipping document update for link ID {}",
           link.getId());
@@ -407,34 +346,29 @@ public class LinkProcessingService {
 
     try {
       // Find existing document
+
       List<LinkDocument> existingDocs = elasticsearchClientService.searchByTitleOrText(
           link.getTitle(), null);
-
+      LinkDocument doc = null;
       if (!existingDocs.isEmpty()) {
-        LinkDocument doc = existingDocs.get(0);
-        doc.setTitle(link.getTitle());
-        doc.setLink(link.getLink());
-        doc.setThumbnail(link.getThumbnail());
-        doc.setDuration(link.getDuration());
-        doc.setSheetName(link.getSheetName());
-        doc.setSearchableText(generateSearchableText(link));
-
-        // Update categories
-        List<LinkCategory> linkCategories = linkCategoryService.findByLinkId(link.getId());
-        List<String> categories = linkCategories.stream()
-            .map(LinkCategory::getCategory)
-            .collect(Collectors.toList());
-        doc.setCategories(categories);
-
-        logger.info("Updating Elasticsearch document for link ID {} with {} categories",
-            link.getId(), categories.size());
-        elasticsearchClientService.saveLinkDocument(doc);
+        doc = existingDocs.get(0);
       } else {
-        // If document doesn't exist in Elasticsearch, create it
-        logger.info("Elasticsearch document not found for link ID {}, creating new document",
-            link.getId());
-        createElasticsearchDocument(link);
+        doc = new LinkDocument();
+        doc.setId(String.valueOf(link.getId()));
       }
+      doc.setTitle(link.getTitle());
+      doc.setLink(link.getLink());
+      doc.setThumbnail(link.getThumbnail());
+      doc.setDuration(link.getDuration());
+      doc.setSearchableText(generateSearchableText(link));
+
+      // Update categories
+      List<String> categoriesList = tokenize(link.getCategory());
+      doc.setCategories(categoriesList);
+      doc.setModels(tokenize(link.getStar()));
+      logger.info("Updating Elasticsearch document for link ID {} with {} categories",
+          link.getId(), categoriesList.size());
+      elasticsearchClientService.saveLinkDocument(doc);
     } catch (Exception e) {
       logger.error("Error updating Elasticsearch document for link ID {}: {}", link.getId(),
           e.getMessage(), e);
@@ -448,14 +382,14 @@ public class LinkProcessingService {
     StringBuilder searchableText = new StringBuilder();
     searchableText.append(link.getTitle());
 
-    if (link.getSheetName() != null && !link.getSheetName().isEmpty()) {
-      searchableText.append(" ").append(link.getSheetName());
-    }
-
     // Add categories to searchable text
-    List<LinkCategory> linkCategories = linkCategoryService.findByLinkId(link.getId());
-    for (LinkCategory linkCategory : linkCategories) {
-      searchableText.append(" ").append(linkCategory.getCategory());
+    List<String> categories = tokenize(link.getCategory());
+    List<String> models = tokenize(link.getStar());
+    for (String category : categories) {
+      searchableText.append(" ").append(category);
+    }
+    for (String model : models) {
+      searchableText.append(" ").append(model);
     }
 
     return searchableText.toString().trim();

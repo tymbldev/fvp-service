@@ -11,8 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.elasticsearch.action.delete.DeleteRequest;
-import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -124,38 +122,6 @@ public class ElasticsearchClientService {
     });
   }
 
-  public List<LinkDocument> findByCategoriesContaining(String category) {
-    return LoggingUtil.logOperationTime(logger, "find documents by category", () -> {
-      List<LinkDocument> results = new ArrayList<>();
-      try {
-        if (category == null || category.isEmpty()) {
-          logger.warn("Category is null or empty");
-          return results;
-        }
-
-        SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.query(QueryBuilders.matchQuery("categories", category));
-        searchRequest.source(searchSourceBuilder);
-
-        SearchResponse response = esClient.search(searchRequest, RequestOptions.DEFAULT);
-
-        for (SearchHit hit : response.getHits().getHits()) {
-          Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-          LinkDocument document = convertToLinkDocument(sourceAsMap);
-          document.setId(hit.getId());
-          results.add(document);
-        }
-
-        logger.info("Found {} documents with category {}", results.size(), category);
-      } catch (Exception e) {
-        logger.error("Error searching for documents with category {}: {}", category, e.getMessage(),
-            e);
-        throw new RuntimeException("Failed to search documents by category", e);
-      }
-      return results;
-    });
-  }
 
   public List<LinkDocument> searchByTitleOrText(String title, String searchableText) {
     return LoggingUtil.logOperationTime(logger, "search documents by title or text", () -> {
@@ -193,24 +159,6 @@ public class ElasticsearchClientService {
     });
   }
 
-  public void deleteById(String id) {
-    LoggingUtil.logOperationTime(logger, "delete document by id", () -> {
-      try {
-        if (id == null || id.isEmpty()) {
-          logger.error("Document ID is required for deletion");
-          return null;
-        }
-
-        DeleteRequest request = new DeleteRequest(LINKS_INDEX, id);
-        DeleteResponse response = esClient.delete(request, RequestOptions.DEFAULT);
-        logger.info("Deleted document with ID: {}", response.getId());
-        return null;
-      } catch (Exception e) {
-        logger.error("Error deleting document with ID {}: {}", id, e.getMessage(), e);
-        throw new RuntimeException("Failed to delete document", e);
-      }
-    });
-  }
 
   private Map<String, Object> convertToMap(LinkDocument document) {
     Map<String, Object> map = new HashMap<>();
@@ -221,9 +169,7 @@ public class ElasticsearchClientService {
     map.put("thumbnail", document.getThumbnail());
     map.put("thumbPath", document.getThumbPath());
     map.put("duration", document.getDuration());
-    map.put("sheetName", document.getSheetName());
     map.put("source", document.getSource());
-    map.put("stars", document.getStars());
 
     // Format date for Elasticsearch using ISO-8601 format
     if (document.getCreatedAt() != null) {
@@ -237,6 +183,7 @@ public class ElasticsearchClientService {
     map.put("trailer", document.getTrailer());
     map.put("searchableText", document.getSearchableText());
     map.put("categories", document.getCategories());
+    map.put("models", document.getModels());
     return map;
   }
 
@@ -249,9 +196,7 @@ public class ElasticsearchClientService {
     document.setThumbnail((String) map.get("thumbnail"));
     document.setThumbPath((String) map.get("thumbPath"));
     document.setDuration((Integer) map.get("duration"));
-    document.setSheetName((String) map.get("sheetName"));
     document.setSource((String) map.get("source"));
-    document.setStars((Integer) map.get("stars"));
 
     // Parse date from Elasticsearch format with more flexible parsing
     String createdAtStr = (String) map.get("createdAt");
@@ -291,6 +236,7 @@ public class ElasticsearchClientService {
     document.setTrailer((String) map.get("trailer"));
     document.setSearchableText((String) map.get("searchableText"));
     document.setCategories((List<String>) map.get("categories"));
+    document.setModels((List<String>) map.get("models"));
     return document;
   }
 
@@ -516,6 +462,7 @@ public class ElasticsearchClientService {
               .field("title")
               .field("searchableText")
               .field("categories")
+              .field("models")
               .field("source")
               .field("sheetName")
               .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));

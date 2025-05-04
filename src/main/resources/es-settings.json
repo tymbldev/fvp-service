@@ -8,7 +8,10 @@
         "custom_analyzer": {
           "type": "custom",
           "tokenizer": "standard",
-          "filter": ["lowercase", "asciifolding"]
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
         }
       }
     },
@@ -32,6 +35,9 @@
       "categories": {
         "type": "keyword"
       },
+      "models": {
+        "type": "keyword"
+      },
       "duration": {
         "type": "integer"
       },
@@ -49,9 +55,6 @@
       },
       "source": {
         "type": "keyword"
-      },
-      "stars": {
-        "type": "integer"
       },
       "createdAt": {
         "type": "date"

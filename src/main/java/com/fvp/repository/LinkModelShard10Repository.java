@@ -75,7 +75,7 @@ public interface LinkModelShard10Repository extends ShardedLinkModelRepository<L
       "GROUP BY model", nativeQuery = true)
   List<Object[]> countByTenantIdAndModels(@Param("tenantId") Integer tenantId,
       @Param("modelNames") List<String> modelNames);
-      
+
   @Override
   @Query(value = "SELECT lm.* FROM link_model_shard_10 lm JOIN link l ON lm.link_id = l.id " +
       "WHERE lm.tenant_id = :tenantId AND lm.model = :model " +
@@ -92,7 +92,7 @@ public interface LinkModelShard10Repository extends ShardedLinkModelRepository<L
       @Param("offset") int offset,
       @Param("limit") int limit
   );
-  
+
   @Override
   @Query(value = "SELECT DISTINCT lm.model FROM link_model_shard_10 lm " +
       "JOIN link l ON lm.link_id = l.id " +
@@ -100,7 +100,7 @@ public interface LinkModelShard10Repository extends ShardedLinkModelRepository<L
       "AND l.thumb_path_processed = true",
       nativeQuery = true)
   List<String> findAllDistinctModels(@Param("tenantId") Integer tenantId);
-  
+
   @Override
   @Query(value = "SELECT lm.* FROM link_model_shard_10 lm JOIN link l ON lm.link_id = l.id " +
       "WHERE lm.tenant_id = :tenantId AND lm.model = :model " +
@@ -119,7 +119,7 @@ public interface LinkModelShard10Repository extends ShardedLinkModelRepository<L
       @Param("offset") int offset,
       @Param("limit") int limit
   );
-  
+
   @Override
   @Query(value = "SELECT COUNT(*) FROM link_model_shard_10 lm JOIN link l ON lm.link_id = l.id " +
       "WHERE lm.tenant_id = :tenantId AND lm.model = :model " +
@@ -133,7 +133,7 @@ public interface LinkModelShard10Repository extends ShardedLinkModelRepository<L
       @Param("maxDuration") Integer maxDuration,
       @Param("quality") String quality
   );
-  
+
   @Override
   @Modifying
   @Transactional

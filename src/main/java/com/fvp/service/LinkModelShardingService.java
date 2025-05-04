@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +38,7 @@ public class LinkModelShardingService {
 
     // Use the ShardHashingUtil to calculate shard number
     int shardNumber = ShardHashingUtil.calculateShard(model.hashCode());
-    
+
     // Ensure shard number is between 1 and 50
     shardNumber = ((shardNumber - 1) % TOTAL_SHARDS) + 1;
 
@@ -69,11 +67,12 @@ public class LinkModelShardingService {
    * @return the repository for the specified shard
    */
   @SuppressWarnings("unchecked")
-  public ShardedLinkModelRepository<? extends BaseLinkModel> getRepositoryForShard(int shardNumber) {
+  public ShardedLinkModelRepository<? extends BaseLinkModel> getRepositoryForShard(
+      int shardNumber) {
     try {
       String repositoryClassName = ShardHashingUtil.getRepositoryClassName(shardNumber, false);
       Class<?> repositoryClass = Class.forName(repositoryClassName);
-      return (ShardedLinkModelRepository<? extends BaseLinkModel>) 
+      return (ShardedLinkModelRepository<? extends BaseLinkModel>)
           SpringContext.getBean(repositoryClass);
     } catch (Exception e) {
       logger.error("Error getting repository for shard {}: {}", shardNumber, e.getMessage());
@@ -127,7 +126,7 @@ public class LinkModelShardingService {
    */
   @Transactional
   public <T extends BaseLinkModel> T save(T entity) {
-    ShardedLinkModelRepository<T> repository = 
+    ShardedLinkModelRepository<T> repository =
         (ShardedLinkModelRepository<T>) getRepositoryForModel(entity.getModel());
     return repository.save(entity);
   }
@@ -156,9 +155,9 @@ public class LinkModelShardingService {
     for (Map.Entry<Integer, List<T>> entry : entitiesByShard.entrySet()) {
       int shardNumber = entry.getKey();
       List<T> shardEntities = entry.getValue();
-      
+
       try {
-        ShardedLinkModelRepository<T> repository = 
+        ShardedLinkModelRepository<T> repository =
             (ShardedLinkModelRepository<T>) getRepositoryForShard(shardNumber);
         savedEntities.addAll(repository.saveAll(shardEntities));
       } catch (Exception e) {
@@ -196,8 +195,8 @@ public class LinkModelShardingService {
   }
 
   /**
-   * Finds all LinkModel entities by link ID across all shards
-   * This requires querying all shards since we don't know which shard contains the link
+   * Finds all LinkModel entities by link ID across all shards This requires querying all shards
+   * since we don't know which shard contains the link
    *
    * @param linkId the link ID to find
    * @return a list of all matching entities from all shards
@@ -214,8 +213,8 @@ public class LinkModelShardingService {
   }
 
   /**
-   * Deletes all LinkModel entities by link ID across all shards
-   * This requires querying all shards since we don't know which shard contains the link
+   * Deletes all LinkModel entities by link ID across all shards This requires querying all shards
+   * since we don't know which shard contains the link
    *
    * @param linkId the link ID to delete
    */

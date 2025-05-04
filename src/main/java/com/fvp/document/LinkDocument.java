@@ -14,10 +14,9 @@ public class LinkDocument {
   private Integer duration;
   private String thumbnail;
   private String thumbPath;
-  private String sheetName;
   private String link;
   private String source;
-  private Integer stars;
+  private List<String> models;
   private Date createdAt;
   private String trailer;
   private String searchableText;

@@ -1,6 +1,5 @@
 package com.fvp.service;
 
-import com.fvp.document.LinkDocument;
 import com.fvp.entity.Link;
 import com.fvp.entity.ProcessedSheet;
 import com.fvp.repository.LinkRepository;
@@ -13,7 +12,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,9 +43,10 @@ public class GoogleSheetProcessingService {
   private final String applicationName;
   private final int batchSize;
   private final LinkProcessingService linkProcessingService;
+  private final CategoryProcessingService categoryProcessingService;
+  private final ModelProcessingService modelProcessingService;
   private final ProcessedSheetRepository processedSheetRepository;
   private final LinkRepository linkRepository;
-  private final ElasticsearchClientService elasticsearchClientService;
   private final Map<String, Boolean> sheetStatusCache = new HashMap<>();
   private final Pattern datePattern;
 
@@ -59,18 +58,20 @@ public class GoogleSheetProcessingService {
       @Value("${google.sheets.application.name}") String applicationName,
       @Value("${google.sheets.batch-size:100}") int batchSize,
       LinkProcessingService linkProcessingService,
+      CategoryProcessingService categoryProcessingService,
+      ModelProcessingService modelProcessingService,
       ProcessedSheetRepository processedSheetRepository,
-      LinkRepository linkRepository,
-      ElasticsearchClientService elasticsearchClientService) {
+      LinkRepository linkRepository) {
     this.dateFormatPattern = dateFormatPattern;
     this.spreadsheetId = spreadsheetId;
     this.apiKey = apiKey;
     this.applicationName = applicationName;
     this.batchSize = batchSize;
+    this.categoryProcessingService = categoryProcessingService;
+    this.modelProcessingService = modelProcessingService;
     this.linkProcessingService = linkProcessingService;
     this.processedSheetRepository = processedSheetRepository;
     this.linkRepository = linkRepository;
-    this.elasticsearchClientService = elasticsearchClientService;
 
     // Convert SimpleDateFormat pattern to regex pattern
     String regexPattern = dateFormatPattern
@@ -161,15 +162,8 @@ public class GoogleSheetProcessingService {
       List<Map<String, String>> rows = fetchSheet(sheetsService, sheetName, false);
       List<Link> sheetLinks = processSheet(spreadsheetId, sheetName, rows);
       allLinks.addAll(sheetLinks);
-
       // Mark sheet as processed
       markSheetAsProcessed(sheetName, true, rows.size());
-    }
-
-    // Save all links in batches
-    if (!allLinks.isEmpty()) {
-      saveLinksInBatches(allLinks);
-      logger.info("Saved {} links in batches", allLinks.size());
     }
   }
 
@@ -306,12 +300,10 @@ public class GoogleSheetProcessingService {
       try {
         Link link = createLinkFromRow(workbookId, sheetName, row);
         if (link != null) {
-          // Extract categories and models from the row
-          String categories = row.get("category");
-          String models = row.get("star");
-
           // Process the link with its categories and models
-          linkProcessingService.processLink(link, categories, models);
+          categoryProcessingService.processCategories(link, link.getCategory());
+          modelProcessingService.processModels(link, link.getStar());
+          linkProcessingService.processLink(link);
           links.add(link);
 
           // Calculate and log time taken for this row
@@ -360,6 +352,8 @@ public class GoogleSheetProcessingService {
       link.setTenantId(tenantId);
       link.setTitle(row.get("title"));
       link.setLink(row.get("link"));
+      link.setStar(row.get("star"));
+      link.setCategory(row.get("category"));
       link.setThumbnail(row.get("thumbnail"));
       link.setDuration(parseDuration(row.get("duration")));
       link.setQuality(row.get("quality"));
@@ -387,50 +381,6 @@ public class GoogleSheetProcessingService {
       logger.error("Error creating link from row: {}", e.getMessage());
       return null;
     }
-  }
-
-  private void saveLinksInBatches(List<Link> links) {
-    if (links.isEmpty()) {
-      return;
-    }
-
-    try {
-      List<Link> savedLinks = linkRepository.saveAll(links);
-      linkRepository.flush(); // Explicitly flush to ensure they're written to DB
-      logger.info("Saved {} links to database", savedLinks.size());
-
-      // Save to Elasticsearch in batches
-      for (Link link : savedLinks) {
-        try {
-          LinkDocument doc = createLinkDocument(link);
-          elasticsearchClientService.saveLinkDocument(doc);
-        } catch (Exception e) {
-          logger.error("Error saving document to Elasticsearch: {}", e.getMessage());
-        }
-      }
-      logger.info("Saved {} documents to Elasticsearch", links.size());
-    } catch (Exception e) {
-      logger.error("Error saving links in batch: {}", e.getMessage(), e);
-      throw new RuntimeException("Failed to save links batch", e);
-    }
-  }
-
-  private LinkDocument createLinkDocument(Link link) {
-    LinkDocument doc = new LinkDocument();
-    doc.setId(link.getId().toString());
-    doc.setTenantId(link.getTenantId());
-    doc.setTitle(link.getTitle());
-    doc.setLink(link.getLink());
-    doc.setThumbnail(link.getThumbnail());
-    doc.setDuration(link.getDuration());
-    doc.setSheetName(link.getSheetName());
-    doc.setCreatedAt(new Date());
-    doc.setSearchableText(generateSearchableText(link));
-    return doc;
-  }
-
-  private String generateSearchableText(Link link) {
-    return String.format("%s %s", link.getTitle(), link.getSheetName());
   }
 
   private Integer parseDuration(String duration) {

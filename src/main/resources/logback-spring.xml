@@ -1,76 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration debug="true">
-    <!-- Try both property names for compatibility -->
-    <property name="LOGS_PATH" value="${LOG_PATH:-${logs.path:-logs}}" />
-    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n" />
+  <!-- Try both property names for compatibility -->
+  <property name="LOGS_PATH" value="${LOG_PATH:-${logs.path:-logs}}"/>
+  <property name="LOG_PATTERN"
+    value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
 
-    <!-- Console Appender (for troubleshooting) -->
-    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
-        </encoder>
-    </appender>
+  <!-- Console Appender (for troubleshooting) -->
+  <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+    </encoder>
+  </appender>
 
-    <!-- Application Log File Appender -->
-    <appender name="ApplicationLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOGS_PATH}/application.log</file>
-        <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOGS_PATH}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-    </appender>
+  <!-- Application Log File Appender -->
+  <appender name="ApplicationLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOGS_PATH}/application.log</file>
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOGS_PATH}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>30</maxHistory>
+    </rollingPolicy>
+  </appender>
 
-    <!-- Access Log File Appender -->
-    <appender name="AccessLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOGS_PATH}/access.log</file>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOGS_PATH}/access.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-    </appender>
+  <!-- Access Log File Appender -->
+  <appender name="AccessLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOGS_PATH}/access.log</file>
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOGS_PATH}/access.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>30</maxHistory>
+    </rollingPolicy>
+  </appender>
 
-    <!-- Access Log Logger -->
-    <logger name="ACCESS_LOG" level="INFO" additivity="false">
-        <appender-ref ref="AccessLog" />
+  <!-- Access Log Logger -->
+  <logger name="ACCESS_LOG" level="INFO" additivity="false">
+    <appender-ref ref="AccessLog"/>
+  </logger>
+
+  <!-- Development Profile Configuration -->
+  <springProfile name="!prod">
+    <!-- Root Logger for Development -->
+    <root level="INFO">
+      <appender-ref ref="Console"/>
+      <appender-ref ref="ApplicationLog"/>
+    </root>
+
+    <!-- Application Loggers for Development -->
+    <logger name="com.fvp" level="DEBUG" additivity="false">
+      <appender-ref ref="Console"/>
+      <appender-ref ref="ApplicationLog"/>
     </logger>
+  </springProfile>
 
-    <!-- Development Profile Configuration -->
-    <springProfile name="!prod">
-        <!-- Root Logger for Development -->
-        <root level="INFO">
-            <appender-ref ref="Console" />
-            <appender-ref ref="ApplicationLog" />
-        </root>
+  <!-- Production Profile Configuration -->
+  <springProfile name="prod">
+    <!-- Root Logger for Production -->
+    <root level="INFO">
+      <appender-ref ref="Console"/>
+      <appender-ref ref="ApplicationLog"/>
+    </root>
 
-        <!-- Application Loggers for Development -->
-        <logger name="com.fvp" level="DEBUG" additivity="false">
-            <appender-ref ref="Console" />
-            <appender-ref ref="ApplicationLog" />
-        </logger>
-    </springProfile>
+    <!-- Application Loggers for Production -->
+    <logger name="com.fvp" level="INFO" additivity="false">
+      <appender-ref ref="Console"/>
+      <appender-ref ref="ApplicationLog"/>
+    </logger>
+  </springProfile>
 
-    <!-- Production Profile Configuration -->
-    <springProfile name="prod">
-        <!-- Root Logger for Production -->
-        <root level="INFO">
-            <appender-ref ref="Console" />
-            <appender-ref ref="ApplicationLog" />
-        </root>
-
-        <!-- Application Loggers for Production -->
-        <logger name="com.fvp" level="INFO" additivity="false">
-            <appender-ref ref="Console" />
-            <appender-ref ref="ApplicationLog" />
-        </logger>
-    </springProfile>
-
-    <!-- Framework Loggers (common for all profiles) -->
-    <logger name="org.springframework" level="INFO" />
-    <logger name="org.hibernate" level="INFO" />
+  <!-- Framework Loggers (common for all profiles) -->
+  <logger name="org.springframework" level="INFO"/>
+  <logger name="org.hibernate" level="INFO"/>
 </configuration> 

@@ -1,10 +1,10 @@
 package com.fvp.dto;
 
-import java.time.LocalDateTime;
+import java.io.Serializable;
 import lombok.Data;
 
 @Data
-public class ModelWithLinkDTO {
+public class ModelWithLinkDTO implements Serializable {
 
   private Integer id;
   private Integer tenantId;
@@ -14,7 +14,6 @@ public class ModelWithLinkDTO {
   private String thumbnail;
   private String thumbPath;
   private Integer age;
-  private LocalDateTime createdAt;
 
   // Link related fields
   private String link;
@@ -22,5 +21,9 @@ public class ModelWithLinkDTO {
   private String linkThumbnail;
   private String linkThumbPath;
   private Integer linkDuration;
-  private Integer linkCount;
+  private Long linkCount;
+  private Long linkId;
+
+  private String linkSource;
+  private String linkTrailer;
 } 

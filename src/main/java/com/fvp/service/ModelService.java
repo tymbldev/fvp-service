@@ -6,22 +6,26 @@ import com.fvp.entity.Model;
 import com.fvp.repository.ModelRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ModelService {
 
-  private static final Logger logger = LoggingUtil.getLogger(ModelService.class);
+  private static final Logger logger = LoggerFactory.getLogger(ModelService.class);
   private static final String MODEL_CACHE_PREFIX = "model_";
   private static final int CACHE_EXPIRY_MINUTES = 60;
 
-  @Autowired
-  private ModelRepository modelRepository;
+  private final ModelRepository modelRepository;
+  private final Map<String, Model> modelCache = new ConcurrentHashMap<>();
 
   @Autowired
   private ModelUtilService modelUtilService;
@@ -29,16 +33,17 @@ public class ModelService {
   @Autowired
   private CacheService cacheService;
 
+  public ModelService(ModelRepository modelRepository) {
+    this.modelRepository = modelRepository;
+  }
+
   public List<ModelWithLinkDTO> getAllModels(Integer tenantId) {
     String cacheKey = generateCacheKey(tenantId, "home");
 
     return LoggingUtil.logOperationTime(logger, "get home models", () -> {
       Optional<List<ModelWithLinkDTO>> cachedModels = cacheService.getCollectionFromCache(
-          CacheService.CACHE_NAME_MODELS,
-          cacheKey,
-          new TypeReference<List<ModelWithLinkDTO>>() {
-          }
-      );
+          CacheService.CACHE_NAME_MODELS, cacheKey, new TypeReference<List<ModelWithLinkDTO>>() {
+          });
       if (cachedModels.isPresent()) {
         logger.info("Cache hit for home models for tenant: {}", tenantId);
         return cachedModels.get();
@@ -46,6 +51,9 @@ public class ModelService {
 
       logger.info("Cache miss for home models for tenant: {}", tenantId);
       List<Model> models = modelRepository.findByTenantId(tenantId);
+      for (Model model : models) {
+        modelCache.put(model.getName(), model);
+      }
       List<ModelWithLinkDTO> modelDTOs = modelUtilService.getFirstLinksForModels(tenantId,
           models.stream().map(Model::getName).collect(Collectors.toList()));
 
@@ -62,10 +70,7 @@ public class ModelService {
 
     return LoggingUtil.logOperationTime(logger, "get model first link", () -> {
       Optional<ModelWithLinkDTO> cachedModel = cacheService.getFromCache(
-          CacheService.CACHE_NAME_MODELS,
-          cacheKey,
-          ModelWithLinkDTO.class
-      );
+          CacheService.CACHE_NAME_MODELS, cacheKey, ModelWithLinkDTO.class);
       if (cachedModel.isPresent()) {
         logger.info("Cache hit for model first link: {}", modelName);
         return cachedModel.get();
@@ -79,6 +84,29 @@ public class ModelService {
       }
       return model;
     });
+  }
+
+  public Map<String, Model> getAllModels() {
+    if (modelCache.isEmpty()) {
+      List<Model> models = modelRepository.findAll();
+      for (Model model : models) {
+        modelCache.put(model.getName(), model);
+      }
+    }
+    return modelCache;
+  }
+
+  public void clearCache() {
+    modelCache.clear();
+  }
+
+  @Transactional
+  public Model saveModel(Model model) {
+    try {
+      return modelRepository.save(model);
+    } finally {
+      clearCache();
+    }
   }
 
   private String generateCacheKey(Integer tenantId, String suffix) {

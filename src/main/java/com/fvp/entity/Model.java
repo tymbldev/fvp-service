@@ -36,11 +36,14 @@ public class Model {
   @Column(nullable = false)
   private String thumbnail;
 
-  @Column(length = 100, nullable = false)
-  private String thumbPath;
+  @Column(length = 300, nullable = false)
+  private String thumbpath;
 
   @Column(nullable = false)
   private Integer age = 0;
+
+  @Column(nullable = false)
+  private Integer dataPresent = 1;
 
   @CreationTimestamp
   @Column(name = "created_at")

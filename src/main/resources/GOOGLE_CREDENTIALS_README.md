@@ -2,7 +2,8 @@
 
 ## API Key Authentication
 
-This application uses Google Sheets API with API key authentication for read-only access to Google Sheets.
+This application uses Google Sheets API with API key authentication for read-only access to Google
+Sheets.
 
 ### Configuration
 
@@ -19,9 +20,9 @@ google.sheets.application.name=FVP-Service
 
 - The API key is restricted to read-only access to Google Sheets.
 - For additional security, consider setting up API key restrictions in the Google Cloud Console:
-  - Restrict the API key to only the Google Sheets API
-  - Set up HTTP referrer restrictions to limit which domains can use the key
-  - Consider using IP address restrictions for production environments
+    - Restrict the API key to only the Google Sheets API
+    - Set up HTTP referrer restrictions to limit which domains can use the key
+    - Consider using IP address restrictions for production environments
 
 ### Updating the Configuration
 
