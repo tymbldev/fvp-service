@@ -42,6 +42,7 @@ public class LinkCategoryShardingService {
    */
   @Cacheable(value = "categoryShardMapping", key = "#category")
   public int getShardNumber(String category) {
+    category = category.toLowerCase();
     // First check the cache
     if (categoryShardMap.containsKey(category)) {
       return categoryShardMap.get(category);

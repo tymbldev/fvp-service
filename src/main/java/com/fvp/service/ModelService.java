@@ -103,6 +103,10 @@ public class ModelService {
   @Transactional
   public Model saveModel(Model model) {
     try {
+      getAllModels();
+      if (modelCache.containsKey(model.getName())) {
+        logger.warn("Not saving entry into DB becasue {} exists already", model.getName());
+      }
       return modelRepository.save(model);
     } finally {
       clearCache();

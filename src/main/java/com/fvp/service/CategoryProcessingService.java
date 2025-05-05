@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -60,6 +61,16 @@ public class CategoryProcessingService {
 
     // Create new categories in a single batch
     if (!categoriesToCreate.isEmpty()) {
+      Set<String> finalCategoriesToCreate = new HashSet<>(categoriesToCreate);
+
+      for (String cat : categoriesToCreate) {
+        if (cat.contains(";")) {
+          finalCategoriesToCreate.addAll(Arrays.asList(cat.split(";")));
+        } else {
+          finalCategoriesToCreate.add(cat);
+        }
+      }
+      categoriesToCreate = finalCategoriesToCreate;
       logger.info("Creating {} new categories in AllCat", categoriesToCreate.size());
       List<AllCat> newCategories = new ArrayList<>();
 

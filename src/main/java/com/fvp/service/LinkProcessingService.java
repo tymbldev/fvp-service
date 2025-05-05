@@ -190,7 +190,6 @@ public class LinkProcessingService {
       String category = token.trim();
       if (!category.isEmpty()) {
         // Check if the token exactly matches any category
-        boolean exactMatch = false;
         for (AllCat allCat : allCategories) {
           if (allCat.getName().equalsIgnoreCase(category)) {
             categorySet.add(allCat.getName());

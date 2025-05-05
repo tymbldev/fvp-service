@@ -5,6 +5,7 @@ import com.fvp.entity.Model;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +50,16 @@ public class ModelProcessingService {
         }
       }
     }
+    Set<String> finalModelToBeAdded = new HashSet<>(modelSetToBeAdded);
+
+    for (String model : modelSetToBeAdded) {
+      if (model.contains(";")) {
+        finalModelToBeAdded.addAll(Arrays.asList(model.split(";")));
+      } else {
+        finalModelToBeAdded.add(model);
+      }
+    }
+    modelSetToBeAdded = finalModelToBeAdded;
     // Save all matched models
     int savedCount = 0;
     for (String modelName : modelSetToBeAdded) {
