@@ -95,7 +95,7 @@ public class ElasticsearchSyncService {
         }
 
         // Use a smaller batch size for memory efficiency
-        int batchSize = 1000; // Reduced from default to prevent OOM
+        int batchSize = 100; // Reduced from default to prevent OOM
         int processedCount = 0;
         long lastLogTime = System.currentTimeMillis();
 
@@ -163,6 +163,7 @@ public class ElasticsearchSyncService {
   private void processLinksBatch(List<Link> links) {
     for (Link link : links) {
       try {
+        logger.info("Processing link ID into elastic: {}", link.getId());
         linkProcessingService.updateElasticsearchDocument(link);
       } catch (Exception e) {
         logger.error("Error creating document for link ID {}: {}", link.getId(), e.getMessage(), e);
