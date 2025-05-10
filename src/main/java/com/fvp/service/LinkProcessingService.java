@@ -343,9 +343,11 @@ public class LinkProcessingService {
       // Find existing document
 
       List<LinkDocument> existingDocs = elasticsearchClientService.searchByTitleOrText(
-          link.getTitle(), null);
+          link.getLink(), null);
       LinkDocument doc = null;
       if (!existingDocs.isEmpty()) {
+        logger.info("Existing link found for link {} with ID {}", link.getLink(),
+            existingDocs.get(0).getId());
         doc = existingDocs.get(0);
       } else {
         doc = new LinkDocument();

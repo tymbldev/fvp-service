@@ -107,7 +107,7 @@ public class ElasticsearchClientService {
         }
 
         Map<String, Object> documentMap = convertToMap(document);
-        logger.debug("Indexing document: {}", documentMap);
+        logger.info("Indexing document: {}", documentMap);
 
         // Use low-level client directly
         try {
@@ -125,7 +125,7 @@ public class ElasticsearchClientService {
 
           int statusCode = lowLevelResponse.getStatusLine().getStatusCode();
           if (statusCode >= 200 && statusCode < 300) {
-            logger.info("Document indexed successfully: ID={}", document.getId());
+              logger.info("Document indexed successfully: ID={}", document.getId());
           } else {
             logger.warn("Indexing returned non-success status: {}", statusCode);
             throw new RuntimeException("Failed to index document: HTTP " + statusCode);
@@ -144,9 +144,9 @@ public class ElasticsearchClientService {
   }
 
 
-  public List<LinkDocument> searchByTitleOrText(String title, String searchableText) {
+  public List<LinkDocument> searchByTitleOrText(String link, String searchableText) {
     if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping search for title={}, text={}", title, searchableText);
+      logger.debug("Elasticsearch disabled: skipping search for link={}, text={}", link, searchableText);
       return new ArrayList<>();
     }
     
@@ -156,8 +156,8 @@ public class ElasticsearchClientService {
         SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-        if (title != null && !title.isEmpty()) {
-          searchSourceBuilder.query(QueryBuilders.matchQuery("title", title));
+        if (link != null && !link.isEmpty()) {
+          searchSourceBuilder.query(QueryBuilders.matchQuery("title", link));
         } else if (searchableText != null && !searchableText.isEmpty()) {
           searchSourceBuilder.query(QueryBuilders.matchQuery("searchableText", searchableText));
         } else {
