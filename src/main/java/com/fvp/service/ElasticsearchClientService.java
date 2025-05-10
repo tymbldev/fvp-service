@@ -143,25 +143,28 @@ public class ElasticsearchClientService {
     });
   }
 
-
-  public List<LinkDocument> searchByTitleOrText(String link, String searchableText) {
+  /**
+   * Search for documents by link ID
+   * @param link The link ID to search for
+   * @param searchableText Unused parameter kept for backward compatibility
+   * @return List of matching LinkDocument objects
+   */
+  public List<LinkDocument> searchByLinkId(String link, String searchableText) {
     if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping search for link={}, text={}", link, searchableText);
+      logger.debug("Elasticsearch disabled: skipping search for link={}", link);
       return new ArrayList<>();
     }
     
-    return LoggingUtil.logOperationTime(logger, "search documents by title or text", () -> {
+    return LoggingUtil.logOperationTime(logger, "search documents by link ID", () -> {
       List<LinkDocument> results = new ArrayList<>();
       try {
         SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
         if (link != null && !link.isEmpty()) {
-          searchSourceBuilder.query(QueryBuilders.matchQuery("title", link));
-        } else if (searchableText != null && !searchableText.isEmpty()) {
-          searchSourceBuilder.query(QueryBuilders.matchQuery("searchableText", searchableText));
+          searchSourceBuilder.query(QueryBuilders.termQuery("id", link));
         } else {
-          logger.warn("Both title and searchableText are null or empty");
+          logger.warn("Link ID is null or empty");
           return results;
         }
 
@@ -176,7 +179,7 @@ public class ElasticsearchClientService {
           results.add(document);
         }
 
-        logger.info("Found {} documents matching search criteria", results.size());
+        logger.info("Found {} documents matching link ID {}", results.size(), link);
       } catch (Exception e) {
         logger.error("Error searching documents: {}", e.getMessage(), e);
         throw new RuntimeException("Failed to search documents", e);
@@ -184,7 +187,6 @@ public class ElasticsearchClientService {
       return results;
     });
   }
-
 
   private Map<String, Object> convertToMap(LinkDocument document) {
     Map<String, Object> map = new HashMap<>();
