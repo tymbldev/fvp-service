@@ -193,7 +193,7 @@ public class ElasticsearchClientService {
     Map<String, Object> map = new HashMap<>();
     map.put("id", document.getLinkId());
     map.put("tenantId", document.getTenantId());
-    map.put("title", document.getTitle());
+    map.put("title", document.getLinkTitle());
     map.put("link", document.getLink());
     map.put("thumbnail", document.getLinkThumbnail());
     map.put("thumbPath", document.getLinkThumbPath());
@@ -220,7 +220,7 @@ public class ElasticsearchClientService {
     LinkDocument document = new LinkDocument();
     document.setLinkId((String) map.get("id"));
     document.setTenantId((Integer) map.get("tenantId"));
-    document.setTitle((String) map.get("title"));
+    document.setLinkTitle((String) map.get("title"));
     document.setLink((String) map.get("link"));
     document.setLinkThumbnail((String) map.get("thumbnail"));
     document.setLinkThumbPath((String) map.get("thumbPath"));

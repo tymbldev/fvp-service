@@ -47,14 +47,13 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
   Link findByLinkAndTenantId(String link, Integer tenantId);
 
   /**
-   * Find all link with pagination
+   * Find all processed links with pagination
    *
-   * @param offset Starting position
-   * @param limit Maximum number of records to return
-   * @return List of link
+   * @param pageable Pagination information
+   * @return Page of links
    */
-  @Query(value = "SELECT l FROM Link l WHERE l.thumbPathProcessed = 1 ORDER BY l.id")
-  List<Link> findAllWithPagination(@Param("offset") int offset, @Param("limit") int limit);
+  @Query("SELECT l FROM Link l WHERE l.thumbPathProcessed = 1 ORDER BY l.id")
+  Page<Link> findAllProcessedLinks(Pageable pageable);
 
   /**
    * Find all distinct tenant IDs from the link table
@@ -65,16 +64,14 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
   List<Integer> findDistinctTenantIds();
 
   /**
-   * Find link for a specific tenant with pagination
+   * Find processed links for a specific tenant with pagination
    *
    * @param tenantId The tenant ID
-   * @param offset Starting position
-   * @param limit Maximum number of records to return
-   * @return List of link
+   * @param pageable Pagination information
+   * @return Page of links
    */
-  @Query(value = "SELECT l.* FROM link l WHERE l.tenant_id = :tenantId AND l.thumb_path_processed = 1 ORDER BY l.id LIMIT :limit OFFSET :offset", nativeQuery = true)
-  List<Link> findByTenantIdWithPagination(@Param("tenantId") Integer tenantId,
-      @Param("offset") int offset, @Param("limit") int limit);
+  @Query("SELECT l FROM Link l WHERE l.tenantId = :tenantId AND l.thumbPathProcessed = 1 ORDER BY l.id")
+  Page<Link> findByTenantIdProcessedLinks(@Param("tenantId") Integer tenantId, Pageable pageable);
 
   /**
    * Count link for a specific tenant

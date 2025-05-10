@@ -355,7 +355,7 @@ public class LinkProcessingService {
 
       // Update all fields from Link entity
       doc.setTenantId(link.getTenantId());
-      doc.setTitle(link.getTitle());
+      doc.setLinkTitle(link.getTitle());
       doc.setLink(link.getLink());
       doc.setLinkThumbnail(link.getThumbnail());
       doc.setLinkThumbPath(link.getThumbpath());

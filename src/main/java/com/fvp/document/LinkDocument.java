@@ -8,7 +8,6 @@ import lombok.Data;
 public class LinkDocument {
 
   private Integer tenantId;
-  private String title;
   private List<String> categories;
   private String link;
   private List<String> models;

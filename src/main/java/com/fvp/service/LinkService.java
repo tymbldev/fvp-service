@@ -125,38 +125,8 @@ public class LinkService {
     });
   }
 
-  public List<Link> findAllWithPagination(int offset, int limit) {
-    // Pagination results are not cached as they are dynamic
-    return LoggingUtil.logOperationTime(logger, "find all links with pagination", () ->
-        linkRepository.findAllWithPagination(offset, limit)
-    );
-  }
 
-  public List<Integer> findDistinctTenantIds() {
-    String cacheKey = "distinct_tenant_ids";
 
-    return LoggingUtil.logOperationTime(logger, "find distinct tenant IDs", () -> {
-      TypeReference<List<Integer>> typeRef = new TypeReference<List<Integer>>() {
-      };
-      Optional<List<Integer>> cachedTenantIds = cacheService.getCollectionFromCache(
-          CacheService.CACHE_NAME_LINKS,
-          cacheKey,
-          typeRef
-      );
-      if (cachedTenantIds.isPresent()) {
-        logger.info("Cache hit for distinct tenant IDs");
-        return cachedTenantIds.get();
-      }
-
-      logger.info("Cache miss for distinct tenant IDs");
-      List<Integer> tenantIds = linkRepository.findDistinctTenantIds();
-      if (!tenantIds.isEmpty()) {
-        cacheService.putInCacheWithExpiry(CacheService.CACHE_NAME_LINKS, cacheKey, tenantIds,
-            CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
-      }
-      return tenantIds;
-    });
-  }
 
   public Link saveAndFlush(Link link) {
     // Invalidate relevant caches when saving a link

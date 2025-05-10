@@ -20,6 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -110,8 +112,10 @@ public class ElasticsearchSyncService {
           System.gc();
 
           // Process batch
-          logger.info("Pulled {} links from db {}", batchSize, offset);
-          List<Link> links = linkRepository.findAllWithPagination(offset, batchSize);
+          logger.info("Pulling links from db starting at position {}", offset);
+          PageRequest pageRequest = PageRequest.of(offset / batchSize, batchSize);
+          Page<Link> linkPage = linkRepository.findAllProcessedLinks(pageRequest);
+          List<Link> links = linkPage.getContent();
           processLinksBatch(links);
           processedCount += links.size();
 
