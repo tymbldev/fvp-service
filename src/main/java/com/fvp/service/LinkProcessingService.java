@@ -346,22 +346,22 @@ public class LinkProcessingService {
       LinkDocument doc = null;
       if (!existingDocs.isEmpty()) {
         logger.info("Existing link found for link ID {} with document ID {}", link.getId(),
-            existingDocs.get(0).getId());
+            existingDocs.get(0).getLinkId());
         doc = existingDocs.get(0);
       } else {
         doc = new LinkDocument();
-        doc.setId(String.valueOf(link.getId()));
+        doc.setLinkId(String.valueOf(link.getId()));
       }
 
       // Update all fields from Link entity
       doc.setTenantId(link.getTenantId());
       doc.setTitle(link.getTitle());
       doc.setLink(link.getLink());
-      doc.setThumbnail(link.getThumbnail());
-      doc.setThumbPath(link.getThumbpath());
-      doc.setDuration(link.getDuration());
-      doc.setSource(link.getSource());
-      doc.setTrailer(link.getTrailer());
+      doc.setLinkThumbnail(link.getThumbnail());
+      doc.setLinkThumbPath(link.getThumbpath());
+      doc.setLinkDuration(link.getDuration());
+      doc.setLinkSource(link.getSource());
+      doc.setLinkTrailer(link.getTrailer());
       doc.setCreatedAt(link.getCreatedAt() != null ? 
           java.util.Date.from(link.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null);
       doc.setSearchableText(generateSearchableText(link));

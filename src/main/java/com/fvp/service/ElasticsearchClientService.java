@@ -49,14 +49,14 @@ public class ElasticsearchClientService {
       @Value("${elasticsearch.enabled:false}") boolean elasticsearchEnabled) {
     this.esClient = esClient;
     this.elasticsearchEnabled = elasticsearchEnabled;
-    
+
     if (elasticsearchEnabled) {
-    try {
-      ensureIndexExists(LINKS_INDEX);
-      ensureIndexExists(CATEGORIES_INDEX);
-      ensureIndexExists(MODELS_INDEX);
-    } catch (Exception e) {
-      logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
+      try {
+        ensureIndexExists(LINKS_INDEX);
+        ensureIndexExists(CATEGORIES_INDEX);
+        ensureIndexExists(MODELS_INDEX);
+      } catch (Exception e) {
+        logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
       }
     } else {
       logger.info("Elasticsearch is disabled. Operations will be logged but not executed.");
@@ -68,7 +68,7 @@ public class ElasticsearchClientService {
       logger.debug("Elasticsearch disabled: skipping index check for {}", indexName);
       return;
     }
-    
+
     LoggingUtil.logOperationTime(logger, "ensure elasticsearch index exists: " + indexName, () -> {
       try {
         if (!esClient.indices().exists(new GetIndexRequest(indexName), RequestOptions.DEFAULT)) {
@@ -89,11 +89,11 @@ public class ElasticsearchClientService {
 
   public void saveLinkDocument(LinkDocument document) {
     if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping document save for ID={}", 
-          document != null ? document.getId() : "null");
+      logger.debug("Elasticsearch disabled: skipping document save for ID={}",
+          document != null ? document.getLinkId() : "null");
       return;
     }
-    
+
     LoggingUtil.logOperationTime(logger, "save link document to elasticsearch", () -> {
       try {
         if (document == null) {
@@ -101,7 +101,7 @@ public class ElasticsearchClientService {
           return null;
         }
 
-        if (document.getId() == null || document.getId().isEmpty()) {
+        if (document.getLinkId() == null || document.getLinkId().isEmpty()) {
           logger.error("Document ID is required for indexing");
           return null;
         }
@@ -113,7 +113,7 @@ public class ElasticsearchClientService {
         try {
           org.elasticsearch.client.Request lowLevelRequest = new org.elasticsearch.client.Request(
               "PUT",
-              "/" + LINKS_INDEX + "/_doc/" + document.getId()
+              "/" + LINKS_INDEX + "/_doc/" + document.getLinkId()
           );
 
           // Convert map to JSON string
@@ -125,7 +125,7 @@ public class ElasticsearchClientService {
 
           int statusCode = lowLevelResponse.getStatusLine().getStatusCode();
           if (statusCode >= 200 && statusCode < 300) {
-              logger.info("Document indexed successfully: ID={}", document.getId());
+            logger.info("Document indexed successfully: ID={}", document.getLinkId());
           } else {
             logger.warn("Indexing returned non-success status: {}", statusCode);
             throw new RuntimeException("Failed to index document: HTTP " + statusCode);
@@ -145,6 +145,7 @@ public class ElasticsearchClientService {
 
   /**
    * Search for documents by link ID
+   *
    * @param link The link ID to search for
    * @param searchableText Unused parameter kept for backward compatibility
    * @return List of matching LinkDocument objects
@@ -154,7 +155,7 @@ public class ElasticsearchClientService {
       logger.debug("Elasticsearch disabled: skipping search for link={}", link);
       return new ArrayList<>();
     }
-    
+
     return LoggingUtil.logOperationTime(logger, "search documents by link ID", () -> {
       List<LinkDocument> results = new ArrayList<>();
       try {
@@ -175,7 +176,7 @@ public class ElasticsearchClientService {
         for (SearchHit hit : response.getHits().getHits()) {
           Map<String, Object> sourceAsMap = hit.getSourceAsMap();
           LinkDocument document = convertToLinkDocument(sourceAsMap);
-          document.setId(hit.getId());
+          document.setLinkId(hit.getId());
           results.add(document);
         }
 
@@ -190,14 +191,14 @@ public class ElasticsearchClientService {
 
   private Map<String, Object> convertToMap(LinkDocument document) {
     Map<String, Object> map = new HashMap<>();
-    map.put("id", document.getId());
+    map.put("id", document.getLinkId());
     map.put("tenantId", document.getTenantId());
     map.put("title", document.getTitle());
     map.put("link", document.getLink());
-    map.put("thumbnail", document.getThumbnail());
-    map.put("thumbPath", document.getThumbPath());
-    map.put("duration", document.getDuration());
-    map.put("source", document.getSource());
+    map.put("thumbnail", document.getLinkThumbnail());
+    map.put("thumbPath", document.getLinkThumbPath());
+    map.put("duration", document.getLinkDuration());
+    map.put("source", document.getLinkSource());
 
     // Format date for Elasticsearch using ISO-8601 format
     if (document.getCreatedAt() != null) {
@@ -208,7 +209,7 @@ public class ElasticsearchClientService {
       map.put("createdAt", null);
     }
 
-    map.put("trailer", document.getTrailer());
+    map.put("trailer", document.getLinkTrailer());
     map.put("searchableText", document.getSearchableText());
     map.put("categories", document.getCategories());
     map.put("models", document.getModels());
@@ -217,14 +218,14 @@ public class ElasticsearchClientService {
 
   private LinkDocument convertToLinkDocument(Map<String, Object> map) {
     LinkDocument document = new LinkDocument();
-    document.setId((String) map.get("id"));
+    document.setLinkId((String) map.get("id"));
     document.setTenantId((Integer) map.get("tenantId"));
     document.setTitle((String) map.get("title"));
     document.setLink((String) map.get("link"));
-    document.setThumbnail((String) map.get("thumbnail"));
-    document.setThumbPath((String) map.get("thumbPath"));
-    document.setDuration((Integer) map.get("duration"));
-    document.setSource((String) map.get("source"));
+    document.setLinkThumbnail((String) map.get("thumbnail"));
+    document.setLinkThumbPath((String) map.get("thumbPath"));
+    document.setLinkDuration((Integer) map.get("duration"));
+    document.setLinkSource((String) map.get("source"));
 
     // Parse date from Elasticsearch format with more flexible parsing
     String createdAtStr = (String) map.get("createdAt");
@@ -261,7 +262,7 @@ public class ElasticsearchClientService {
       document.setCreatedAt(null);
     }
 
-    document.setTrailer((String) map.get("trailer"));
+    document.setLinkTrailer((String) map.get("trailer"));
     document.setSearchableText((String) map.get("searchableText"));
     document.setCategories((List<String>) map.get("categories"));
     document.setModels((List<String>) map.get("models"));
@@ -270,11 +271,11 @@ public class ElasticsearchClientService {
 
   public void saveCategoryDocument(CategoryDocument document) {
     if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping category document save for ID={}", 
+      logger.debug("Elasticsearch disabled: skipping category document save for ID={}",
           document != null ? document.getId() : "null");
       return;
     }
-    
+
     LoggingUtil.logOperationTime(logger, "save category document to elasticsearch", () -> {
       try {
         if (document == null) {
@@ -324,11 +325,11 @@ public class ElasticsearchClientService {
 
   public void saveModelDocument(ModelDocument document) {
     if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping model document save for ID={}", 
+      logger.debug("Elasticsearch disabled: skipping model document save for ID={}",
           document != null ? document.getId() : "null");
       return;
     }
-    
+
     LoggingUtil.logOperationTime(logger, "save model document to elasticsearch", () -> {
       try {
         if (document == null) {
@@ -432,7 +433,7 @@ public class ElasticsearchClientService {
       logger.debug("Elasticsearch disabled: skipping category search for name={}", name);
       return new ArrayList<>();
     }
-    
+
     return LoggingUtil.logOperationTime(logger, "find categories by name", () -> {
       List<CategoryDocument> results = new ArrayList<>();
       try {
@@ -469,7 +470,7 @@ public class ElasticsearchClientService {
       logger.debug("Elasticsearch disabled: skipping model search for name={}", name);
       return new ArrayList<>();
     }
-    
+
     return LoggingUtil.logOperationTime(logger, "find models by name", () -> {
       List<ModelDocument> results = new ArrayList<>();
       try {
@@ -506,7 +507,7 @@ public class ElasticsearchClientService {
       logger.debug("Elasticsearch disabled: skipping link search for query={}", query);
       return new PageImpl<>(new ArrayList<>(), pageable, 0);
     }
-    
+
     return LoggingUtil.logOperationTime(logger, "search links with pagination", () -> {
       try {
         SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
@@ -543,7 +544,7 @@ public class ElasticsearchClientService {
         for (SearchHit hit : response.getHits().getHits()) {
           Map<String, Object> sourceAsMap = hit.getSourceAsMap();
           LinkDocument document = convertToLinkDocument(sourceAsMap);
-          document.setId(hit.getId());
+          document.setLinkId(hit.getId());
           results.add(document);
         }
 
@@ -563,7 +564,7 @@ public class ElasticsearchClientService {
       logger.debug("Elasticsearch disabled: skipping autosuggest for query={}", query);
       return new ArrayList<>();
     }
-    
+
     return LoggingUtil.logOperationTime(logger, "autosuggest across model and category indices",
         () -> {
           List<AutosuggestItem> results = new ArrayList<>();
