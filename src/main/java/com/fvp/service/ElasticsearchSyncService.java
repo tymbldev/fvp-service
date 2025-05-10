@@ -110,6 +110,7 @@ public class ElasticsearchSyncService {
           System.gc();
 
           // Process batch
+          logger.info("Pulled {} links from db {}", batchSize, offset);
           List<Link> links = linkRepository.findAllWithPagination(offset, batchSize);
           processLinksBatch(links);
           processedCount += links.size();
