@@ -11,6 +11,7 @@ import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
 import com.fvp.repository.ModelRepository;
 import com.fvp.util.LoggingUtil;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,7 +116,8 @@ public class ElasticsearchSyncService {
           logger.info("Pulling links from db starting at position {}", offset);
           PageRequest pageRequest = PageRequest.of(offset / batchSize, batchSize);
           Page<Link> linkPage = linkRepository.findAllProcessedLinks(pageRequest);
-          List<Link> links = linkPage.getContent();
+          // Create a new modifiable list from the page content
+          List<Link> links = new ArrayList<>(linkPage.getContent());
           processLinksBatch(links);
           processedCount += links.size();
 
