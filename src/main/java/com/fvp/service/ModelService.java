@@ -69,6 +69,9 @@ public class ModelService {
         modelDTO.setName(model.getName());
         modelDTO.setAge(model.getAge());
         modelDTO.setDescription(model.getDescription());
+        modelDTO.setThumbnail(model.getThumbnail());
+        modelDTO.setThumbPath(model.getThumbpath());
+        modelDTO.setCountry(model.getCountry());
         modelDTOs.add(modelDTO);
       }
 
