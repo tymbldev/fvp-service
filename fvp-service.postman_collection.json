@@ -434,7 +434,7 @@
                 {
                   "key": "query",
                   "value": "example",
-                  "description": "Search query for links (searches across title, searchableText, categories, models, source, and sheetName)"
+                  "description": "Search query for links (searches across multiple fields including title, categories, models, etc.)"
                 },
                 {
                   "key": "page",
@@ -448,35 +448,7 @@
                 }
               ]
             },
-            "description": "Search for links by query string across multiple fields. Returns paginated results with metadata."
-          },
-          "response": []
-        },
-        {
-          "name": "Search Links by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/elasticsearch/links/by-id?linkId=123",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "links",
-                "by-id"
-              ],
-              "query": [
-                {
-                  "key": "linkId",
-                  "value": "123",
-                  "description": "ID of the link to search for"
-                }
-              ]
-            },
-            "description": "Find a specific link by its ID in Elasticsearch"
+            "description": "Search for links using a query string. Returns paginated results with metadata including totalElements, totalPages, currentPage, size, and content."
           },
           "response": []
         },
@@ -500,11 +472,11 @@
                 {
                   "key": "query",
                   "value": "example",
-                  "description": "Query to search categories for"
+                  "description": "Query to search categories by name or description"
                 }
               ]
             },
-            "description": "Search for categories by name or description. Returns category documents with metadata including ID, name, description, tenant ID, and other attributes."
+            "description": "Search for categories by name or description. Returns a list of category documents with their metadata."
           },
           "response": []
         },
@@ -528,11 +500,11 @@
                 {
                   "key": "query",
                   "value": "example",
-                  "description": "Query to search models for"
+                  "description": "Query to search models by name or description"
                 }
               ]
             },
-            "description": "Search for models by name or description. Returns model documents with metadata including ID, name, description, tenant ID, country, thumbnail, and other attributes."
+            "description": "Search for models by name or description. Returns a list of model documents with their metadata."
           },
           "response": []
         },
@@ -555,11 +527,11 @@
                 {
                   "key": "query",
                   "value": "example",
-                  "description": "Query for autosuggest"
+                  "description": "Query for autosuggest results (required)"
                 }
               ]
             },
-            "description": "Get autosuggest results for links, categories, and models based on a prefix query. Returns a combined list of matching items with their type and basic information."
+            "description": "Get autosuggest results for links, categories, and models based on a prefix query. Returns a combined list of matching items with their type and details."
           },
           "response": []
         },
@@ -579,7 +551,7 @@
                 "sync"
               ]
             },
-            "description": "Trigger Elasticsearch sync for links, categories, and models. This initiates an asynchronous process to index all entities in Elasticsearch."
+            "description": "Trigger a synchronization of all entities (links, categories, models) to Elasticsearch. This initiates asynchronous background processes."
           },
           "response": []
         },
@@ -600,7 +572,7 @@
                 "links"
               ]
             },
-            "description": "Trigger Elasticsearch sync for links only. This initiates an asynchronous process to index all links in Elasticsearch with their metadata."
+            "description": "Trigger a synchronization of only link entities to Elasticsearch. Returns a response with status and message."
           },
           "response": []
         },
@@ -621,7 +593,7 @@
                 "categories"
               ]
             },
-            "description": "Trigger Elasticsearch sync for categories only. This initiates an asynchronous process to index all categories in Elasticsearch with their metadata."
+            "description": "Trigger a synchronization of only category entities to Elasticsearch. Returns a response with status and message."
           },
           "response": []
         },
@@ -642,7 +614,7 @@
                 "models"
               ]
             },
-            "description": "Trigger Elasticsearch sync for models only. This initiates an asynchronous process to index all models in Elasticsearch with their metadata including ID, name, description, and other attributes."
+            "description": "Trigger a synchronization of only model entities to Elasticsearch. Returns a response with status and message."
           },
           "response": []
         },
@@ -663,7 +635,7 @@
                 "status"
               ]
             },
-            "description": "Get the current status of all Elasticsearch sync processes (links, categories, and models), including progress, completion status, and any errors."
+            "description": "Get the current status of all synchronization processes (links, categories, models), including progress information and completion status."
           },
           "response": []
         }
