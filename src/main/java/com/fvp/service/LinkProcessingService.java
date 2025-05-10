@@ -380,11 +380,16 @@ public class LinkProcessingService {
     // Add categories to searchable text
     List<String> categories = tokenize(link.getCategory());
     List<String> models = tokenize(link.getStar());
-    for (String category : categories) {
-      searchableText.append(" ").append(category);
+    if (categories != null && !categories.isEmpty()) {
+      for (String category : categories) {
+        searchableText.append(" ").append(category);
+      }
     }
-    for (String model : models) {
-      searchableText.append(" ").append(model);
+    if (models != null && !models.isEmpty()) {
+
+      for (String model : models) {
+        searchableText.append(" ").append(model);
+      }
     }
 
     return searchableText.toString().trim();
