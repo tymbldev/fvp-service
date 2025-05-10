@@ -16,6 +16,7 @@ import org.elasticsearch.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -26,7 +27,7 @@ public class ElasticsearchConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConfig.class);
 
-  @Value("${spring.elasticsearch.uris}")
+  @Value("${spring.elasticsearch.uris:http://localhost:9200}")
   private String elasticsearchUri;
 
   @Value("${spring.elasticsearch.username:}")
@@ -40,45 +41,65 @@ public class ElasticsearchConfig {
 
   @Value("${spring.elasticsearch.socket-timeout:30000}")
   private int socketTimeout;
+  
+  @Value("${elasticsearch.enabled:false}")
+  private boolean elasticsearchEnabled;
 
   @Bean
   public RestHighLevelClient elasticsearchClient() {
+    if (!elasticsearchEnabled) {
+      logger.info("Elasticsearch is disabled, creating dummy client");
+      return createDummyClient();
+    }
+    
     try {
       RestHighLevelClient client = createClient();
 
       // Create index if it doesn't exist
       String indexName = "links";
-      if (!client.indices().exists(new GetIndexRequest(indexName),
-          org.elasticsearch.client.RequestOptions.DEFAULT)) {
-        CreateIndexRequest request = new CreateIndexRequest(indexName);
+      try {
+        if (!client.indices().exists(new GetIndexRequest(indexName),
+            org.elasticsearch.client.RequestOptions.DEFAULT)) {
+          createIndex(client, indexName);
+        }
+        return client;
+      } catch (Exception e) {
+        logger.error("Failed to check or create Elasticsearch index: {}", e.getMessage(), e);
+        return createDummyClient();
+      }
+    } catch (Exception e) {
+      logger.error("Failed to create Elasticsearch client: {}", e.getMessage(), e);
+      return createDummyClient();
+    }
+  }
+  
+  private void createIndex(RestHighLevelClient client, String indexName) {
+    try {
+      CreateIndexRequest request = new CreateIndexRequest(indexName);
 
-        // Load settings from file
+      // Load settings from file
+      try {
         ClassPathResource resource = new ClassPathResource("es-settings.json");
         String settings = StreamUtils.copyToString(resource.getInputStream(),
             StandardCharsets.UTF_8);
 
         // Apply settings
         request.source(settings, XContentType.JSON);
-
-        try {
-          client.indices().create(request, org.elasticsearch.client.RequestOptions.DEFAULT);
-          logger.info("Created Elasticsearch index: {}", indexName);
-        } catch (Exception e) {
-          logger.warn("Could not create index with settings file, trying with basic settings: {}",
-              e.getMessage());
-          // Fallback to basic settings
-          request.settings(Settings.builder()
-              .put("index.number_of_shards", 1)
-              .put("index.number_of_replicas", 0));
-          client.indices().create(request, org.elasticsearch.client.RequestOptions.DEFAULT);
-          logger.info("Created Elasticsearch index with basic settings: {}", indexName);
-        }
+        client.indices().create(request, org.elasticsearch.client.RequestOptions.DEFAULT);
+        logger.info("Created Elasticsearch index: {}", indexName);
+      } catch (Exception e) {
+        logger.warn("Could not create index with settings file, trying with basic settings: {}",
+            e.getMessage());
+        // Fallback to basic settings
+        request.settings(Settings.builder()
+            .put("index.number_of_shards", 1)
+            .put("index.number_of_replicas", 0));
+        client.indices().create(request, org.elasticsearch.client.RequestOptions.DEFAULT);
+        logger.info("Created Elasticsearch index with basic settings: {}", indexName);
       }
-
-      return client;
     } catch (Exception e) {
-      logger.error("Failed to create Elasticsearch client: {}", e.getMessage(), e);
-      return createDummyClient();
+      logger.error("Failed to create index: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to create Elasticsearch index", e);
     }
   }
 

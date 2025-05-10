@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -92,6 +93,12 @@ public class CacheService {
             }
 
             logger.debug("Cache hit for collection key: {}", fullKey);
+            
+            // Special handling for Page objects
+            if (typeRef.getType().getTypeName().contains("Page")) {
+              return Optional.of((T) objectMapper.readValue(value, Page.class));
+            }
+            
             return Optional.of(objectMapper.readValue(value, typeRef));
           } catch (Exception e) {
             logger.error("Error getting collection from cache: {}", e.getMessage(), e);

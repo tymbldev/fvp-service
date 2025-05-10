@@ -2,6 +2,7 @@ package com.fvp.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.dto.ModelWithLinkDTO;
+import com.fvp.dto.ModelLinksResponseDTO;
 import com.fvp.entity.BaseLinkModel;
 import com.fvp.entity.Link;
 import com.fvp.entity.LinkModel;
@@ -11,6 +12,7 @@ import com.fvp.repository.ModelRepository;
 import com.fvp.repository.ShardedLinkModelRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -133,7 +135,7 @@ public class ModelUtilService {
     });
   }
 
-  public Page<ModelWithLinkDTO> getModelLinks(Integer tenantId, String modelName, Pageable pageable,
+  public Page<ModelLinksResponseDTO> getModelLinks(Integer tenantId, String modelName, Pageable pageable,
       Integer maxDuration, String quality) {
     return LoggingUtil.logOperationTime(logger, "get model links", () -> {
       if (tenantId == null || modelName == null) {
@@ -152,9 +154,8 @@ public class ModelUtilService {
       );
 
       // Try to get from cache first
-      TypeReference<Page<ModelWithLinkDTO>> typeRef = new TypeReference<Page<ModelWithLinkDTO>>() {
-      };
-      Optional<Page<ModelWithLinkDTO>> cachedPage = cacheService.getCollectionFromCache(
+      TypeReference<Page<ModelLinksResponseDTO>> typeRef = new TypeReference<Page<ModelLinksResponseDTO>>() {};
+      Optional<Page<ModelLinksResponseDTO>> cachedPage = cacheService.getCollectionFromCache(
           MODEL_LINKS_CACHE,
           cacheKey,
           typeRef
@@ -182,7 +183,7 @@ public class ModelUtilService {
         return Page.empty();
       }
 
-      List<ModelWithLinkDTO> pageContent = new ArrayList<>();
+      List<ModelLinksResponseDTO.LinkDTO> pageContent = new ArrayList<>();
 
       // For first page, include the "first link" as the first item
       if (pageable.getPageNumber() == 0) {
@@ -193,13 +194,14 @@ public class ModelUtilService {
           boolean includeFirstLink = (maxDuration == null && quality == null);
 
           if (includeFirstLink) {
-            pageContent.add(firstLink);
+            ModelLinksResponseDTO.LinkDTO firstLinkDTO = convertToLinkDTO(firstLink);
+            pageContent.add(firstLinkDTO);
 
             // If first page has only one item (pageSize=1), we're done
             if (pageable.getPageSize() == 1) {
-              Page<ModelWithLinkDTO> result = new PageImpl<>(pageContent, pageable, totalCount);
-              cacheService.putInCacheWithExpiry(MODEL_LINKS_CACHE, cacheKey, result, 1,
-                  TimeUnit.HOURS);
+              ModelLinksResponseDTO response = createResponseDTO(model, pageContent, pageable, totalCount);
+              Page<ModelLinksResponseDTO> result = new PageImpl<>(Collections.singletonList(response), pageable, totalCount);
+              cacheService.putInCacheWithExpiry(MODEL_LINKS_CACHE, cacheKey, result, 1, TimeUnit.HOURS);
               return result;
             }
 
@@ -219,97 +221,133 @@ public class ModelUtilService {
             int limit = pageable.getPageSize() - 1;
 
             // Get the remaining items for the first page
-            List<? extends BaseLinkModel> dbItemsBase = shardingService.getRepositoryForModel(
-                    modelName)
+            List<? extends BaseLinkModel> remainingLinksBase = shardingService.getRepositoryForModel(modelName)
                 .findByModelWithFiltersExcludingLinkPageable(
-                    tenantId,
-                    modelName,
-                    maxDuration,
-                    quality,
-                    firstLinkId,
-                    adjustedOffset,
-                    limit
-                );
+                    tenantId, modelName, maxDuration, quality, firstLinkId, adjustedOffset, limit);
 
-            List<LinkModel> dbItems = dbItemsBase.stream()
+            List<LinkModel> remainingLinks = remainingLinksBase.stream()
                 .map(baseLinkModel -> {
-                  LinkModel linkModel = new LinkModel();
-                  BeanUtils.copyProperties(baseLinkModel, linkModel);
-                  return linkModel;
+                    LinkModel linkModel = new LinkModel();
+                    BeanUtils.copyProperties(baseLinkModel, linkModel);
+                    return linkModel;
                 })
                 .collect(Collectors.toList());
 
-            pageContent.addAll(createDTOsFromLinkModels(dbItems, model));
+            for (LinkModel linkModel : remainingLinks) {
+              try {
+                Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
+                if (link != null) {
+                  ModelLinksResponseDTO.LinkDTO linkDTO = convertToLinkDTO(link);
+                  pageContent.add(linkDTO);
+                }
+              } catch (Exception e) {
+                logger.error("Error fetching link details for link ID {}: {}", linkModel.getLinkId(), e.getMessage());
+              }
+            }
+          } else {
+            // If filters are applied, get all items for the first page
+            List<? extends BaseLinkModel> firstPageLinksBase = shardingService.getRepositoryForModel(modelName)
+                .findByModelWithFiltersPageable(
+                    tenantId, modelName, maxDuration, quality, 0, pageable.getPageSize());
+
+            List<LinkModel> firstPageLinks = firstPageLinksBase.stream()
+                .map(baseLinkModel -> {
+                    LinkModel linkModel = new LinkModel();
+                    BeanUtils.copyProperties(baseLinkModel, linkModel);
+                    return linkModel;
+                })
+                .collect(Collectors.toList());
+
+            for (LinkModel linkModel : firstPageLinks) {
+              try {
+                Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
+                if (link != null) {
+                  ModelLinksResponseDTO.LinkDTO linkDTO = convertToLinkDTO(link);
+                  pageContent.add(linkDTO);
+                }
+              } catch (Exception e) {
+                logger.error("Error fetching link details for link ID {}: {}", linkModel.getLinkId(), e.getMessage());
+              }
+            }
+          }
+        }
+      } else {
+        // For subsequent pages, get items directly
+        int offset = pageable.getPageNumber() * pageable.getPageSize();
+        List<? extends BaseLinkModel> pageLinksBase = shardingService.getRepositoryForModel(modelName)
+            .findByModelWithFiltersPageable(
+                tenantId, modelName, maxDuration, quality, offset, pageable.getPageSize());
+
+        List<LinkModel> pageLinks = pageLinksBase.stream()
+            .map(baseLinkModel -> {
+                LinkModel linkModel = new LinkModel();
+                BeanUtils.copyProperties(baseLinkModel, linkModel);
+                return linkModel;
+            })
+            .collect(Collectors.toList());
+
+        for (LinkModel linkModel : pageLinks) {
+          try {
+            Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
+            if (link != null) {
+              ModelLinksResponseDTO.LinkDTO linkDTO = convertToLinkDTO(link);
+              pageContent.add(linkDTO);
+            }
+          } catch (Exception e) {
+            logger.error("Error fetching link details for link ID {}: {}", linkModel.getLinkId(), e.getMessage());
           }
         }
       }
 
-      // For non-first pages or when filters are applied, use regular pagination
-      if (pageContent.isEmpty()) {
-        int offset = (int) pageable.getOffset();
-        int limit = pageable.getPageSize();
-
-        List<? extends BaseLinkModel> dbItemsBase = shardingService.getRepositoryForModel(modelName)
-            .findByModelWithFiltersPageable(
-                tenantId,
-                modelName,
-                maxDuration,
-                quality,
-                offset,
-                limit
-            );
-
-        List<LinkModel> dbItems = dbItemsBase.stream()
-            .map(baseLinkModel -> {
-              LinkModel linkModel = new LinkModel();
-              BeanUtils.copyProperties(baseLinkModel, linkModel);
-              return linkModel;
-            })
-            .collect(Collectors.toList());
-
-        pageContent.addAll(createDTOsFromLinkModels(dbItems, model));
-      }
-
-      logger.info("Returning page {} with {} items for tenant {} and model {}",
-          pageable.getPageNumber(), pageContent.size(), tenantId, modelName);
-
-      Page<ModelWithLinkDTO> result = new PageImpl<>(pageContent, pageable, totalCount);
+      ModelLinksResponseDTO response = createResponseDTO(model, pageContent, pageable, totalCount);
+      Page<ModelLinksResponseDTO> result = new PageImpl<>(Collections.singletonList(response), pageable, totalCount);
       cacheService.putInCacheWithExpiry(MODEL_LINKS_CACHE, cacheKey, result, 1, TimeUnit.HOURS);
       return result;
     });
   }
 
-  private List<ModelWithLinkDTO> createDTOsFromLinkModels(List<LinkModel> linkModels, Model model) {
-    List<ModelWithLinkDTO> dtos = new ArrayList<>();
+  private ModelLinksResponseDTO.LinkDTO convertToLinkDTO(Link link) {
+    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+    linkDTO.setLink(link.getLink());
+    linkDTO.setLinkTitle(link.getTitle());
+    linkDTO.setLinkThumbnail(link.getThumbnail());
+    linkDTO.setLinkThumbPath(link.getThumbpath());
+    linkDTO.setLinkSource(link.getSource());
+    linkDTO.setLinkTrailer(link.getTrailer());
+    linkDTO.setLinkDuration(link.getDuration());
+    return linkDTO;
+  }
 
-    for (LinkModel linkModel : linkModels) {
-      try {
-        Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
-        if (link == null) {
-          continue;
-        }
+  private ModelLinksResponseDTO.LinkDTO convertToLinkDTO(ModelWithLinkDTO dto) {
+    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+    linkDTO.setLink(dto.getLink());
+    linkDTO.setLinkTitle(dto.getLinkTitle());
+    linkDTO.setLinkThumbnail(dto.getLinkThumbnail());
+    linkDTO.setLinkThumbPath(dto.getLinkThumbPath());
+    linkDTO.setLinkSource(dto.getLinkSource());
+    linkDTO.setLinkTrailer(dto.getLinkTrailer());
+    linkDTO.setLinkDuration(dto.getLinkDuration());
+    return linkDTO;
+  }
 
-        ModelWithLinkDTO dto = new ModelWithLinkDTO();
-        dto.setId(model.getId());
-        dto.setTenantId(model.getTenantId());
-        dto.setName(model.getName());
-        dto.setDescription(model.getDescription());
-        dto.setCountry(model.getCountry());
-        dto.setThumbnail(model.getThumbnail());
-        dto.setThumbPath(model.getThumbpath());
-        dto.setAge(model.getAge());
-        dto.setLink(link.getLink());
-        dto.setLinkTitle(link.getTitle());
-        dto.setLinkThumbnail(link.getThumbnail());
-        dto.setLinkThumbPath(link.getThumbpath());
-        dto.setLinkDuration(link.getDuration());
-        dtos.add(dto);
-      } catch (Exception e) {
-        logger.error("Error fetching link details for link ID {}: {}",
-            linkModel.getLinkId(), e.getMessage());
-      }
-    }
-
-    return dtos;
+  private ModelLinksResponseDTO createResponseDTO(Model model, List<ModelLinksResponseDTO.LinkDTO> links, Pageable pageable, long totalCount) {
+    ModelLinksResponseDTO response = new ModelLinksResponseDTO();
+    response.setId(model.getId());
+    response.setTenantId(model.getTenantId());
+    response.setName(model.getName());
+    response.setDescription(model.getDescription());
+    response.setCountry(model.getCountry());
+    response.setThumbnail(model.getThumbnail());
+    response.setThumbPath(model.getThumbpath());
+    response.setAge(model.getAge());
+    response.setLinks(links);
+    response.setTotalElements(totalCount);
+    response.setTotalPages((int) Math.ceil((double) totalCount / pageable.getPageSize()));
+    response.setNumber(pageable.getPageNumber());
+    response.setSize(pageable.getPageSize());
+    response.setFirst(pageable.getPageNumber() == 0);
+    response.setLast(pageable.getPageNumber() >= (totalCount - 1) / pageable.getPageSize());
+    response.setEmpty(links.isEmpty());
+    return response;
   }
 } 

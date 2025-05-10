@@ -5,7 +5,6 @@ import com.fvp.document.CategoryDocument;
 import com.fvp.document.LinkDocument;
 import com.fvp.document.ModelDocument;
 import com.fvp.entity.Link;
-import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
 import com.fvp.util.LoggingUtil;
@@ -18,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,13 +31,13 @@ public class ElasticsearchSyncService {
   private static final Logger logger = LoggingUtil.getLogger(ElasticsearchSyncService.class);
 
   private final LinkRepository linkRepository;
-  private final LinkCategoryRepository linkCategoryRepository;
   private final LinkModelRepository linkModelRepository;
   private final LinkProcessingService linkProcessingService;
   private final ElasticsearchClientService elasticsearchClientService;
   private final ElasticsearchSyncConfig syncConfig;
   private final ExecutorService executorService;
   private final JdbcTemplate jdbcTemplate;
+  private final LinkCategoryShardingService shardingService;
 
   // Track sync status
   private final AtomicReference<String> linkSyncStatus = new AtomicReference<>("not_started");
@@ -48,20 +48,20 @@ public class ElasticsearchSyncService {
   @Autowired
   public ElasticsearchSyncService(
       LinkRepository linkRepository,
-      LinkCategoryRepository linkCategoryRepository,
       LinkModelRepository linkModelRepository,
       LinkProcessingService linkProcessingService,
       ElasticsearchClientService elasticsearchClientService,
       ElasticsearchSyncConfig syncConfig,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      LinkCategoryShardingService shardingService) {
     this.linkRepository = linkRepository;
-    this.linkCategoryRepository = linkCategoryRepository;
     this.linkModelRepository = linkModelRepository;
     this.linkProcessingService = linkProcessingService;
     this.elasticsearchClientService = elasticsearchClientService;
     this.syncConfig = syncConfig;
     this.executorService = Executors.newFixedThreadPool(syncConfig.getThreadPoolSize());
     this.jdbcTemplate = jdbcTemplate;
+    this.shardingService = shardingService;
   }
 
   /**
@@ -171,55 +171,61 @@ public class ElasticsearchSyncService {
       long startTime = System.currentTimeMillis();
 
       try {
-        // Get distinct categories across all tenants
-        List<String> distinctCategories = new ArrayList<>();
-
-        // This query finds all distinct categories from the link_category table
-        List<Object[]> categoryResults = jdbcTemplate.query(
-            "SELECT DISTINCT category, tenant_id FROM link_category ORDER BY category",
-            (rs, rowNum) -> new Object[]{
-                rs.getString("category"),
-                rs.getInt("tenant_id")
-            }
-        );
-
+        // Get distinct categories across all tenants using sharded repositories
+        Map<Integer, List<String>> categoriesByShard = new HashMap<>();
         int processedCount = 0;
 
-        for (Object[] result : categoryResults) {
-          String category = (String) result[0];
-          Integer tenantId = (Integer) result[1];
-
-          if (category == null || category.isEmpty()) {
-            continue;
-          }
-
+        // Process each shard
+        for (int shardNumber = 1; shardNumber <= shardingService.getTotalShards(); shardNumber++) {
           try {
-            // Get category count for statistics
-            Long count = linkCategoryRepository.countByTenantIdAndCategory(tenantId, category);
+            // Get distinct categories from this shard
+            List<String> categoriesInShard = shardingService.getRepositoryForShard(shardNumber)
+                .findAllDistinctCategories(null);
+            
+            // Group categories by tenant ID
+            for (String category : categoriesInShard) {
+              if (category == null || category.isEmpty()) {
+                continue;
+              }
 
-            CategoryDocument doc = new CategoryDocument();
-            doc.setId(tenantId + "_" + category.replace(" ", "_"));
-            doc.setTenantId(tenantId);
-            doc.setName(category);
-            doc.setDescription(null);
-            doc.setHomeThumb(false);
-            doc.setHeader(false);
-            doc.setHomeSEO(false);
-            doc.setHomeCatOrder(0);
-            doc.setHome(0);
-            doc.setCreatedViaLink(false);
-            doc.setCreatedAt(new Date());
-            doc.setLinkCount(count);
-            elasticsearchClientService.saveCategoryDocument(doc);
+              // Get the shard number for this category to ensure we're using the right repository
+              int categoryShard = shardingService.getShardNumber(category);
+              if (categoryShard != shardNumber) {
+                continue; // Skip if category belongs to a different shard
+              }
 
-            processedCount++;
+              try {
+                // Get category count for statistics using the correct sharded repository
+                Long count = shardingService.getRepositoryForCategory(category)
+                    .countByTenantIdAndCategory(null, category);
 
-            if (processedCount % 100 == 0) {
-              logger.info("Processed {} categories", processedCount);
+                CategoryDocument doc = new CategoryDocument();
+                doc.setId(sanitizeForDocumentId(category));
+                doc.setTenantId(null); // Since we're getting all categories
+                doc.setName(category);
+                doc.setDescription(null);
+                doc.setHomeThumb(false);
+                doc.setHeader(false);
+                doc.setHomeSEO(false);
+                doc.setHomeCatOrder(0);
+                doc.setHome(0);
+                doc.setCreatedViaLink(false);
+                doc.setCreatedAt(new Date());
+                doc.setLinkCount(count);
+                elasticsearchClientService.saveCategoryDocument(doc);
+
+                processedCount++;
+
+                if (processedCount % 100 == 0) {
+                  logger.info("Processed {} categories", processedCount);
+                }
+              } catch (Exception e) {
+                logger.error("Error processing category '{}' in shard {}: {}",
+                    category, shardNumber, e.getMessage(), e);
+              }
             }
           } catch (Exception e) {
-            logger.error("Error processing category '{}' for tenant {}: {}",
-                category, tenantId, e.getMessage(), e);
+            logger.error("Error processing shard {}: {}", shardNumber, e.getMessage(), e);
           }
         }
 

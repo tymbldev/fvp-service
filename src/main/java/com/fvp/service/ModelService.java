@@ -5,6 +5,7 @@ import com.fvp.dto.ModelWithLinkDTO;
 import com.fvp.entity.Model;
 import com.fvp.repository.ModelRepository;
 import com.fvp.util.LoggingUtil;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,8 +55,15 @@ public class ModelService {
       for (Model model : models) {
         modelCache.put(model.getName(), model);
       }
+      List<Model> modelsWhereDataIsPresent = new ArrayList<>();
+      for (Model model : models) {
+        if (1 == model.getDataPresent()) {
+          modelsWhereDataIsPresent.add(model);
+        }
+      }
+
       List<ModelWithLinkDTO> modelDTOs = modelUtilService.getFirstLinksForModels(tenantId,
-          models.stream().map(Model::getName).collect(Collectors.toList()));
+          modelsWhereDataIsPresent.stream().map(Model::getName).collect(Collectors.toList()));
 
       if (!modelDTOs.isEmpty()) {
         cacheService.putInCacheWithExpiry(CacheService.CACHE_NAME_MODELS, cacheKey, modelDTOs,

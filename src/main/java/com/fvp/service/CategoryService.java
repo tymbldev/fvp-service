@@ -551,7 +551,7 @@ public class CategoryService {
     List<AllCat> categories = LoggingUtil.logOperationTime(
         logger,
         "fetch all categories from database",
-        () -> allCatRepository.findByTenantId(tenantId)
+        () -> allCatRepository.findByTenantIdAndCreatedViaLink(tenantId,false)
     );
 
     if (categories.isEmpty()) {

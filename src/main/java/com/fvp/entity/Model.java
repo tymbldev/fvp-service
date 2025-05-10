@@ -43,7 +43,7 @@ public class Model {
   private Integer age = 0;
 
   @Column(nullable = false)
-  private Integer dataPresent = 1;
+  private Integer dataPresent = 0;
 
   @CreationTimestamp
   @Column(name = "created_at")

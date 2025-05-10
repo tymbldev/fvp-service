@@ -1,6 +1,5 @@
 package com.fvp.service;
 
-import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +19,7 @@ public class LinkCountCacheService {
   private static final int CACHE_EXPIRY_HOURS = 24;
 
   @Autowired
-  private LinkCategoryRepository linkCategoryRepository;
+  private LinkCategoryShardingService shardingService;
 
   @Autowired
   private CacheService cacheService;
@@ -47,7 +46,7 @@ public class LinkCountCacheService {
       // Add cached counts to result
       result.putAll(cachedCounts);
 
-      // If there are uncached categories, get them from DB
+      // If there are uncached categories, get them from DB using sharded repositories
       if (!uncachedCategories.isEmpty()) {
         Map<String, Long> dbCounts = getAndCacheDbCounts(tenantId, uncachedCategories);
         result.putAll(dbCounts);
@@ -75,26 +74,41 @@ public class LinkCountCacheService {
   private Map<String, Long> getAndCacheDbCounts(Integer tenantId, List<String> categoryNames) {
     Map<String, Long> dbCounts = new HashMap<>();
 
-    // Get counts from DB
-    List<Object[]> counts = linkCategoryRepository.countByTenantIdAndCategories(tenantId,
-        categoryNames);
+    // Group categories by their shard number
+    Map<Integer, List<String>> categoriesByShard = categoryNames.stream()
+        .collect(Collectors.groupingBy(shardingService::getShardNumber));
 
-    // Process and cache results
-    for (Object[] count : counts) {
-      String categoryName = (String) count[0];
-      Long countValue = ((Number) count[1]).longValue();
-      dbCounts.put(categoryName, countValue);
+    // Process each shard
+    for (Map.Entry<Integer, List<String>> entry : categoriesByShard.entrySet()) {
+      int shardNumber = entry.getKey();
+      List<String> categoriesInShard = entry.getValue();
 
-      // Cache individual count
-      String cacheKey = generateCacheKey(tenantId, categoryName);
-      cacheService.putInCacheWithExpiry(
-          LINK_COUNT_CACHE,
-          cacheKey,
-          countValue,
-          CACHE_EXPIRY_HOURS,
-          TimeUnit.HOURS
-      );
-      logger.debug("Cached count for category: {}", categoryName);
+      try {
+        // Get counts from the appropriate sharded repository
+        List<Object[]> counts = shardingService.getRepositoryForShard(shardNumber)
+            .countByTenantIdAndCategories(tenantId, categoriesInShard);
+
+        // Process and cache results
+        for (Object[] count : counts) {
+          String categoryName = (String) count[0];
+          Long countValue = ((Number) count[1]).longValue();
+          dbCounts.put(categoryName, countValue);
+
+          // Cache individual count
+          String cacheKey = generateCacheKey(tenantId, categoryName);
+          cacheService.putInCacheWithExpiry(
+              LINK_COUNT_CACHE,
+              cacheKey,
+              countValue,
+              CACHE_EXPIRY_HOURS,
+              TimeUnit.HOURS
+          );
+          logger.debug("Cached count for category: {}", categoryName);
+        }
+      } catch (Exception e) {
+        logger.error("Error getting counts from shard {}: {}", shardNumber, e.getMessage());
+        throw e;
+      }
     }
 
     return dbCounts;

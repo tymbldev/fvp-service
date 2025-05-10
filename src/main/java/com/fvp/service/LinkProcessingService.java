@@ -110,16 +110,6 @@ public class LinkProcessingService {
         logger.info("Found existing link with URL '{}', updating instead of creating new",
             link.getLink());
 
-        // Clean up old categories and models before adding new ones
-        logger.info("Deleting from link_category table: entries for link ID {}",
-            existingLink.getId());
-        linkCategoryService.deleteByLinkId(existingLink.getId());
-        linkCategoryService.flush(); // Explicitly flush to DB
-
-        logger.info("Deleting from link_model table: entries for link ID {}", existingLink.getId());
-        linkModelService.deleteByLinkId(existingLink.getId());
-        linkModelService.flush(); // Explicitly flush to DB
-
         // Update existing link with new data
         existingLink.setTitle(link.getTitle());
         existingLink.setThumbnail(link.getThumbnail());

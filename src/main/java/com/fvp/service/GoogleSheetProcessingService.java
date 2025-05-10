@@ -8,7 +8,10 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -356,7 +359,15 @@ public class GoogleSheetProcessingService {
       link.setCategory(row.get("category"));
       link.setThumbnail(row.get("thumbnail"));
       link.setDuration(parseDuration(row.get("duration")));
-      link.setQuality(row.get("quality"));
+      List<String> categoryList = tokenize(row.get("category"));
+      if (categoryList.contains("HD")) {
+        link.setQuality("HD");
+      } else if (categoryList.contains("4K")) {
+        link.setQuality("4K");
+      } else if (categoryList.contains("8K")) {
+        link.setQuality("8K");
+      }
+
       link.setSheetName(sheetName);
 
       // Set source field with either the value from the row or a default value
@@ -399,5 +410,17 @@ public class GoogleSheetProcessingService {
         null)
         .setApplicationName(applicationName)
         .build();
+  }
+
+  private List<String> tokenize(String input) {
+    try {
+      Gson gson = new Gson();
+      Type listType = new TypeToken<List<String>>() {
+      }.getType();
+      List<String> values = gson.fromJson(input, listType);
+      return values;
+    } catch (Exception e) {
+      return new ArrayList<>();
+    }
   }
 } 

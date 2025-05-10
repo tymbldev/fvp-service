@@ -14,6 +14,7 @@ public class CacheConfig {
   public CacheManager cacheManager() {
     ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager();
     cacheManager.setCacheNames(java.util.Arrays.asList(
+        "categoryShardMapping",   // For category to shard mapping
         "categoryShardCache",     // For category to shard mapping
         "linkCategoryCache",      // For link category entities
         "categoryCountCache",     // For category count operations

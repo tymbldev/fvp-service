@@ -1,159 +1,227 @@
 package com.fvp.repository;
 
 import com.fvp.entity.LinkCategoryShard48;
+import com.fvp.util.SpringContextUtil;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface LinkCategoryShard48Repository extends
     ShardedLinkCategoryRepository<LinkCategoryShard48, Integer> {
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-      "AND lc.created_on >= DATE_SUB(NOW(), INTERVAL 3 DAY) " +
-      "AND l.thumb_path_processed = 1 " +
-      "ORDER BY RAND() LIMIT 1",
-      nativeQuery = true)
-  Optional<LinkCategoryShard48> findRandomRecentLinkByCategory(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category
-  );
+  @Override
+  default Optional<LinkCategoryShard48> findRandomRecentLinkByCategory(
+      Integer tenantId,
+      String category,
+      Long recentDays
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findRandomRecentLinkByCategory(
+          LinkCategoryShard48.class, tenantId, category, recentDays
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-      "AND l.thumb_path_processed = 1 " +
-      "ORDER BY RAND() LIMIT 1",
-      nativeQuery = true)
-  Optional<LinkCategoryShard48> findRandomLinkByCategory(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category
-  );
+  @Override
+  default Optional<LinkCategoryShard48> findRandomLinkByCategory(
+      Integer tenantId,
+      String category
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findRandomLinkByCategory(
+          LinkCategoryShard48.class, tenantId, category
+      );
+  }
 
-  @Query(value =
-      "SELECT COUNT(lc.id) AS count FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id "
-          +
-          "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-          "AND l.thumb_path_processed = 1",
-      nativeQuery = true)
-  Long countByTenantIdAndCategory(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category
-  );
+  @Override
+  default Long countByTenantIdAndCategory(
+      Integer tenantId,
+      String category
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.countByTenantIdAndCategory(
+          LinkCategoryShard48.class, tenantId, category
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.link_id = :linkId " +
-      "AND l.thumb_path_processed = 1",
-      nativeQuery = true)
-  List<LinkCategoryShard48> findByTenantIdAndLinkId(
-      @Param("tenantId") Integer tenantId,
-      @Param("linkId") Integer linkId
-  );
+  @Override
+  default List<LinkCategoryShard48> findByTenantIdAndLinkId(
+      Integer tenantId,
+      Integer linkId
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByTenantIdAndLinkId(
+          LinkCategoryShard48.class, tenantId, linkId
+      );
+  }
 
-  @Query(value = "SELECT DISTINCT lc.category FROM link_category_shard_48 lc " +
-      "WHERE lc.tenant_id = :tenantId",
-      nativeQuery = true)
-  List<String> findAllDistinctCategories(
-      @Param("tenantId") Integer tenantId
-  );
+  @Override
+  default List<String> findAllDistinctCategories(
+      Integer tenantId
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findAllDistinctCategories(
+          LinkCategoryShard48.class, tenantId
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-      "AND l.thumb_path_processed = 1",
-      nativeQuery = true)
-  List<LinkCategoryShard48> findByTenantIdAndCategory(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category
-  );
+  @Override
+  default List<LinkCategoryShard48> findByTenantId(
+      Integer tenantId
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByTenantId(
+          LinkCategoryShard48.class, tenantId
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-      "AND l.thumb_path_processed = 1 " +
-      "ORDER BY lc.random_order",
-      nativeQuery = true)
-  List<LinkCategoryShard48> findByTenantIdAndCategoryOrderByRandomOrder(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category
-  );
+  @Override
+  default List<LinkCategoryShard48> findByTenantIdAndCategory(
+      Integer tenantId,
+      String category
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByTenantIdAndCategory(
+          LinkCategoryShard48.class, tenantId, category
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-      "AND (:minDuration IS NULL OR l.duration >= :minDuration) " +
-      "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
-      "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
-      "AND l.thumb_path_processed = 1 " +
-      "ORDER BY lc.random_order LIMIT :limit OFFSET :offset",
-      nativeQuery = true)
-  List<LinkCategoryShard48> findByCategoryWithFiltersPageable(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category,
-      @Param("minDuration") Integer minDuration,
-      @Param("maxDuration") Integer maxDuration,
-      @Param("quality") String quality,
-      @Param("offset") int offset,
-      @Param("limit") int limit
-  );
+  @Override
+  default List<LinkCategoryShard48> findByTenantIdAndCategoryOrderByRandomOrder(
+      Integer tenantId,
+      String category
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByTenantIdAndCategoryOrderByRandomOrder(
+          LinkCategoryShard48.class, tenantId, category
+      );
+  }
 
-  @Query(value =
-      "SELECT COUNT(lc.id) AS count FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id "
-          +
-          "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-          "AND (:minDuration IS NULL OR l.duration >= :minDuration) " +
-          "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
-          "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
-          "AND l.thumb_path_processed = 1",
-      nativeQuery = true)
-  Long countByCategoryWithFilters(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category,
-      @Param("minDuration") Integer minDuration,
-      @Param("maxDuration") Integer maxDuration,
-      @Param("quality") String quality
-  );
+  @Override
+  default List<LinkCategoryShard48> findByLinkId(
+      Integer linkId
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByLinkId(
+          LinkCategoryShard48.class, linkId
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId AND lc.category = :category " +
-      "AND (:minDuration IS NULL OR l.duration >= :minDuration) " +
-      "AND (:maxDuration IS NULL OR l.duration <= :maxDuration) " +
-      "AND (:quality IS NULL OR :quality = '' OR l.quality = :quality) " +
-      "AND l.id != :excludeId " +
-      "AND l.thumb_path_processed = 1 " +
-      "ORDER BY lc.random_order LIMIT :limit OFFSET :offset",
-      nativeQuery = true)
-  List<LinkCategoryShard48> findByCategoryWithFiltersExcludingLinkPageable(
-      @Param("tenantId") Integer tenantId,
-      @Param("category") String category,
-      @Param("minDuration") Integer minDuration,
-      @Param("maxDuration") Integer maxDuration,
-      @Param("quality") String quality,
-      @Param("excludeId") Integer excludeId,
-      @Param("offset") int offset,
-      @Param("limit") int limit
-  );
+  @Override
+  default List<LinkCategoryShard48> findByCategoryAndTenantId(
+      String category,
+      Integer tenantId
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByCategoryAndTenantId(
+          LinkCategoryShard48.class, category, tenantId
+      );
+  }
 
-  @Query(value = "SELECT lc.* FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id " +
-      "WHERE lc.tenant_id = :tenantId " +
-      "AND lc.category IN :categoryNames " +
-      "AND l.thumb_path_processed = 1 " +
-      "GROUP BY lc.category " +
-      "ORDER BY RAND()",
-      nativeQuery = true)
-  List<LinkCategoryShard48> findRandomLinksByCategoryNames(
-      @Param("tenantId") Integer tenantId,
-      @Param("categoryNames") List<String> categoryNames
-  );
+  @Override
+  @Transactional
+  default void deleteByLinkId(
+      Integer linkId
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      queryBuilder.deleteByLinkId(
+          LinkCategoryShard48.class, linkId
+      );
+  }
 
-  @Query(value =
-      "SELECT lc.category, COUNT(lc.id) as count FROM link_category_shard_48 lc JOIN link l ON lc.link_id = l.id "
-          +
-          "WHERE lc.tenant_id = :tenantId AND lc.category IN :categoryNames " +
-          "AND l.thumb_path_processed = 1 " +
-          "GROUP BY lc.category",
-      nativeQuery = true)
-  List<Object[]> countByTenantIdAndCategories(
-      @Param("tenantId") Integer tenantId,
-      @Param("categoryNames") List<String> categoryNames
-  );
+  @Override
+  default List<LinkCategoryShard48> findRandomLinksByCategoryNames(
+      Integer tenantId,
+      List<String> categoryNames
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findRandomLinksByCategoryNames(
+          LinkCategoryShard48.class, tenantId, categoryNames
+      );
+  }
+
+  @Override
+  default List<Object[]> countByTenantIdAndCategories(
+      Integer tenantId,
+      List<String> categoryNames
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.countByTenantIdAndCategories(
+          LinkCategoryShard48.class, tenantId, categoryNames
+      );
+  }
+
+  /**
+   * Default method implementation that uses the central dynamic query builder
+   */
+  @Override
+  default List<LinkCategoryShard48> findByCategoryWithFiltersPageable(
+      Integer tenantId,
+      String category,
+      Integer minDuration,
+      Integer maxDuration,
+      String quality,
+      int offset,
+      int limit
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByCategoryWithDynamicFilters(
+          LinkCategoryShard48.class, tenantId, category, minDuration, maxDuration, quality, offset, limit
+      );
+  }
+
+  /**
+   * Default method implementation that uses the central dynamic query builder
+   */
+  @Override
+  default Long countByCategoryWithFilters(
+      Integer tenantId,
+      String category,
+      Integer minDuration,
+      Integer maxDuration,
+      String quality
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.countByCategoryWithDynamicFilters(
+          LinkCategoryShard48.class, tenantId, category, minDuration, maxDuration, quality
+      );
+  }
+
+  /**
+   * Default method implementation that uses the central dynamic query builder
+   */
+  @Override
+  default List<LinkCategoryShard48> findByCategoryWithFiltersExcludingLinkPageable(
+      Integer tenantId,
+      String category,
+      Integer minDuration,
+      Integer maxDuration,
+      String quality,
+      Integer excludeId,
+      int offset,
+      int limit
+  ) {
+      // Get the query builder from Spring context
+      LinkCategoryDynamicQueryBuilder queryBuilder = SpringContextUtil.getBean(LinkCategoryDynamicQueryBuilder.class);
+      return queryBuilder.findByCategoryWithDynamicFiltersExcludingLink(
+          LinkCategoryShard48.class, tenantId, category, minDuration, maxDuration, quality, excludeId, offset, limit
+      );
+  }
 }

@@ -43,7 +43,7 @@ public class CategoryUtilService {
   private CacheService cacheService;
 
   @Value("${category.recent-links-days:90}")
-  private int recentLinksDays;
+  private long recentLinksDays;
 
   public Page<CategoryWithLinkDTO> getCategoryLinks(Integer tenantId, String categoryName,
       Pageable pageable, Integer minDuration, Integer maxDuration, String quality) {
@@ -113,7 +113,7 @@ public class CategoryUtilService {
           logger,
           "find random recent link",
           () -> shardingService.getRepositoryForCategory(categoryName)
-              .findRandomRecentLinkByCategory(tenantId, categoryName)
+              .findRandomRecentLinkByCategory(tenantId, categoryName, recentLinksDays)
       );
 
       boolean includeFirstLink = false;

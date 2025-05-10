@@ -25,6 +25,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -40,20 +41,34 @@ public class ElasticsearchClientService {
   private static final String MODELS_INDEX = "models";
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final RestHighLevelClient esClient;
+  private final boolean elasticsearchEnabled;
 
   @Autowired
-  public ElasticsearchClientService(RestHighLevelClient esClient) {
+  public ElasticsearchClientService(
+      RestHighLevelClient esClient,
+      @Value("${elasticsearch.enabled:false}") boolean elasticsearchEnabled) {
     this.esClient = esClient;
-    try {
-      ensureIndexExists(LINKS_INDEX);
-      ensureIndexExists(CATEGORIES_INDEX);
-      ensureIndexExists(MODELS_INDEX);
-    } catch (Exception e) {
-      logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
+    this.elasticsearchEnabled = elasticsearchEnabled;
+    
+    if (elasticsearchEnabled) {
+      try {
+        ensureIndexExists(LINKS_INDEX);
+        ensureIndexExists(CATEGORIES_INDEX);
+        ensureIndexExists(MODELS_INDEX);
+      } catch (Exception e) {
+        logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
+      }
+    } else {
+      logger.info("Elasticsearch is disabled. Operations will be logged but not executed.");
     }
   }
 
   private void ensureIndexExists(String indexName) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping index check for {}", indexName);
+      return;
+    }
+    
     LoggingUtil.logOperationTime(logger, "ensure elasticsearch index exists: " + indexName, () -> {
       try {
         if (!esClient.indices().exists(new GetIndexRequest(indexName), RequestOptions.DEFAULT)) {
@@ -73,6 +88,12 @@ public class ElasticsearchClientService {
   }
 
   public void saveLinkDocument(LinkDocument document) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping document save for ID={}", 
+          document != null ? document.getId() : "null");
+      return;
+    }
+    
     LoggingUtil.logOperationTime(logger, "save link document to elasticsearch", () -> {
       try {
         if (document == null) {
@@ -124,6 +145,11 @@ public class ElasticsearchClientService {
 
 
   public List<LinkDocument> searchByTitleOrText(String title, String searchableText) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping search for title={}, text={}", title, searchableText);
+      return new ArrayList<>();
+    }
+    
     return LoggingUtil.logOperationTime(logger, "search documents by title or text", () -> {
       List<LinkDocument> results = new ArrayList<>();
       try {
@@ -241,6 +267,12 @@ public class ElasticsearchClientService {
   }
 
   public void saveCategoryDocument(CategoryDocument document) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping category document save for ID={}", 
+          document != null ? document.getId() : "null");
+      return;
+    }
+    
     LoggingUtil.logOperationTime(logger, "save category document to elasticsearch", () -> {
       try {
         if (document == null) {
@@ -289,6 +321,12 @@ public class ElasticsearchClientService {
   }
 
   public void saveModelDocument(ModelDocument document) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping model document save for ID={}", 
+          document != null ? document.getId() : "null");
+      return;
+    }
+    
     LoggingUtil.logOperationTime(logger, "save model document to elasticsearch", () -> {
       try {
         if (document == null) {
@@ -388,6 +426,11 @@ public class ElasticsearchClientService {
   }
 
   public List<CategoryDocument> findCategories(String name) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping category search for name={}", name);
+      return new ArrayList<>();
+    }
+    
     return LoggingUtil.logOperationTime(logger, "find categories by name", () -> {
       List<CategoryDocument> results = new ArrayList<>();
       try {
@@ -420,6 +463,11 @@ public class ElasticsearchClientService {
   }
 
   public List<ModelDocument> findModels(String name) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping model search for name={}", name);
+      return new ArrayList<>();
+    }
+    
     return LoggingUtil.logOperationTime(logger, "find models by name", () -> {
       List<ModelDocument> results = new ArrayList<>();
       try {
@@ -452,6 +500,11 @@ public class ElasticsearchClientService {
   }
 
   public Page<LinkDocument> searchLinks(String query, Pageable pageable) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping link search for query={}", query);
+      return new PageImpl<>(new ArrayList<>(), pageable, 0);
+    }
+    
     return LoggingUtil.logOperationTime(logger, "search links with pagination", () -> {
       try {
         SearchRequest searchRequest = new SearchRequest(LINKS_INDEX);
@@ -504,6 +557,11 @@ public class ElasticsearchClientService {
   }
 
   public List<AutosuggestItem> autosuggest(String query) {
+    if (!elasticsearchEnabled) {
+      logger.debug("Elasticsearch disabled: skipping autosuggest for query={}", query);
+      return new ArrayList<>();
+    }
+    
     return LoggingUtil.logOperationTime(logger, "autosuggest across model and category indices",
         () -> {
           List<AutosuggestItem> results = new ArrayList<>();

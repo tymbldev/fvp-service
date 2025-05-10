@@ -3,7 +3,6 @@ package com.fvp.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.LinkCategory;
-import com.fvp.repository.LinkCategoryRepository;
 import com.fvp.repository.ShardedLinkCategoryRepository;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +26,15 @@ public class LinkCategoryService {
   private static final String CATEGORIES_CACHE = "categories";
   private static final int CACHE_EXPIRY_MINUTES = 60;
 
-  @Autowired
-  private LinkCategoryRepository linkCategoryRepository;
 
   @Autowired
   private LinkCategoryShardingService shardingService;
 
   @Autowired
   private CacheService cacheService;
+
+  @Value("${category.recent-links-days:3}")
+  private long recentLinksDays;
 
   /**
    * Saves a LinkCategory entity to the appropriate shard
@@ -59,9 +60,7 @@ public class LinkCategoryService {
       logger.warn("Error saving to sharded table, falling back to original table: {}",
           e.getMessage());
     }
-
-    // Fall back to original table
-    return linkCategoryRepository.save(linkCategory);
+    return null;
   }
 
   /**
@@ -103,7 +102,7 @@ public class LinkCategoryService {
           shardingService.getRepositoryForCategory(category);
 
       Optional<? extends BaseLinkCategory> result = repository.findRandomRecentLinkByCategory(
-          tenantId, category);
+          tenantId, category, recentLinksDays);
       Optional<LinkCategory> linkCategory = result.map(this::convertToLinkCategory);
       linkCategory.ifPresent(
           model -> cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, model));
@@ -323,13 +322,6 @@ public class LinkCategoryService {
       logger.error("Error deleting from sharded tables: {}", e.getMessage());
       throw e;
     }
-  }
-
-  /**
-   * Flush any pending changes to the database
-   */
-  public void flush() {
-    linkCategoryRepository.flush();
   }
 
   /**

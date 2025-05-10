@@ -1,6 +1,7 @@
 package com.fvp.controller;
 
 import com.fvp.dto.ModelWithLinkDTO;
+import com.fvp.dto.ModelLinksResponseDTO;
 import com.fvp.service.ModelService;
 import com.fvp.service.ModelUtilService;
 import java.util.List;
@@ -51,13 +52,13 @@ public class ModelController {
   }
 
   @GetMapping("/{modelName}/links")
-  public ResponseEntity<Page<ModelWithLinkDTO>> getModelLinks(
+  public ResponseEntity<Page<ModelLinksResponseDTO>> getModelLinks(
       @PathVariable String modelName,
       @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId,
       @RequestParam(required = false) Integer maxDuration,
       @RequestParam(required = false) String quality,
       @PageableDefault(size = 20, sort = "randomOrder") Pageable pageable) {
-    Page<ModelWithLinkDTO> links = modelUtilService.getModelLinks(tenantId, modelName, pageable,
+    Page<ModelLinksResponseDTO> links = modelUtilService.getModelLinks(tenantId, modelName, pageable,
         maxDuration, quality);
     return ResponseEntity.ok(links);
   }

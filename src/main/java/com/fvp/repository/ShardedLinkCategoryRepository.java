@@ -5,11 +5,12 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.transaction.annotation.Transactional;
+import com.fvp.entity.BaseLinkCategory;
 
 @NoRepositoryBean
-public interface ShardedLinkCategoryRepository<T, ID> extends JpaRepository<T, ID> {
+public interface ShardedLinkCategoryRepository<T extends BaseLinkCategory, ID> extends JpaRepository<T, ID> {
 
-  Optional<T> findRandomRecentLinkByCategory(Integer tenantId, String category);
+  Optional<T> findRandomRecentLinkByCategory(Integer tenantId, String category, Long recentDays);
 
   Optional<T> findRandomLinkByCategory(Integer tenantId, String category);
 

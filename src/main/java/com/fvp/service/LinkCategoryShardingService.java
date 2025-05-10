@@ -13,7 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -24,6 +25,7 @@ public class LinkCategoryShardingService {
 
   private static final Logger logger = LoggerFactory.getLogger(LinkCategoryShardingService.class);
   private static final int TOTAL_SHARDS = 50;
+  private static final String CACHE_NAME = "categoryShardMapping";
 
   // Cache for category-to-shard mapping
   private final Map<String, Integer> categoryShardMap = new ConcurrentHashMap<>();
@@ -34,28 +36,43 @@ public class LinkCategoryShardingService {
   @Autowired
   private PlatformTransactionManager transactionManager;
 
+  @Autowired
+  private CacheManager cacheManager;
+
   /**
    * Determines the shard number for a given category name using consistent hashing
    *
    * @param category the category name
    * @return the shard number (1-50)
    */
-  @Cacheable(value = "categoryShardMapping", key = "#category")
   public int getShardNumber(String category) {
     category = category.toLowerCase();
-    // First check the cache
+    
+    // First check the local cache
     if (categoryShardMap.containsKey(category)) {
       return categoryShardMap.get(category);
     }
 
-    // Use the ShardHashingUtil to calculate shard number
-    int shardNumber = ShardHashingUtil.calculateShard(category.hashCode());
+    // Then check the Spring cache
+    Cache cache = cacheManager.getCache(CACHE_NAME);
+    if (cache != null) {
+      Cache.ValueWrapper cachedValue = cache.get(category);
+      if (cachedValue != null) {
+        Integer shardNumber = (Integer) cachedValue.get();
+        categoryShardMap.put(category, shardNumber);
+        return shardNumber;
+      }
+    }
 
-    // Ensure shard number is between 1 and 50
+    // Calculate shard number if not found in caches
+    int shardNumber = ShardHashingUtil.calculateShard(category.hashCode());
     shardNumber = ((shardNumber - 1) % TOTAL_SHARDS) + 1;
 
-    // Cache the result
+    // Store in both caches
     categoryShardMap.put(category, shardNumber);
+    if (cache != null) {
+      cache.put(category, shardNumber);
+    }
 
     logger.debug("Category '{}' mapped to shard {}", category, shardNumber);
     return shardNumber;

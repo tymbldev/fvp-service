@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.entity.BaseLinkModel;
 import com.fvp.entity.LinkModel;
 import com.fvp.repository.ShardedLinkModelRepository;
+import com.fvp.repository.LinkModelDynamicQueryBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +31,9 @@ public class LinkModelService {
 
   @Autowired
   private CacheService cacheService;
+
+  @Autowired
+  private LinkModelDynamicQueryBuilder queryBuilder;
 
   /**
    * Find all models for a tenant
@@ -491,5 +495,251 @@ public class LinkModelService {
       cacheService.evictFromCache(MODEL_COUNT_CACHE,
           generateCacheKey(linkModel.getTenantId(), "count:" + linkModel.getModel()));
     }
+  }
+
+  /**
+   * Find links by tenant ID.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @return List of links for the tenant
+   */
+  public <T extends BaseLinkModel> List<T> findByTenantId(Class<T> entityClass, Integer tenantId) {
+    return queryBuilder.findByTenantId(entityClass, tenantId);
+  }
+
+  /**
+   * Find links by link ID.
+   * 
+   * @param entityClass The entity class
+   * @param linkId The link ID
+   * @return List of links matching the criteria
+   */
+  public <T extends BaseLinkModel> List<T> findByLinkId(Class<T> entityClass, Integer linkId) {
+    return queryBuilder.findByLinkId(entityClass, linkId);
+  }
+
+  /**
+   * Find links by model and tenant ID.
+   * 
+   * @param entityClass The entity class
+   * @param model The model name
+   * @param tenantId The tenant ID
+   * @return List of links matching the criteria
+   */
+  public <T extends BaseLinkModel> List<T> findByModelAndTenantId(
+          Class<T> entityClass,
+          String model,
+          Integer tenantId
+  ) {
+    return queryBuilder.findByModelAndTenantId(entityClass, model, tenantId);
+  }
+
+  /**
+   * Find links by tenant ID and model.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @return List of links matching the criteria
+   */
+  public <T extends BaseLinkModel> List<T> findByTenantIdAndModel(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model
+  ) {
+    return queryBuilder.findByTenantIdAndModel(entityClass, tenantId, model);
+  }
+
+  /**
+   * Find a random link by model.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @return An optional containing a random link from the model
+   */
+  public <T extends BaseLinkModel> Optional<T> findRandomLinkByModel(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model
+  ) {
+    return queryBuilder.findRandomLinkByModel(entityClass, tenantId, model);
+  }
+
+  /**
+   * Find links by tenant ID and model ordered by random order.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @return List of links matching the criteria ordered by random order
+   */
+  public <T extends BaseLinkModel> List<T> findByTenantIdAndModelOrderByRandomOrder(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model
+  ) {
+    return queryBuilder.findByTenantIdAndModelOrderByRandomOrder(entityClass, tenantId, model);
+  }
+
+  /**
+   * Count links by tenant ID and model.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @return The count of links in the model
+   */
+  public <T extends BaseLinkModel> Long countByTenantIdAndModel(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model
+  ) {
+    return queryBuilder.countByTenantIdAndModel(entityClass, tenantId, model);
+  }
+
+  /**
+   * Find random links by model names.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param modelNames List of model names
+   * @return List of random links from the specified models
+   */
+  public <T extends BaseLinkModel> List<T> findRandomLinksByModelNames(
+          Class<T> entityClass,
+          Integer tenantId,
+          List<String> modelNames
+  ) {
+    return queryBuilder.findRandomLinksByModelNames(entityClass, tenantId, modelNames);
+  }
+
+  /**
+   * Count links by tenant ID and models.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param modelNames List of model names
+   * @return List of model name and count pairs
+   */
+  public <T extends BaseLinkModel> List<Object[]> countByTenantIdAndModels(
+          Class<T> entityClass,
+          Integer tenantId,
+          List<String> modelNames
+  ) {
+    return queryBuilder.countByTenantIdAndModels(entityClass, tenantId, modelNames);
+  }
+
+  /**
+   * Delete links by link ID.
+   * 
+   * @param entityClass The entity class
+   * @param linkId The link ID
+   */
+  @Transactional
+  public <T extends BaseLinkModel> int deleteByLinkId(Class<T> entityClass, Integer linkId) {
+    return queryBuilder.deleteByLinkId(entityClass, linkId);
+  }
+
+  /**
+   * Count links by model with filters.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @param maxDuration Maximum duration (optional)
+   * @param quality Quality filter (optional)
+   * @return Count of matching entities
+   */
+  public <T extends BaseLinkModel> Long countByModelWithFilters(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model,
+          Integer maxDuration,
+          String quality
+  ) {
+    return queryBuilder.countByModelWithFilters(entityClass, tenantId, model, maxDuration, quality);
+  }
+
+  /**
+   * Find links by model with filters.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @param maxDuration Maximum duration (optional)
+   * @param quality Quality filter (optional)
+   * @param offset Pagination offset
+   * @param limit Maximum number of results
+   * @return Filtered list of entities
+   */
+  public <T extends BaseLinkModel> List<T> findByModelWithFiltersPageable(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model,
+          Integer maxDuration,
+          String quality,
+          int offset,
+          int limit
+  ) {
+    return queryBuilder.findByModelWithFiltersPageable(
+            entityClass,
+            tenantId,
+            model,
+            maxDuration,
+            quality,
+            offset,
+            limit
+    );
+  }
+
+  /**
+   * Find links by model with filters excluding a specific link.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @param model The model name
+   * @param maxDuration Maximum duration (optional)
+   * @param quality Quality filter (optional)
+   * @param excludeId Link ID to exclude
+   * @param offset Pagination offset
+   * @param limit Maximum number of results
+   * @return Filtered list of entities
+   */
+  public <T extends BaseLinkModel> List<T> findByModelWithFiltersExcludingLinkPageable(
+          Class<T> entityClass,
+          Integer tenantId,
+          String model,
+          Integer maxDuration,
+          String quality,
+          Integer excludeId,
+          int offset,
+          int limit
+  ) {
+    return queryBuilder.findByModelWithFiltersExcludingLinkPageable(
+            entityClass,
+            tenantId,
+            model,
+            maxDuration,
+            quality,
+            excludeId,
+            offset,
+            limit
+    );
+  }
+
+  /**
+   * Find all distinct models for a tenant.
+   * 
+   * @param entityClass The entity class
+   * @param tenantId The tenant ID
+   * @return List of distinct model names
+   */
+  public <T extends BaseLinkModel> List<String> findAllDistinctModels(
+          Class<T> entityClass,
+          Integer tenantId
+  ) {
+    return queryBuilder.findAllDistinctModels(entityClass, tenantId);
   }
 } 
