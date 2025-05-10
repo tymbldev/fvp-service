@@ -494,6 +494,28 @@ public class LinkModelDynamicQueryBuilder {
         return entityManager.createQuery(query).getResultList();
     }
 
+    /**
+     * Find all distinct combinations of model and tenant ID where model is not null.
+     * 
+     * @param entityClass The entity class
+     * @return List of Object arrays containing model and tenant ID
+     */
+    public <T extends BaseLinkModel> List<Object[]> findAllDistinctModelAndTenantId(
+            Class<T> entityClass
+    ) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
+        Root<T> root = query.from(entityClass);
+        
+        // Select both model and tenantId
+        query.multiselect(root.get("model"), root.get("tenantId")).distinct(true);
+        
+        // Add predicate for non-null model
+        query.where(cb.isNotNull(root.get("model")));
+        
+        return entityManager.createQuery(query).getResultList();
+    }
+
     // Helper methods to build query predicates
     
     private <T extends BaseLinkModel> List<Predicate> buildBasePredicates(

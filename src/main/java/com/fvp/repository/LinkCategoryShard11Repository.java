@@ -165,7 +165,7 @@ public interface LinkCategoryShard11Repository extends
           LinkCategoryShard11.class, tenantId, categoryNames
       );
   }
-
+  
   /**
    * Default method implementation that uses the central dynamic query builder
    */

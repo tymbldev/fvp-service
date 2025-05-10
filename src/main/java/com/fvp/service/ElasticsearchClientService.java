@@ -51,12 +51,12 @@ public class ElasticsearchClientService {
     this.elasticsearchEnabled = elasticsearchEnabled;
     
     if (elasticsearchEnabled) {
-      try {
-        ensureIndexExists(LINKS_INDEX);
-        ensureIndexExists(CATEGORIES_INDEX);
-        ensureIndexExists(MODELS_INDEX);
-      } catch (Exception e) {
-        logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
+    try {
+      ensureIndexExists(LINKS_INDEX);
+      ensureIndexExists(CATEGORIES_INDEX);
+      ensureIndexExists(MODELS_INDEX);
+    } catch (Exception e) {
+      logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
       }
     } else {
       logger.info("Elasticsearch is disabled. Operations will be logged but not executed.");

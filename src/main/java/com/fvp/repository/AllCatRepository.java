@@ -20,7 +20,7 @@ public interface AllCatRepository extends JpaRepository<AllCat, Integer> {
   @Query("SELECT a FROM AllCat a WHERE a.tenantId = :tenantId AND a.homeSEO = true AND a.createdViaLink = false")
   List<AllCat> findAllHomeSEOCategories(Integer tenantId);
 
-  @Query("SELECT a FROM AllCat a WHERE a.tenantId = :tenantId AND a.createdViaLink = true AND a.home = :home ORDER BY a.homeCatOrder ASC")
+  @Query("SELECT a FROM AllCat a WHERE a.tenantId = :tenantId AND a.createdViaLink = false AND a.home = :home ORDER BY a.homeCatOrder ASC")
   List<AllCat> findByTenantIdAndHomeOrderByHomeCatOrder(Integer tenantId, Integer home);
 
 

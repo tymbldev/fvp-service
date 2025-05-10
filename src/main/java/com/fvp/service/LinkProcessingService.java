@@ -98,6 +98,7 @@ public class LinkProcessingService {
     long saveLinkTimeMs = 0;
     long processCategoriesTimeMs = 0;
     long processModelsTimeMs = 0;
+    boolean realTimeIndex = false;
 
     try {
       // Check if link with same URL already exists
@@ -126,14 +127,19 @@ public class LinkProcessingService {
         link = linkRepository.saveAndFlush(existingLink); // Use saveAndFlush instead of save
 
         // Update Elasticsearch document
-        updateElasticsearchDocument(link);
+
+        if (realTimeIndex) {
+          updateElasticsearchDocument(link);
+        }
       } else {
         // Save the new link
         logger.info("Saving to link table: 1 entry with title '{}'", link.getTitle());
         link = linkRepository.saveAndFlush(link); // Use saveAndFlush instead of save
 
         // Create Elasticsearch document
-        updateElasticsearchDocument(link);
+        if (realTimeIndex) {
+          updateElasticsearchDocument(link);
+        }
       }
       saveLinkTimeMs = System.currentTimeMillis() - saveStartMs;
 
