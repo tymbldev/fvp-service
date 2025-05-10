@@ -14,6 +14,7 @@ import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -55,31 +56,25 @@ public class ModelUtilService {
 
     for (String modelName : modelNames) {
       try {
-        ShardedLinkModelRepository<? extends BaseLinkModel> repository =
-            shardingService.getRepositoryForModel(modelName);
-
-        List<? extends BaseLinkModel> linkModels = repository.findByModelAndTenantId(modelName,
-            tenantId);
-        if (!linkModels.isEmpty()) {
-          BaseLinkModel linkModel = linkModels.get(0);
-          Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
-
-          if (link != null) {
-            ModelWithLinkDTO dto = new ModelWithLinkDTO();
-            dto.setId(linkModel.getId());
-            dto.setName(modelName);
-            dto.setLink(link.getLink());
-            dto.setLinkTitle(link.getTitle());
-            dto.setLinkThumbnail(link.getThumbnail());
-            dto.setLinkThumbPath(link.getThumbpath());
-            dto.setLinkSource(link.getSource());
-            dto.setLinkTrailer(link.getTrailer());
-            dto.setLinkDuration(link.getDuration());
-            results.add(dto);
-          }
+        // Get the model entity first
+        Model model = modelRepository.findByTenantIdAndName(tenantId, modelName);
+        if (model == null) {
+          continue;
         }
+
+        ModelWithLinkDTO dto = new ModelWithLinkDTO();
+        // Set all model fields
+        dto.setId(model.getId());
+        dto.setTenantId(model.getTenantId());
+        dto.setName(model.getName());
+        dto.setDescription(model.getDescription());
+        dto.setCountry(model.getCountry());
+        dto.setThumbnail(model.getThumbnail());
+        dto.setThumbPath(model.getThumbpath());
+        dto.setAge(model.getAge());
+        results.add(dto);
       } catch (Exception e) {
-        logger.error("Error getting first link for model {}: {}", modelName, e.getMessage(), e);
+        logger.error("Error getting model {}: {}", modelName, e.getMessage(), e);
       }
     }
 
@@ -120,11 +115,16 @@ public class ModelUtilService {
         dto.setThumbnail(model.getThumbnail());
         dto.setThumbPath(model.getThumbpath());
         dto.setAge(model.getAge());
+        
+        // Set link fields
         dto.setLink(link.getLink());
         dto.setLinkTitle(link.getTitle());
         dto.setLinkThumbnail(link.getThumbnail());
         dto.setLinkThumbPath(link.getThumbpath());
+        dto.setLinkSource(link.getSource());
+        dto.setLinkTrailer(link.getTrailer());
         dto.setLinkDuration(link.getDuration());
+        dto.setLinkId((long) link.getId());
 
         return dto;
       } catch (Exception e) {
@@ -194,7 +194,7 @@ public class ModelUtilService {
           boolean includeFirstLink = (maxDuration == null && quality == null);
 
           if (includeFirstLink) {
-            ModelLinksResponseDTO.LinkDTO firstLinkDTO = convertToLinkDTO(firstLink);
+            ModelLinksResponseDTO.LinkDTO firstLinkDTO = new ModelLinksResponseDTO.LinkDTO();
             pageContent.add(firstLinkDTO);
 
             // If first page has only one item (pageSize=1), we're done
@@ -208,7 +208,7 @@ public class ModelUtilService {
             // Get link entity for exclusion from subsequent query
             Link linkEntity = null;
             try {
-              linkEntity = linkRepository.findById(firstLink.getLinkId().intValue()).orElse(null);
+              linkEntity = linkRepository.findById(firstLink.getId()).orElse(null);
             } catch (Exception e) {
               logger.warn("Error fetching link entity: {}", e.getMessage());
             }
@@ -233,16 +233,38 @@ public class ModelUtilService {
                 })
                 .collect(Collectors.toList());
 
-            for (LinkModel linkModel : remainingLinks) {
-              try {
-                Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
-                if (link != null) {
-                  ModelLinksResponseDTO.LinkDTO linkDTO = convertToLinkDTO(link);
-                  pageContent.add(linkDTO);
+            try {
+              // Extract all link IDs
+              List<Integer> linkIds = remainingLinks.stream()
+                  .map(LinkModel::getLinkId)
+                  .collect(Collectors.toList());
+              
+              // Fetch all links in a single database call
+              if (!linkIds.isEmpty()) {
+                List<Link> links = linkRepository.findAllById(linkIds);
+                
+                // Create a map for quick lookup
+                Map<Integer, Link> linkMap = links.stream()
+                    .collect(Collectors.toMap(Link::getId, link -> link));
+                
+                // Create DTOs with all fields properly mapped
+                for (LinkModel linkModel : remainingLinks) {
+                  Link link = linkMap.get(linkModel.getLinkId());
+                  if (link != null) {
+                    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+                    linkDTO.setLink(link.getLink());
+                    linkDTO.setLinkTitle(link.getTitle());
+                    linkDTO.setLinkThumbnail(link.getThumbnail());
+                    linkDTO.setLinkThumbPath(link.getThumbpath());
+                    linkDTO.setLinkSource(link.getSource());
+                    linkDTO.setLinkTrailer(link.getTrailer());
+                    linkDTO.setLinkDuration(link.getDuration());
+                    pageContent.add(linkDTO);
+                  }
                 }
-              } catch (Exception e) {
-                logger.error("Error fetching link details for link ID {}: {}", linkModel.getLinkId(), e.getMessage());
               }
+            } catch (Exception e) {
+              logger.error("Error fetching link details in batch: {}", e.getMessage());
             }
           } else {
             // If filters are applied, get all items for the first page
@@ -258,16 +280,38 @@ public class ModelUtilService {
                 })
                 .collect(Collectors.toList());
 
-            for (LinkModel linkModel : firstPageLinks) {
-              try {
-                Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
-                if (link != null) {
-                  ModelLinksResponseDTO.LinkDTO linkDTO = convertToLinkDTO(link);
-                  pageContent.add(linkDTO);
+            try {
+              // Extract all link IDs
+              List<Integer> linkIds = firstPageLinks.stream()
+                  .map(LinkModel::getLinkId)
+                  .collect(Collectors.toList());
+              
+              // Fetch all links in a single database call
+              if (!linkIds.isEmpty()) {
+                List<Link> links = linkRepository.findAllById(linkIds);
+                
+                // Create a map for quick lookup
+                Map<Integer, Link> linkMap = links.stream()
+                    .collect(Collectors.toMap(Link::getId, link -> link));
+                
+                // Create DTOs with all fields properly mapped
+                for (LinkModel linkModel : firstPageLinks) {
+                  Link link = linkMap.get(linkModel.getLinkId());
+                  if (link != null) {
+                    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+                    linkDTO.setLink(link.getLink());
+                    linkDTO.setLinkTitle(link.getTitle());
+                    linkDTO.setLinkThumbnail(link.getThumbnail());
+                    linkDTO.setLinkThumbPath(link.getThumbpath());
+                    linkDTO.setLinkSource(link.getSource());
+                    linkDTO.setLinkTrailer(link.getTrailer());
+                    linkDTO.setLinkDuration(link.getDuration());
+                    pageContent.add(linkDTO);
+                  }
                 }
-              } catch (Exception e) {
-                logger.error("Error fetching link details for link ID {}: {}", linkModel.getLinkId(), e.getMessage());
               }
+            } catch (Exception e) {
+              logger.error("Error fetching link details in batch: {}", e.getMessage());
             }
           }
         }
@@ -286,16 +330,38 @@ public class ModelUtilService {
             })
             .collect(Collectors.toList());
 
-        for (LinkModel linkModel : pageLinks) {
-          try {
-            Link link = linkRepository.findById(linkModel.getLinkId()).orElse(null);
-            if (link != null) {
-              ModelLinksResponseDTO.LinkDTO linkDTO = convertToLinkDTO(link);
-              pageContent.add(linkDTO);
+        try {
+          // Extract all link IDs
+          List<Integer> linkIds = pageLinks.stream()
+              .map(LinkModel::getLinkId)
+              .collect(Collectors.toList());
+          
+          // Fetch all links in a single database call
+          if (!linkIds.isEmpty()) {
+            List<Link> links = linkRepository.findAllById(linkIds);
+            
+            // Create a map for quick lookup
+            Map<Integer, Link> linkMap = links.stream()
+                .collect(Collectors.toMap(Link::getId, link -> link));
+            
+            // Create DTOs with all fields properly mapped
+            for (LinkModel linkModel : pageLinks) {
+              Link link = linkMap.get(linkModel.getLinkId());
+              if (link != null) {
+                ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+                linkDTO.setLink(link.getLink());
+                linkDTO.setLinkTitle(link.getTitle());
+                linkDTO.setLinkThumbnail(link.getThumbnail());
+                linkDTO.setLinkThumbPath(link.getThumbpath());
+                linkDTO.setLinkSource(link.getSource());
+                linkDTO.setLinkTrailer(link.getTrailer());
+                linkDTO.setLinkDuration(link.getDuration());
+                pageContent.add(linkDTO);
+              }
             }
-          } catch (Exception e) {
-            logger.error("Error fetching link details for link ID {}: {}", linkModel.getLinkId(), e.getMessage());
           }
+        } catch (Exception e) {
+          logger.error("Error fetching link details in batch: {}", e.getMessage());
         }
       }
 
@@ -304,30 +370,6 @@ public class ModelUtilService {
       cacheService.putInCacheWithExpiry(MODEL_LINKS_CACHE, cacheKey, result, 1, TimeUnit.HOURS);
       return result;
     });
-  }
-
-  private ModelLinksResponseDTO.LinkDTO convertToLinkDTO(Link link) {
-    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
-    linkDTO.setLink(link.getLink());
-    linkDTO.setLinkTitle(link.getTitle());
-    linkDTO.setLinkThumbnail(link.getThumbnail());
-    linkDTO.setLinkThumbPath(link.getThumbpath());
-    linkDTO.setLinkSource(link.getSource());
-    linkDTO.setLinkTrailer(link.getTrailer());
-    linkDTO.setLinkDuration(link.getDuration());
-    return linkDTO;
-  }
-
-  private ModelLinksResponseDTO.LinkDTO convertToLinkDTO(ModelWithLinkDTO dto) {
-    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
-    linkDTO.setLink(dto.getLink());
-    linkDTO.setLinkTitle(dto.getLinkTitle());
-    linkDTO.setLinkThumbnail(dto.getLinkThumbnail());
-    linkDTO.setLinkThumbPath(dto.getLinkThumbPath());
-    linkDTO.setLinkSource(dto.getLinkSource());
-    linkDTO.setLinkTrailer(dto.getLinkTrailer());
-    linkDTO.setLinkDuration(dto.getLinkDuration());
-    return linkDTO;
   }
 
   private ModelLinksResponseDTO createResponseDTO(Model model, List<ModelLinksResponseDTO.LinkDTO> links, Pageable pageable, long totalCount) {

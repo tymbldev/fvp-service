@@ -12,6 +12,14 @@ public interface ModelRepository extends JpaRepository<Model, Integer> {
 
   List<Model> findByTenantId(Integer tenantId);
 
+  /**
+   * Find models by tenant ID where data is present
+   * @param tenantId the tenant ID
+   * @return list of models with data present
+   */
+  @Query(value = "SELECT m.* FROM model m FORCE INDEX (idx_tenant_data_present) WHERE m.tenant_id = :tenantId AND m.data_present = 1", nativeQuery = true)
+  List<Model> findByTenantIdAndDataPresent(@Param("tenantId") Integer tenantId);
+
   Model findByTenantIdAndName(Integer tenantId, String name);
 
   @Query("SELECT m FROM Model m WHERE m.tenantId = :tenantId AND m.name IN :names")

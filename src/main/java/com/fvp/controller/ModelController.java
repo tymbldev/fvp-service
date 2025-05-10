@@ -2,6 +2,7 @@ package com.fvp.controller;
 
 import com.fvp.dto.ModelWithLinkDTO;
 import com.fvp.dto.ModelLinksResponseDTO;
+import com.fvp.dto.ModelWithoutLinkDTO;
 import com.fvp.service.ModelService;
 import com.fvp.service.ModelUtilService;
 import java.util.List;
@@ -37,9 +38,9 @@ public class ModelController {
   private ModelUtilService modelUtilService;
 
   @GetMapping("/all")
-  public ResponseEntity<List<ModelWithLinkDTO>> getHomeModels(
+  public ResponseEntity<List<ModelWithoutLinkDTO>> getHomeModels(
       @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
-    List<ModelWithLinkDTO> models = modelService.getAllModels(tenantId);
+    List<ModelWithoutLinkDTO> models = modelService.getAllModels(tenantId);
     return ResponseEntity.ok(models);
   }
 
@@ -70,12 +71,12 @@ public class ModelController {
     logger.info("Starting model cache build for tenant {}", tenantId);
 
     // Build all models cache
-    List<ModelWithLinkDTO> allModels = modelService.getAllModels(tenantId);
+    List<ModelWithoutLinkDTO> allModels = modelService.getAllModels(tenantId);
     logger.info("Built all models cache with {} models", allModels.size());
 
     // Get all distinct model names
     Set<String> allModelNames = allModels.stream()
-        .map(ModelWithLinkDTO::getName)
+        .map(ModelWithoutLinkDTO::getName)
         .collect(Collectors.toSet());
 
     // Build cache for each model's first page

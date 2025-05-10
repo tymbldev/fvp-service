@@ -253,12 +253,12 @@
                 "all"
               ]
             },
-            "description": "Get all models with their first links"
+            "description": "Get all models with their basic information (id, tenantId, name, description, country, thumbnail, thumbPath, age). This endpoint no longer returns link-related fields."
           },
           "response": []
         },
         {
-          "name": "Get Model First Link",
+          "name": "Get Model Details",
           "request": {
             "method": "GET",
             "header": [
@@ -287,7 +287,7 @@
                 }
               ]
             },
-            "description": "Get the first link for a specific model"
+            "description": "Get the details for a specific model along with its first link data. This endpoint returns both model information (id, tenantId, name, description, country, thumbnail, thumbPath, age) and link data (link, linkTitle, linkThumbnail, linkThumbPath, linkSource, linkTrailer, linkDuration)."
           },
           "response": []
         },
@@ -348,7 +348,7 @@
                 }
               ]
             },
-            "description": "Get links for a specific model with pagination and filtering"
+            "description": "Get links for a specific model with pagination and filtering. This endpoint returns model information along with a separate collection of links."
           },
           "response": []
         },
@@ -374,7 +374,7 @@
                 "build-cache"
               ]
             },
-            "description": "Build the complete model cache by calling all models and first page of each model"
+            "description": "Build the complete model cache by calling all models and caching their data"
           },
           "response": []
         }
@@ -420,7 +420,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/links/search?title=example&searchableText=",
+              "raw": "{{base_url}}/api/elasticsearch/links/search?query=example&page=0&size=20",
               "host": [
                 "{{base_url}}"
               ],
@@ -432,28 +432,33 @@
               ],
               "query": [
                 {
-                  "key": "title",
+                  "key": "query",
                   "value": "example",
-                  "description": "Title to search for"
+                  "description": "Search query for links (searches across title, searchableText, categories, models, source, and sheetName)"
                 },
                 {
-                  "key": "searchableText",
-                  "value": "",
-                  "description": "Text to search for"
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (zero-based)"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Number of items per page"
                 }
               ]
             },
-            "description": "Search for links by title or searchable text"
+            "description": "Search for links by query string across multiple fields. Returns paginated results with metadata."
           },
           "response": []
         },
         {
-          "name": "Search Links by Category",
+          "name": "Search Links by ID",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/links/category/:category",
+              "raw": "{{base_url}}/api/elasticsearch/links/by-id?linkId=123",
               "host": [
                 "{{base_url}}"
               ],
@@ -461,18 +466,17 @@
                 "api",
                 "elasticsearch",
                 "links",
-                "category",
-                ":category"
+                "by-id"
               ],
-              "variable": [
+              "query": [
                 {
-                  "key": "category",
-                  "value": "exampleCategory",
-                  "description": "Category to search for"
+                  "key": "linkId",
+                  "value": "123",
+                  "description": "ID of the link to search for"
                 }
               ]
             },
-            "description": "Find links by category in Elasticsearch"
+            "description": "Find a specific link by its ID in Elasticsearch"
           },
           "response": []
         },
@@ -500,7 +504,7 @@
                 }
               ]
             },
-            "description": "Search for categories by name or description"
+            "description": "Search for categories by name or description. Returns category documents with metadata including ID, name, description, tenant ID, and other attributes."
           },
           "response": []
         },
@@ -528,7 +532,7 @@
                 }
               ]
             },
-            "description": "Search for models by name or description"
+            "description": "Search for models by name or description. Returns model documents with metadata including ID, name, description, tenant ID, country, thumbnail, and other attributes."
           },
           "response": []
         },
@@ -555,12 +559,12 @@
                 }
               ]
             },
-            "description": "Get autosuggest results for links, categories and models"
+            "description": "Get autosuggest results for links, categories, and models based on a prefix query. Returns a combined list of matching items with their type and basic information."
           },
           "response": []
         },
         {
-          "name": "Sync Elasticsearch",
+          "name": "Sync All",
           "request": {
             "method": "POST",
             "header": [],
@@ -575,7 +579,28 @@
                 "sync"
               ]
             },
-            "description": "Trigger Elasticsearch sync for links, categories and models"
+            "description": "Trigger Elasticsearch sync for links, categories, and models. This initiates an asynchronous process to index all entities in Elasticsearch."
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Links",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/sync/links",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "elasticsearch",
+                "sync",
+                "links"
+              ]
+            },
+            "description": "Trigger Elasticsearch sync for links only. This initiates an asynchronous process to index all links in Elasticsearch with their metadata."
           },
           "response": []
         },
@@ -596,7 +621,7 @@
                 "categories"
               ]
             },
-            "description": "Trigger Elasticsearch sync for categories only"
+            "description": "Trigger Elasticsearch sync for categories only. This initiates an asynchronous process to index all categories in Elasticsearch with their metadata."
           },
           "response": []
         },
@@ -617,7 +642,7 @@
                 "models"
               ]
             },
-            "description": "Trigger Elasticsearch sync for models only"
+            "description": "Trigger Elasticsearch sync for models only. This initiates an asynchronous process to index all models in Elasticsearch with their metadata including ID, name, description, and other attributes."
           },
           "response": []
         },
@@ -638,7 +663,7 @@
                 "status"
               ]
             },
-            "description": "Get Elasticsearch sync status"
+            "description": "Get the current status of all Elasticsearch sync processes (links, categories, and models), including progress, completion status, and any errors."
           },
           "response": []
         }

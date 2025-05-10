@@ -322,7 +322,7 @@ public class LinkProcessingService {
   /**
    * Refreshes the categories cache every hour
    */
-  @Scheduled(fixedRate = 3600000) // 1 hour
+  //@Scheduled(fixedRate = 3600000) // 1 hour
   public void refreshCategoriesCache() {
     logger.info("Refreshing categories cache");
     categoriesCache.clear();
@@ -352,10 +352,18 @@ public class LinkProcessingService {
         doc = new LinkDocument();
         doc.setId(String.valueOf(link.getId()));
       }
+
+      // Update all fields from Link entity
+      doc.setTenantId(link.getTenantId());
       doc.setTitle(link.getTitle());
       doc.setLink(link.getLink());
       doc.setThumbnail(link.getThumbnail());
+      doc.setThumbPath(link.getThumbpath());
       doc.setDuration(link.getDuration());
+      doc.setSource(link.getSource());
+      doc.setTrailer(link.getTrailer());
+      doc.setCreatedAt(link.getCreatedAt() != null ? 
+          java.util.Date.from(link.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null);
       doc.setSearchableText(generateSearchableText(link));
 
       // Update categories
@@ -365,6 +373,7 @@ public class LinkProcessingService {
       }
       doc.setCategories(categoriesList);
       doc.setModels(tokenize(link.getStar()));
+
       logger.info("Updating Elasticsearch document for link ID {} with {} categories",
           link.getId(), categoriesList.size());
       elasticsearchClientService.saveLinkDocument(doc);
