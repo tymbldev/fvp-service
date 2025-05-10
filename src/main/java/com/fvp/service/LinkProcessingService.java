@@ -359,6 +359,9 @@ public class LinkProcessingService {
 
       // Update categories
       List<String> categoriesList = tokenize(link.getCategory());
+      if (categoriesList == null) {
+        categoriesList = new ArrayList<>();
+      }
       doc.setCategories(categoriesList);
       doc.setModels(tokenize(link.getStar()));
       logger.info("Updating Elasticsearch document for link ID {} with {} categories",
