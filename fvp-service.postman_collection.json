@@ -1165,6 +1165,51 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Thumbnail Generation",
+      "item": [
+        {
+          "name": "Process All Thumbnails",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/thumbs/process",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "thumbs",
+                "process"
+              ]
+            },
+            "description": "Process all links with 'NA' thumbpath values in batches of 20 until completion. Downloads thumbnail images, optimizes them, saves to configured directory, and updates both database and Elasticsearch. The thumbpath directory is configurable in application properties."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Processing Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/thumbs/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "thumbs",
+                "stats"
+              ]
+            },
+            "description": "Get statistics about thumbnail processing, including total links, processed and pending thumbpaths, and progress percentage. Thumbnails are stored in the configurable directory specified by 'fvp.thumbs.directory' in application properties (/Users/nitin.goyal/Desktop/myspace/personal/fvp/thumb/ for local and /apps/fvp/thumbs for production)."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

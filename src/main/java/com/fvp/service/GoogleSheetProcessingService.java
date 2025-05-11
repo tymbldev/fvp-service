@@ -379,7 +379,7 @@ public class GoogleSheetProcessingService {
       link.setSource(source);
 
       // Set default thumbPath if it's required and not provided
-      link.setThumbpath(link.getSheetName() + "/" + UUID.randomUUID().toString());
+      link.setThumbpath("NA");
 
       // Set createdOn timestamp
       link.setCreatedOn(LocalDateTime.now());

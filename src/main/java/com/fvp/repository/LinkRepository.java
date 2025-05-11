@@ -81,4 +81,23 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
    */
   @Query(value = "SELECT COUNT(*) AS count FROM link l WHERE l.tenant_id = :tenantId AND l.thumb_path_processed = 1", nativeQuery = true)
   Long countByTenantId(@Param("tenantId") Integer tenantId);
+
+  /**
+   * Find links with a specific thumbpath and thumbPathProcessed value with pagination
+   *
+   * @param thumbpath The thumbpath value to search for
+   * @param thumbPathProcessed The thumbPathProcessed value to search for
+   * @param pageable Pagination information
+   * @return Page of links
+   */
+  Page<Link> findByThumbpathAndThumbPathProcessed(String thumbpath, Integer thumbPathProcessed, Pageable pageable);
+
+  /**
+   * Count links with a specific thumbpath and thumbPathProcessed value
+   *
+   * @param thumbpath The thumbpath value to search for
+   * @param thumbPathProcessed The thumbPathProcessed value to search for
+   * @return Count of links
+   */
+  long countByThumbpathAndThumbPathProcessed(String thumbpath, Integer thumbPathProcessed);
 } 
