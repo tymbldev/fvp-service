@@ -188,7 +188,7 @@ public class ThumbPathGenerationController {
             
             // Create the local file path
             Path localImagePath = Paths.get(thumbsDir, filename);
-            String savedImagePath = "/thumbs/" + filename;
+            String savedImagePath =   filename;
             
             // Download and process the image
             byte[] imageData = downloadImage(thumbUrl);
