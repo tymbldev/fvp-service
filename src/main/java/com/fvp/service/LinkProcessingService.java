@@ -11,9 +11,7 @@ import com.fvp.entity.LinkModel;
 import com.fvp.entity.Model;
 import com.fvp.repository.AllCatRepository;
 import com.fvp.repository.LinkRepository;
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
-import java.lang.reflect.Type;
+import com.fvp.util.Util;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -51,6 +48,7 @@ public class LinkProcessingService {
   private final LinkCategoryShardingService shardingService;
   private final LinkModelShardingService linkModelShardingService;
   private final ModelService modelService;
+  private final Util util;
   // Cache for storing categories by tenant ID
   private final Map<Integer, List<AllCat>> categoriesCache = new ConcurrentHashMap<>();
 
@@ -67,7 +65,7 @@ public class LinkProcessingService {
       LinkModelService linkModelService,
       ModelService modelService,
       LinkCategoryShardingService shardingService,
-      LinkModelShardingService linkModelShardingService) {
+      LinkModelShardingService linkModelShardingService, Util util) {
     this.dataSource = dataSource;
     this.linkRepository = linkRepository;
     this.allCatRepository = allCatRepository;
@@ -79,6 +77,7 @@ public class LinkProcessingService {
     this.modelService = modelService;
     this.shardingService = shardingService;
     this.linkModelShardingService = linkModelShardingService;
+    this.util = util;
   }
 
   @PostConstruct
@@ -179,7 +178,7 @@ public class LinkProcessingService {
     Set<String> categorySet = new HashSet<>();
 
     List<AllCat> allCategories = getCategoriesForTenant(link.getTenantId());
-    List<String> values = tokenize(link.getCategory());
+    List<String> values = util.tokenize(link.getCategory());
 
     // First pass: Collect all categories to be created
     for (String token : values) {
@@ -258,7 +257,7 @@ public class LinkProcessingService {
   public void processModels(Link link) {
     Set<String> modelSet = new HashSet<>();
 
-    List<String> values = tokenize(link.getStar());
+    List<String> values = util.tokenize(link.getStar());
     // For each token from the input
     for (String token : values) {
       String model = token.trim();
@@ -298,13 +297,6 @@ public class LinkProcessingService {
         savedCount, link.getId());
   }
 
-  private List<String> tokenize(String input) {
-    Gson gson = new Gson();
-    Type listType = new TypeToken<List<String>>() {
-    }.getType();
-    List<String> values = gson.fromJson(input, listType);
-    return values;
-  }
 
   /**
    * Gets all categories for a tenant, using cache when available
@@ -362,17 +354,18 @@ public class LinkProcessingService {
       doc.setLinkDuration(link.getDuration());
       doc.setLinkSource(link.getSource());
       doc.setLinkTrailer(link.getTrailer());
-      doc.setCreatedAt(link.getCreatedAt() != null ? 
-          java.util.Date.from(link.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null);
+      doc.setCreatedAt(link.getCreatedAt() != null ?
+          java.util.Date.from(
+              link.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null);
       doc.setSearchableText(generateSearchableText(link));
 
       // Update categories
-      List<String> categoriesList = tokenize(link.getCategory());
+      List<String> categoriesList = util.tokenize(link.getCategory());
       if (categoriesList == null) {
         categoriesList = new ArrayList<>();
       }
       doc.setCategories(categoriesList);
-      doc.setModels(tokenize(link.getStar()));
+      doc.setModels(util.tokenize(link.getStar()));
 
       logger.info("Updating Elasticsearch document for link ID {} with {} categories",
           link.getId(), categoriesList.size());
@@ -391,8 +384,8 @@ public class LinkProcessingService {
     searchableText.append(link.getTitle());
 
     // Add categories to searchable text
-    List<String> categories = tokenize(link.getCategory());
-    List<String> models = tokenize(link.getStar());
+    List<String> categories = util.tokenize(link.getCategory());
+    List<String> models = util.tokenize(link.getStar());
     if (categories != null && !categories.isEmpty()) {
       for (String category : categories) {
         searchableText.append(" ").append(category);

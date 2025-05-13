@@ -3,6 +3,7 @@ package com.fvp.service;
 import com.fvp.entity.AllCat;
 import com.fvp.entity.Link;
 import com.fvp.repository.AllCatRepository;
+import com.fvp.util.Util;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
@@ -23,12 +24,14 @@ public class CategoryProcessingService {
 
   private final LinkProcessingService linkProcessingService;
   private final AllCatRepository allCatRepository;
+  private final Util util;
 
   public CategoryProcessingService(
       LinkProcessingService linkProcessingService,
-      AllCatRepository allCatRepository) {
+      AllCatRepository allCatRepository, Util util) {
     this.linkProcessingService = linkProcessingService;
     this.allCatRepository = allCatRepository;
+    this.util = util;
   }
 
   public void processCategories(Link link, String categories) {
@@ -36,7 +39,7 @@ public class CategoryProcessingService {
     Set<String> categoriesToCreate = new HashSet<>();
 
     List<AllCat> allCategories = linkProcessingService.getCategoriesForTenant(link.getTenantId());
-    List<String> values = tokenize(categories);
+    List<String> values = util.tokenize(categories);
     if (values == null || values.isEmpty()) {
       return;
     }
@@ -101,12 +104,5 @@ public class CategoryProcessingService {
         link.getId());
   }
 
-  private List<String> tokenize(String input) {
-    Gson gson = new Gson();
-    Type listType = new TypeToken<List<String>>() {
-    }.getType();
-    List<String> values = gson.fromJson(input, listType);
-    return values;
-  }
 
 }

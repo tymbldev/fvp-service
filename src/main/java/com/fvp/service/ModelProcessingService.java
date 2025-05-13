@@ -2,6 +2,7 @@ package com.fvp.service;
 
 import com.fvp.entity.Link;
 import com.fvp.entity.Model;
+import com.fvp.util.Util;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import java.lang.reflect.Type;
@@ -11,10 +12,14 @@ import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ModelProcessingService {
+
+  @Autowired
+  Util util;
 
   private static final Logger logger = LoggerFactory.getLogger(ModelProcessingService.class);
 
@@ -31,7 +36,7 @@ public class ModelProcessingService {
   public void processModels(Link link, String models) {
     Set<String> modelSetToBeAdded = new HashSet<>();
 
-    List<String> values = tokenize(models);
+    List<String> values = util.tokenize(models);
     if (values == null || values.isEmpty()) {
       return;
     }
@@ -82,11 +87,6 @@ public class ModelProcessingService {
         savedCount, link.getId(), link.getStar());
   }
 
-  private List<String> tokenize(String input) {
-    Gson gson = new Gson();
-    Type listType = new TypeToken<List<String>>() {
-    }.getType();
-    return gson.fromJson(input, listType);
-  }
+
 
 }

@@ -4,31 +4,31 @@ import com.fvp.entity.Link;
 import com.fvp.entity.ProcessedSheet;
 import com.fvp.repository.LinkRepository;
 import com.fvp.repository.ProcessedSheetRepository;
+import com.fvp.util.Util;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -39,7 +39,7 @@ public class GoogleSheetProcessingService {
   private static final String VET_STATUS_COLUMN = "Validated";
   private static final String SHEET_NAME_COLUMN = "SheetName";
   private static final String APPROVED_STATUS = "Yes";
-
+  private final Util util;
   private final String dateFormatPattern;
   private final String spreadsheetId;
   private final String apiKey;
@@ -64,7 +64,7 @@ public class GoogleSheetProcessingService {
       CategoryProcessingService categoryProcessingService,
       ModelProcessingService modelProcessingService,
       ProcessedSheetRepository processedSheetRepository,
-      LinkRepository linkRepository) {
+      LinkRepository linkRepository, Util util) {
     this.dateFormatPattern = dateFormatPattern;
     this.spreadsheetId = spreadsheetId;
     this.apiKey = apiKey;
@@ -75,6 +75,7 @@ public class GoogleSheetProcessingService {
     this.linkProcessingService = linkProcessingService;
     this.processedSheetRepository = processedSheetRepository;
     this.linkRepository = linkRepository;
+    this.util = util;
 
     // Convert SimpleDateFormat pattern to regex pattern
     String regexPattern = dateFormatPattern
@@ -326,7 +327,7 @@ public class GoogleSheetProcessingService {
         failureCount++;
 
         logger.error("Error processing row in sheet {} (took {} ms): {}",
-            sheetName, processingTimeMs, e.getMessage());
+            sheetName, processingTimeMs, e.getMessage(), e);
       }
     }
 
@@ -355,11 +356,20 @@ public class GoogleSheetProcessingService {
       link.setTenantId(tenantId);
       link.setTitle(row.get("title"));
       link.setLink(row.get("link"));
-      link.setStar(row.get("star"));
-      link.setCategory(row.get("category"));
+
+      String starString = row.get("star");
+      List<String> star = Arrays.asList(starString.split(","));
+      Gson gson = new Gson();
+      link.setStar(gson.toJson(star));
+
+      gson = new Gson();
+      String categoryString = row.get("category");
+      List<String> category = Arrays.asList(categoryString.split(","));
+      link.setCategory(gson.toJson(category));
+
       link.setThumbnail(row.get("thumbnail"));
       link.setDuration(parseDuration(row.get("duration")));
-      List<String> categoryList = tokenize(row.get("category"));
+      List<String> categoryList = util.tokenize(row.get("category"));
       if (categoryList.contains("HD")) {
         link.setQuality("HD");
         link.setHd(1);
@@ -407,23 +417,29 @@ public class GoogleSheetProcessingService {
   }
 
   private Sheets getSheetsService() throws GeneralSecurityException, IOException {
-    return new Sheets.Builder(
+   /* return new Sheets.Builder(
         GoogleNetHttpTransport.newTrustedTransport(),
         GsonFactory.getDefaultInstance(),
         null)
         .setApplicationName(applicationName)
         .build();
+*/
+    HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+
+    HttpRequestInitializer requestInitializer = request -> {
+      request.setConnectTimeout(60 * 1000); // 60 seconds
+      request.setReadTimeout(60 * 1000);    // 60 seconds
+    };
+
+    Sheets sheetsService = new Sheets.Builder(
+        httpTransport,
+        GsonFactory.getDefaultInstance(),
+        requestInitializer)
+        .setApplicationName(applicationName)
+        .build();
+
+    return sheetsService;
   }
 
-  private List<String> tokenize(String input) {
-    try {
-      Gson gson = new Gson();
-      Type listType = new TypeToken<List<String>>() {
-      }.getType();
-      List<String> values = gson.fromJson(input, listType);
-      return values;
-    } catch (Exception e) {
-      return new ArrayList<>();
-    }
-  }
+
 } 
