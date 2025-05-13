@@ -53,102 +53,6 @@ public class LinkService {
     });
   }
 
-  public List<Link> findByTenantId(Integer tenantId) {
-    String cacheKey = generateCacheKey(tenantId, "all");
-
-    return LoggingUtil.logOperationTime(logger, "find all links by tenant", () -> {
-      TypeReference<List<Link>> typeRef = new TypeReference<List<Link>>() {
-      };
-      Optional<List<Link>> cachedLinks = cacheService.getCollectionFromCache(
-          CacheService.CACHE_NAME_LINKS,
-          cacheKey,
-          typeRef
-      );
-      if (cachedLinks.isPresent()) {
-        logger.info("Cache hit for all links for tenant: {}", tenantId);
-        return cachedLinks.get();
-      }
-
-      logger.info("Cache miss for all links for tenant: {}", tenantId);
-      List<Link> links = linkRepository.findByTenantId(tenantId);
-      if (!links.isEmpty()) {
-        cacheService.putInCacheWithExpiry(CacheService.CACHE_NAME_LINKS, cacheKey, links,
-            CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
-      }
-      return links;
-    });
-  }
-
-  public Page<Link> findByTenantId(Integer tenantId, Pageable pageable) {
-    // Pagination results are not cached as they are dynamic
-    return LoggingUtil.logOperationTime(logger, "find links by tenant with pagination", () ->
-        linkRepository.findByTenantId(tenantId, pageable)
-    );
-  }
-
-  public Page<Link> findByCreatedOnBetween(LocalDateTime startDate, LocalDateTime endDate,
-      Pageable pageable) {
-    // Date range queries are not cached as they are dynamic
-    return LoggingUtil.logOperationTime(logger, "find links by date range with pagination", () ->
-        linkRepository.findByCreatedOnBetween(startDate, endDate, pageable)
-    );
-  }
-
-  public Page<Link> findByCategoryContaining(String category, Pageable pageable) {
-    // Category search results are not cached as they are dynamic
-    return LoggingUtil.logOperationTime(logger, "find links by category with pagination", () ->
-        linkRepository.findByCategoryContaining(category, pageable)
-    );
-  }
-
-  public Link findByLinkAndTenantId(String link, Integer tenantId) {
-    String cacheKey = generateCacheKey(tenantId, "url_" + link);
-
-    return LoggingUtil.logOperationTime(logger, "find link by URL and tenant", () -> {
-      Optional<Link> cachedLink = cacheService.getFromCache(
-          CacheService.CACHE_NAME_LINKS,
-          cacheKey,
-          Link.class
-      );
-      if (cachedLink.isPresent()) {
-        logger.info("Cache hit for link: {}", link);
-        return cachedLink.get();
-      }
-
-      logger.info("Cache miss for link: {}", link);
-      Link foundLink = linkRepository.findByLinkAndTenantId(link, tenantId);
-      if (foundLink != null) {
-        cacheService.putInCacheWithExpiry(CacheService.CACHE_NAME_LINKS, cacheKey, foundLink,
-            CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
-      }
-      return foundLink;
-    });
-  }
-
-
-
-
-  public Link saveAndFlush(Link link) {
-    // Invalidate relevant caches when saving a link
-    if (link.getId() != null) {
-      // Invalidate ID-based cache
-      String idCacheKey = generateCacheKey(null, "id_" + link.getId());
-      cacheService.evictFromCache(CacheService.CACHE_NAME_LINKS, idCacheKey);
-
-      // Invalidate tenant-based caches
-      String tenantCacheKey = generateCacheKey(link.getTenantId(), "all");
-      cacheService.evictFromCache(CacheService.CACHE_NAME_LINKS, tenantCacheKey);
-
-      // Invalidate count cache
-      String countCacheKey = generateCacheKey(link.getTenantId(), "count");
-      cacheService.evictFromCache(CacheService.CACHE_NAME_LINKS, countCacheKey);
-    }
-
-    return LoggingUtil.logOperationTime(logger, "save and flush link", () ->
-        linkRepository.saveAndFlush(link)
-    );
-  }
-
   //@Transactional(readOnly = true)
   public long getTotalLinkCount(Integer tenantId) {
     if (tenantId == null) {
@@ -197,34 +101,7 @@ public class LinkService {
     return count;
   }
 
-  public Link findByTenantIdAndLinkId(Integer tenantId, Integer linkId) {
-    String cacheKey = generateCacheKey(tenantId, "id_" + linkId);
-
-    return LoggingUtil.logOperationTime(logger, "find link by tenant and ID", () -> {
-      Optional<Link> cachedLink = cacheService.getFromCache(
-          CacheService.CACHE_NAME_LINKS,
-          cacheKey,
-          Link.class
-      );
-      if (cachedLink.isPresent()) {
-        logger.info("Cache hit for link ID: {}", linkId);
-        return cachedLink.get();
-      }
-
-      logger.info("Cache miss for link ID: {}", linkId);
-      Optional<Link> linkOpt = linkRepository.findById(linkId);
-      if (linkOpt.isPresent() && linkOpt.get().getTenantId().equals(tenantId)
-          && linkOpt.get().getThumbPathProcessed() == 1) {
-        Link link = linkOpt.get();
-        cacheService.putInCacheWithExpiry(CacheService.CACHE_NAME_LINKS, cacheKey, link,
-            CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
-        return link;
-      }
-      return null;
-    });
-  }
-
   private String generateCacheKey(Integer tenantId, String suffix) {
     return LINK_CACHE_PREFIX + (tenantId != null ? tenantId + "_" : "") + suffix;
   }
-} 
+}

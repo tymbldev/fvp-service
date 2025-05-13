@@ -223,7 +223,7 @@ public class LinkProcessingService {
           linkCategory.setCategory(categoryName);
           linkCategory.setCreatedOn(link.getCreatedOn());
           linkCategory.setRandomOrder(link.getRandomOrder());
-
+          linkCategory.setHd(link.getHd());
           // Convert to shard entity
           BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
           shardEntities.add(shardEntity);
@@ -283,7 +283,7 @@ public class LinkProcessingService {
         linkModel.setModel(modelName);
         linkModel.setCreatedOn(link.getCreatedOn());
         linkModel.setRandomOrder(link.getRandomOrder().doubleValue());
-
+        linkModel.setHd(link.getHd());
         // Convert and save to appropriate shard
         BaseLinkModel shardEntity = linkModelShardingService.convertToShardEntity(linkModel);
         linkModelShardingService.save(shardEntity);

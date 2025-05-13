@@ -1,18 +1,22 @@
 package com.fvp.repository;
 
 import com.fvp.entity.BaseLinkCategory;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
-import javax.persistence.criteria.*;
-import javax.persistence.TemporalType;
-import org.springframework.stereotype.Component;
-
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaDelete;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Join;
+import javax.persistence.criteria.JoinType;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+import org.springframework.stereotype.Component;
 
 /**
  * Central class for building dynamic queries for LinkCategory entities across all shards.
@@ -61,7 +65,8 @@ public class LinkCategoryDynamicQueryBuilder {
         query.where(predicates.toArray(new Predicate[0]));
         
         // Order by random
-        query.orderBy(cb.asc(cb.function("RAND", Double.class)));
+        query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.asc(root.get("randomOrder")));
         
         // Execute query and return first result if present
         TypedQuery<T> typedQuery = entityManager.createQuery(query);
@@ -101,7 +106,8 @@ public class LinkCategoryDynamicQueryBuilder {
         query.where(predicates.toArray(new Predicate[0]));
         
         // Order by random
-        query.orderBy(cb.asc(cb.function("RAND", Double.class)));
+        query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.asc(root.get("randomOrder")));
         
         // Execute query and return first result if present
         TypedQuery<T> typedQuery = entityManager.createQuery(query);
@@ -286,10 +292,9 @@ public class LinkCategoryDynamicQueryBuilder {
         
         // Apply predicates
         query.where(predicates.toArray(new Predicate[0]));
-        
-        // Order by randomOrder
+        query.orderBy(cb.desc(root.get("hd")));
         query.orderBy(cb.asc(root.get("randomOrder")));
-        
+
         return entityManager.createQuery(query).getResultList();
     }
 
@@ -395,7 +400,8 @@ public class LinkCategoryDynamicQueryBuilder {
         query.groupBy(root.get("category"));
         
         // Order by random
-        query.orderBy(cb.asc(cb.function("RAND", Double.class)));
+        query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.asc(root.get("randomOrder")));
         
         return entityManager.createQuery(query).getResultList();
     }
@@ -589,8 +595,9 @@ public class LinkCategoryDynamicQueryBuilder {
         query.where(predicates.toArray(new Predicate[0]));
         
         // Order by random_order
+        query.orderBy(cb.desc(root.get("hd")));
         query.orderBy(cb.asc(root.get("randomOrder")));
-        
+
         // Create and execute typed query with pagination
         TypedQuery<T> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(offset);

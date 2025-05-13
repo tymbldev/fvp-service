@@ -40,6 +40,10 @@ public class LinkCategory {
   @Column(name = "random_order")
   private Integer randomOrder;
 
+
+  @Column(name = "hd")
+  private Integer hd = 0;
+
   @ToString.Exclude
   @ManyToOne
   @JoinColumn(name = "link_id", insertable = false, updatable = false)

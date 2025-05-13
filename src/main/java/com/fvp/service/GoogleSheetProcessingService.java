@@ -362,10 +362,13 @@ public class GoogleSheetProcessingService {
       List<String> categoryList = tokenize(row.get("category"));
       if (categoryList.contains("HD")) {
         link.setQuality("HD");
+        link.setHd(1);
       } else if (categoryList.contains("4K")) {
         link.setQuality("4K");
+        link.setHd(1);
       } else if (categoryList.contains("8K")) {
         link.setQuality("8K");
+        link.setHd(1);
       }
 
       link.setSheetName(sheetName);

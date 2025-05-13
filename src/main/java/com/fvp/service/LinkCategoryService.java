@@ -325,46 +325,18 @@ public class LinkCategoryService {
   }
 
   /**
-   * Find random links by category names
+   * Finds random links by a list of category names for a tenant
    *
    * @param tenantId the tenant ID
    * @param categoryNames the list of category names
-   * @return a list of LinkCategory entities
+   * @return a list of random LinkCategory objects
    */
-  public List<LinkCategory> findRandomLinksByCategoryNames(Integer tenantId,
-      List<String> categoryNames) {
-    String cacheKey = generateCacheKey(tenantId, "random:" + String.join(",", categoryNames));
-
-    return cacheService.getCollectionFromCache(
-        LINK_CATEGORY_CACHE,
-        cacheKey,
-        new TypeReference<List<LinkCategory>>() {
-        }
-    ).orElseGet(() -> {
-      List<LinkCategory> result = new ArrayList<>();
-
-      // For each category name, find its shard and get random links
-      for (String categoryName : categoryNames) {
-        try {
-          ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-              shardingService.getRepositoryForCategory(categoryName);
-
-          List<? extends BaseLinkCategory> shardedCategories = repository.findRandomLinksByCategoryNames(
-              tenantId, Collections.singletonList(categoryName));
-          List<LinkCategory> models = shardedCategories.stream()
-              .map(this::convertToLinkCategory)
-              .collect(Collectors.toList());
-          result.addAll(models);
-        } catch (Exception e) {
-          logger.error("Error finding random links for category {} in sharded tables: {}",
-              categoryName, e);
-          throw e;
-        }
-      }
-
-      cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, result);
-      return result;
-    });
+  public List<LinkCategory> findRandomLinksByCategoryNames(Integer tenantId, List<String> categoryNames) {
+    List<LinkCategory> result = new ArrayList<>();
+    for (String category : categoryNames) {
+      findRandomLinkByCategory(tenantId, category).ifPresent(result::add);
+    }
+    return result;
   }
 
   /**

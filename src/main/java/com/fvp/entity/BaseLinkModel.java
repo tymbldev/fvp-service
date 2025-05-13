@@ -29,6 +29,9 @@ public abstract class BaseLinkModel {
   @Column(name = "random_order")
   private Double randomOrder;
 
+  @Column(name = "hd")
+  private Integer hd = 0;
+
   public Integer getId() {
     return id;
   }
@@ -76,4 +79,12 @@ public abstract class BaseLinkModel {
   public void setRandomOrder(Double randomOrder) {
     this.randomOrder = randomOrder;
   }
-} 
+
+  public Integer getHd() {
+    return hd;
+  }
+
+  public void setHd(Integer hd) {
+    this.hd = hd;
+  }
+}
