@@ -296,7 +296,7 @@ public class GoogleSheetProcessingService {
     long totalProcessingTimeMs = 0;
     int successCount = 0;
     int failureCount = 0;
-
+    boolean processModelsAndCategory = false;
     // Process each row individually
     for (Map<String, String> row : rows) {
       long startTimeMs = System.currentTimeMillis();
@@ -305,8 +305,10 @@ public class GoogleSheetProcessingService {
         Link link = createLinkFromRow(workbookId, sheetName, row);
         if (link != null) {
           // Process the link with its categories and models
-          categoryProcessingService.processCategories(link, link.getCategory());
-          modelProcessingService.processModels(link, link.getStar());
+          if (processModelsAndCategory) {
+            categoryProcessingService.processCategories(link, link.getCategory());
+            modelProcessingService.processModels(link, link.getStar());
+          }
           linkProcessingService.processLink(link);
           links.add(link);
 
