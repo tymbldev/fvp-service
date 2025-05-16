@@ -418,7 +418,13 @@
           "name": "Search Links",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/links/search?query=example&page=0&size=20",
               "host": [
@@ -456,7 +462,13 @@
           "name": "Search Categories",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/categories/search?query=example",
               "host": [
@@ -484,7 +496,13 @@
           "name": "Search Models",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/models/search?query=example",
               "host": [
@@ -512,7 +530,13 @@
           "name": "Autosuggest",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/autosuggest?query=example",
               "host": [
@@ -539,7 +563,13 @@
           "name": "Sync All",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync",
               "host": [
@@ -559,7 +589,13 @@
           "name": "Sync Links",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/links",
               "host": [
@@ -580,7 +616,13 @@
           "name": "Sync Categories",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/categories",
               "host": [
@@ -601,7 +643,13 @@
           "name": "Sync Models",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/models",
               "host": [
@@ -622,7 +670,13 @@
           "name": "Get Sync Status",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/status",
               "host": [
@@ -648,7 +702,13 @@
           "name": "Clear All Caches",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/cache/clear",
               "host": [
@@ -668,7 +728,13 @@
           "name": "Clear Specific Cache",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/cache/clear/:cacheName",
               "host": [
@@ -701,7 +767,13 @@
           "name": "Process Google Sheets",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/google-sheets/process",
               "host": [
@@ -721,7 +793,13 @@
           "name": "Get Processed Sheets",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/google-sheets/processed",
               "host": [
@@ -741,7 +819,13 @@
           "name": "Get Processed Sheets By Workbook",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/google-sheets/processed/:workbookId",
               "host": [
@@ -774,7 +858,13 @@
           "name": "Process Categories and Models",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/links/batch/process-categories-models?page=0&size=100",
               "host": [
@@ -807,7 +897,13 @@
           "name": "Process All Categories and Models",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/links/batch/process-all-categories-models",
               "host": [
@@ -828,7 +924,13 @@
           "name": "Process By Tenant ID",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/links/batch/process-by-tenant/:tenantId?page=0&size=100",
               "host": [
@@ -869,7 +971,13 @@
           "name": "Process By Date Range",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/links/batch/process-by-date-range?startDate=2023-01-01T00:00:00&endDate=2023-12-31T23:59:59&page=0&size=100",
               "host": [
@@ -912,7 +1020,13 @@
           "name": "Process By Category",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/links/batch/process-by-category?category=exampleCategory&page=0&size=100",
               "host": [
@@ -955,7 +1069,13 @@
           "name": "Migrate All LinkCategories",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-category/all",
               "host": [
@@ -977,7 +1097,13 @@
           "name": "Migrate LinkCategories by Tenant",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-category/tenant/:tenantId",
               "host": [
@@ -1007,7 +1133,13 @@
           "name": "Migrate LinkCategories by Category",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-category/category/:categoryName",
               "host": [
@@ -1037,7 +1169,13 @@
           "name": "Get Categories with Shard Info",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-category/categories-shard-info",
               "host": [
@@ -1064,7 +1202,13 @@
           "name": "Migrate All LinkModels",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-model/all",
               "host": [
@@ -1086,7 +1230,13 @@
           "name": "Migrate LinkModels by Tenant",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-model/tenant/:tenantId",
               "host": [
@@ -1116,7 +1266,13 @@
           "name": "Migrate LinkModels by Model",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-model/model/:modelName",
               "host": [
@@ -1146,7 +1302,13 @@
           "name": "Get Models with Shard Info",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/admin/migration/link-model/models-shard-info",
               "host": [
@@ -1172,8 +1334,14 @@
         {
           "name": "Process All Thumbnails",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/thumbs/process",
               "host": [
@@ -1193,7 +1361,13 @@
           "name": "Get Processing Stats",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/thumbs/stats",
               "host": [

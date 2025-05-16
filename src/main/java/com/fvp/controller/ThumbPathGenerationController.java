@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -33,6 +34,13 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/thumbs")
@@ -40,10 +48,14 @@ public class ThumbPathGenerationController {
 
     private static final Logger logger = LoggerFactory.getLogger(ThumbPathGenerationController.class);
     private static final String THUMBS_DIR = "/apps/fvp/thumbs";
+    private static final int BATCH_SIZE = 10;
+    private static final int NUM_THREADS = 5;
     
     private final LinkRepository linkRepository;
     private final LinkProcessingService linkProcessingService;
     private final String thumbsDir;
+    private final ExecutorService executorService;
+    private final AtomicBoolean isProcessing = new AtomicBoolean(false);
     
     @Autowired
     public ThumbPathGenerationController(
@@ -53,100 +65,115 @@ public class ThumbPathGenerationController {
         this.linkRepository = linkRepository;
         this.linkProcessingService = linkProcessingService;
         this.thumbsDir = thumbsDir;
+        this.executorService = Executors.newFixedThreadPool(NUM_THREADS);
     }
     
     @GetMapping("/process")
+    @Scheduled(fixedRate = 600000) // 10 minutes
     public ResponseEntity<Map<String, Object>> processAllThumbPaths() {
-
-        // Create thumbs directory if it doesn't exist
-        File thumbsDirectory = new File(thumbsDir);
-        if (!thumbsDirectory.exists()) {
-            boolean created = thumbsDirectory.mkdirs();
-            if (!created) {
-                logger.error("Failed to create thumbs directory at: {}", thumbsDir);
-            } else {
-                logger.info("Created thumbs directory at: {}", thumbsDirectory.getAbsolutePath());
-            }
-        } else {
-            logger.info("Using existing thumbs directory at: {}", thumbsDirectory.getAbsolutePath());
-        }
-
-        logger.info("Starting full processing of all links with NA thumbpath values");
-        
-        // Get total count first
-        long totalRecords = countLinksWithNAThumbPath();
-        
-        if (totalRecords == 0) {
+        // Check if processing is already running
+        if (!isProcessing.compareAndSet(false, true)) {
             Map<String, Object> response = new HashMap<>();
-            response.put("message", "No links with NA thumbpath found");
-            response.put("processed", 0);
-            response.put("failed", 0);
+            response.put("message", "Processing is already running");
+            response.put("status", "in_progress");
             return ResponseEntity.ok(response);
         }
-        
-        logger.info("Found {} links with NA thumbpath to process", totalRecords);
-        
-        final int BATCH_SIZE = 20;
-        int currentPage = 0;
-        int totalProcessed = 0;
-        int totalFailed = 0;
-        long globalStartTime = System.currentTimeMillis();
-        
-        // Process in batches until all records are processed
-        boolean hasMoreRecords = true;
-        while (hasMoreRecords) {
-            // Get a batch of records
-            Pageable pageable = PageRequest.of(currentPage, BATCH_SIZE);
-            Page<Link> linksPage = findLinksWithNAThumbPath(pageable);
+
+        try {
+            // Create thumbs directory if it doesn't exist
+            File thumbsDirectory = new File(thumbsDir);
+            if (!thumbsDirectory.exists()) {
+                boolean created = thumbsDirectory.mkdirs();
+                if (!created) {
+                    logger.error("Failed to create thumbs directory at: {}", thumbsDir);
+                } else {
+                    logger.info("Created thumbs directory at: {}", thumbsDirectory.getAbsolutePath());
+                }
+            } else {
+                logger.info("Using existing thumbs directory at: {}", thumbsDirectory.getAbsolutePath());
+            }
+
+            logger.info("Starting full processing of all links with NA thumbpath values");
             
-            if (linksPage.isEmpty()) {
-                hasMoreRecords = false;
-                continue;
+            // Get total count first
+            long totalRecords = countLinksWithNAThumbPath();
+            
+            if (totalRecords == 0) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "No links with NA thumbpath found");
+                response.put("processed", 0);
+                response.put("failed", 0);
+                return ResponseEntity.ok(response);
             }
             
-            int batchProcessed = 0;
-            int batchFailed = 0;
+            logger.info("Found {} links with NA thumbpath to process", totalRecords);
             
-            logger.info("Processing batch {} with {} records", currentPage, linksPage.getContent().size());
+            int currentPage = 0;
+            AtomicInteger totalProcessed = new AtomicInteger(0);
+            AtomicInteger totalFailed = new AtomicInteger(0);
+            long globalStartTime = System.currentTimeMillis();
             
-            // Process each link in the current batch
-            for (Link link : linksPage.getContent()) {
-                try {
-                    boolean success = processLink(link);
-                    if (success) {
-                        batchProcessed++;
-                    } else {
-                        batchFailed++;
-                    }
-                } catch (Exception e) {
-                    logger.error("Error processing link ID {}: {}", link.getId(), e.getMessage(), e);
-                    batchFailed++;
+            // Process in batches until all records are processed
+            boolean hasMoreRecords = true;
+            while (hasMoreRecords) {
+                // Get a batch of records
+                Pageable pageable = PageRequest.of(currentPage, BATCH_SIZE);
+                Page<Link> linksPage = findLinksWithNAThumbPath(pageable);
+                
+                if (linksPage.isEmpty()) {
+                    hasMoreRecords = false;
+                    continue;
+                }
+                
+                List<CompletableFuture<Void>> futures = new ArrayList<>();
+                
+                logger.info("Processing batch {} with {} records", currentPage, linksPage.getContent().size());
+                
+                // Process each link in the current batch in parallel
+                for (Link link : linksPage.getContent()) {
+                    CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                        try {
+                            boolean success = processLink(link);
+                            if (success) {
+                                totalProcessed.incrementAndGet();
+                            } else {
+                                totalFailed.incrementAndGet();
+                            }
+                        } catch (Exception e) {
+                            logger.error("Error processing link ID {}: {}", link.getId(), e.getMessage(), e);
+                            totalFailed.incrementAndGet();
+                        }
+                    }, executorService);
+                    futures.add(future);
+                }
+                
+                // Wait for all futures to complete
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+                
+                logger.info("Batch {} completed. Processed: {}, Failed: {}, Total progress: {}/{}",
+                        currentPage, totalProcessed.get(), totalFailed.get(), 
+                        totalProcessed.get() + totalFailed.get(), totalRecords);
+                
+                // Check if we've processed all records
+                if (totalProcessed.get() + totalFailed.get() >= totalRecords || linksPage.isLast()) {
+                    hasMoreRecords = false;
+                } else {
+                    currentPage++;
                 }
             }
             
-            totalProcessed += batchProcessed;
-            totalFailed += batchFailed;
+            long totalDuration = System.currentTimeMillis() - globalStartTime;
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Processing completed");
+            response.put("totalRecords", totalRecords);
+            response.put("processed", totalProcessed.get());
+            response.put("failed", totalFailed.get());
+            response.put("totalDuration", TimeUnit.MILLISECONDS.toSeconds(totalDuration) + " seconds");
             
-            logger.info("Batch {} completed. Processed: {}, Failed: {}, Total progress: {}/{}",
-                    currentPage, batchProcessed, batchFailed, totalProcessed + totalFailed, totalRecords);
-            
-            // Check if we've processed all records
-            if (totalProcessed + totalFailed >= totalRecords || linksPage.isLast()) {
-                hasMoreRecords = false;
-            } else {
-                currentPage++;
-            }
+            return ResponseEntity.ok(response);
+        } finally {
+            isProcessing.set(false);
         }
-        
-        long totalDuration = System.currentTimeMillis() - globalStartTime;
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Processing completed");
-        response.put("totalRecords", totalRecords);
-        response.put("processed", totalProcessed);
-        response.put("failed", totalFailed);
-        response.put("totalDuration", TimeUnit.MILLISECONDS.toSeconds(totalDuration) + " seconds");
-        
-        return ResponseEntity.ok(response);
     }
     
     @GetMapping("/stats")
