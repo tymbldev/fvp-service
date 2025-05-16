@@ -48,8 +48,8 @@ public class ThumbPathGenerationController {
 
     private static final Logger logger = LoggerFactory.getLogger(ThumbPathGenerationController.class);
     private static final String THUMBS_DIR = "/apps/fvp/thumbs";
-    private static final int BATCH_SIZE = 10;
-    private static final int NUM_THREADS = 5;
+    private static final int BATCH_SIZE = 50;
+    private static final int NUM_THREADS = 20;
     
     private final LinkRepository linkRepository;
     private final LinkProcessingService linkProcessingService;

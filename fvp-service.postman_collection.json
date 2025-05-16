@@ -811,9 +811,104 @@
                 "processed"
               ]
             },
-            "description": "Get all processed sheets"
+            "description": "Get all processed sheets with detailed information including sheet name, processing date, approval status, number of records processed, tenant ID, and workbook ID"
           },
-          "response": []
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/google-sheets/processed",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "google-sheets",
+                    "processed"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": {
+                "totalSheets": 2,
+                "sheets": [
+                  {
+                    "id": 1,
+                    "sheetName": "example_sheet",
+                    "processedDate": "2024-03-21T10:30:00",
+                    "isApproved": true,
+                    "recordsProcessed": 100,
+                    "tenantId": 1,
+                    "workbookId": "workbook123"
+                  },
+                  {
+                    "id": 2,
+                    "sheetName": "another_sheet",
+                    "processedDate": "2024-03-21T11:30:00",
+                    "isApproved": false,
+                    "recordsProcessed": 50,
+                    "tenantId": 1,
+                    "workbookId": "workbook123"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Error Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/google-sheets/processed",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "google-sheets",
+                    "processed"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": {
+                "error": "Error fetching processed sheets: Database connection failed"
+              }
+            }
+          ]
         },
         {
           "name": "Get Processed Sheets By Workbook",
