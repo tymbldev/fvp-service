@@ -6,10 +6,12 @@ import com.fvp.service.GoogleSheetProcessingService;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,17 +26,30 @@ public class GoogleSheetsController {
 
   private final GoogleSheetProcessingService googleSheetProcessingService;
   private final ProcessedSheetRepository processedSheetRepository;
+  private final AtomicBoolean isProcessing = new AtomicBoolean(false);
 
   @GetMapping("/process")
   @Async
+  @Scheduled(fixedRate = 600000) // 10 minutes
   public ResponseEntity<String> processGoogleSheets() {
+    // Check if processing is already running
+    if (!isProcessing.compareAndSet(false, true)) {
+      log.info("Google Sheets processing is already in progress");
+      return ResponseEntity.ok("Google Sheets processing is already in progress");
+    }
+
     try {
+      log.info("Starting Google Sheets processing");
       googleSheetProcessingService.processGoogleSheets();
       return ResponseEntity.ok("Google Sheets processing started successfully");
     } catch (Exception e) {
       log.error("Error triggering Google Sheets processing", e);
       return ResponseEntity.status(500)
           .body("Error processing Google Sheets: " + e.getMessage());
+    } finally {
+      // Always reset the processing flag when done
+      isProcessing.set(false);
+      log.info("Google Sheets processing completed");
     }
   }
 

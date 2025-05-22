@@ -88,7 +88,7 @@ public class GoogleSheetProcessingService {
     logger.info("Sheet date pattern set to: {}", regexPattern);
   }
 
-  //@Scheduled(cron = "${google.sheets.cron-expression:0 0 */6 * * *}")
+
   public void processGoogleSheets() {
     logger.info("Starting Google Sheets processing");
     try {

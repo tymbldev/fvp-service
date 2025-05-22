@@ -1477,6 +1477,124 @@
             "description": "Get statistics about thumbnail processing, including total links, processed and pending thumbpaths, and progress percentage. Thumbnails are stored in the configurable directory specified by 'fvp.thumbs.directory' in application properties (/Users/nitin.goyal/Desktop/myspace/personal/fvp/thumb/ for local and /apps/fvp/thumbs for production)."
           },
           "response": []
+        },
+        {
+          "name": "Update Processed Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/thumbs/update-processed-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "thumbs", "update-processed-status"]
+            },
+            "description": "Updates all links with thumbPathProcessed=2 to thumbPathProcessed=1 in both MySQL and Elasticsearch. The endpoint processes links in batches of 10 in parallel using 5 threads for better performance. It includes concurrent processing protection to prevent multiple simultaneous executions."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/thumbs/update-processed-status",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "thumbs", "update-processed-status"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "message": "Processing completed",
+                "totalRecords": 100,
+                "processed": 95,
+                "failed": 5,
+                "totalDuration": "30 seconds"
+              }
+            },
+            {
+              "name": "Already Processing",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/thumbs/update-processed-status",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "thumbs", "update-processed-status"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "message": "Processing is already running",
+                "status": "in_progress"
+              }
+            },
+            {
+              "name": "No Records Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/thumbs/update-processed-status",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "thumbs", "update-processed-status"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "message": "No links found with thumbPathProcessed=2",
+                "processed": 0,
+                "failed": 0
+              }
+            }
+          ]
         }
       ]
     }

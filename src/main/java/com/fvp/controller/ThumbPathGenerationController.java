@@ -233,7 +233,7 @@ public class ThumbPathGenerationController {
             
             // Update link in database
             link.setThumbpath(savedImagePath);
-            link.setThumbPathProcessed(1);
+            link.setThumbPathProcessed(2);
             linkRepository.save(link);
             
             // Update Elasticsearch document
@@ -301,6 +301,66 @@ public class ThumbPathGenerationController {
         } catch (IOException e) {
             logger.error("Error processing image: {}", e.getMessage(), e);
             return false;
+        }
+    }
+
+    /**
+     * Update links with thumbPathProcessed=2 to thumbPathProcessed=1 in both MySQL and Elasticsearch.
+     * This endpoint uses a single native query to update all records at once.
+     *
+     * @return ResponseEntity containing the update results
+     */
+    @PostMapping("/update-processed-status")
+    public ResponseEntity<Map<String, Object>> updateProcessedStatus() {
+        // Check if processing is already running
+        if (!isProcessing.compareAndSet(false, true)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Processing is already running");
+            response.put("status", "in_progress");
+            return ResponseEntity.ok(response);
+        }
+
+        try {
+            logger.info("Starting update of links with thumbPathProcessed=2");
+            
+            // Get total count first
+            long totalRecords = linkRepository.countByThumbPathProcessed(2);
+            
+            if (totalRecords == 0) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "No links found with thumbPathProcessed=2");
+                response.put("processed", 0);
+                response.put("failed", 0);
+                return ResponseEntity.ok(response);
+            }
+            
+            logger.info("Found {} links with thumbPathProcessed=2 to update", totalRecords);
+            long startTime = System.currentTimeMillis();
+            
+            // Update MySQL using native query
+            int updatedCount = linkRepository.updateThumbPathProcessedStatus(2, 1);
+            
+            // Update Elasticsearch for all affected records
+            List<Link> updatedLinks = linkRepository.findByThumbPathProcessed(1);
+            for (Link link : updatedLinks) {
+                try {
+                    linkProcessingService.updateElasticsearchDocument(link);
+                } catch (Exception e) {
+                    logger.error("Error updating Elasticsearch for link ID {}: {}", link.getId(), e.getMessage());
+                }
+            }
+            
+            long duration = System.currentTimeMillis() - startTime;
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Processing completed");
+            response.put("totalRecords", totalRecords);
+            response.put("processed", updatedCount);
+            response.put("failed", totalRecords - updatedCount);
+            response.put("totalDuration", TimeUnit.MILLISECONDS.toSeconds(duration) + " seconds");
+            
+            return ResponseEntity.ok(response);
+        } finally {
+            isProcessing.set(false);
         }
     }
 } 

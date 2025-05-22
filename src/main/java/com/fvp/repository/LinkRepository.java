@@ -7,8 +7,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface LinkRepository extends JpaRepository<Link, Integer> {
@@ -60,4 +62,15 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
    * @return Count of links
    */
   long countByThumbpathAndThumbPathProcessed(String thumbpath, Integer thumbPathProcessed);
+
+  @Query("SELECT l FROM Link l WHERE l.thumbPathProcessed = :status")
+  List<Link> findByThumbPathProcessed(@Param("status") int status);
+
+  @Query("SELECT COUNT(l) FROM Link l WHERE l.thumbPathProcessed = :status")
+  long countByThumbPathProcessed(@Param("status") int status);
+
+  @Modifying
+  @Transactional
+  @Query("UPDATE Link l SET l.thumbPathProcessed = :newStatus WHERE l.thumbPathProcessed = :oldStatus")
+  int updateThumbPathProcessedStatus(@Param("oldStatus") int oldStatus, @Param("newStatus") int newStatus);
 }
