@@ -221,6 +221,8 @@ public class ThumbPathGenerationController {
             byte[] imageData = downloadImage(thumbUrl);
             if (imageData == null || imageData.length == 0) {
                 logger.error("Failed to download image from URL: {}", thumbUrl);
+                link.setThumbPathProcessed(3);
+                linkRepository.save(link);
                 return false;
             }
             
@@ -228,12 +230,14 @@ public class ThumbPathGenerationController {
             boolean saved = resizeAndSaveImage(imageData, localImagePath.toString());
             if (!saved) {
                 logger.error("Failed to resize and save image for link ID {}", link.getId());
+                link.setThumbPathProcessed(3);
+                linkRepository.save(link);
                 return false;
             }
             
             // Update link in database
             link.setThumbpath(savedImagePath);
-            link.setThumbPathProcessed(2);
+            link.setThumbPathProcessed(1);
             linkRepository.save(link);
             
             // Update Elasticsearch document
