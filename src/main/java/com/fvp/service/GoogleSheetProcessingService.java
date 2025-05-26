@@ -192,15 +192,27 @@ public class GoogleSheetProcessingService {
 
   private void updateSheetStatus(String sheetName, int status, int recordsProcessed) {
     Optional<ProcessedSheet> processedSheetOpt = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    ProcessedSheet processedSheet;
+    
     if (processedSheetOpt.isPresent()) {
-      ProcessedSheet processedSheet = processedSheetOpt.get();
-      processedSheet.setStatus(status);
-      processedSheet.setRecordsProcessed(recordsProcessed);
-      processedSheet.setIsProcessingCompleted(status == 2);
-      processedSheetRepository.save(processedSheet);
-      processedSheetRepository.flush();
-      logger.info("Updated sheet {} status to {} with {} records processed", sheetName, status, recordsProcessed);
+      processedSheet = processedSheetOpt.get();
+    } else {
+      // Create new entry if it doesn't exist
+      processedSheet = new ProcessedSheet(
+          sheetName,
+          status == 2, // isProcessingCompleted
+          recordsProcessed,
+          1, // Default tenant ID
+          spreadsheetId
+      );
     }
+    
+    processedSheet.setStatus(status);
+    processedSheet.setRecordsProcessed(recordsProcessed);
+    processedSheet.setIsProcessingCompleted(status == 2);
+    processedSheetRepository.save(processedSheet);
+    processedSheetRepository.flush();
+    logger.info("Updated sheet {} status to {} with {} records processed", sheetName, status, recordsProcessed);
   }
 
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
