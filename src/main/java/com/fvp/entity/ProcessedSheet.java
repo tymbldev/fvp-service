@@ -38,6 +38,9 @@ public class ProcessedSheet {
   @Column(name = "workbook_id", nullable = false)
   private String workbookId;
 
+  @Column(name = "status", nullable = false)
+  private Integer status = 0; // 0: Not started, 1: In Progress, 2: Completed, 3: Failed
+
   public ProcessedSheet(String sheetName, Boolean isProcessingCompleted, Integer recordsProcessed,
       Integer tenantId, String workbookId) {
     this.sheetName = sheetName;
@@ -46,5 +49,6 @@ public class ProcessedSheet {
     this.recordsProcessed = recordsProcessed;
     this.tenantId = tenantId;
     this.workbookId = workbookId;
+    this.status = isProcessingCompleted ? 2 : 0;
   }
 } 

@@ -172,7 +172,8 @@ public class GoogleSheetProcessingService {
   }
 
   private boolean isSheetAlreadyProcessed(String sheetName) {
-    return processedSheetRepository.existsBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    Optional<ProcessedSheet> processedSheet = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    return processedSheet.isPresent() && processedSheet.get().getStatus() == 2; // Only consider completed sheets
   }
 
   private void markSheetAsProcessed(String sheetName, boolean isApproved, int recordsProcessed) {
@@ -183,9 +184,23 @@ public class GoogleSheetProcessingService {
         1, // Default tenant ID
         spreadsheetId
     );
+    processedSheet.setStatus(1); // Set status to In Progress
     processedSheetRepository.save(processedSheet);
     processedSheetRepository.flush(); // Explicitly flush to ensure it's written to DB
-    logger.info("Marked sheet {} as processed with {} records", sheetName, recordsProcessed);
+    logger.info("Marked sheet {} as processing with {} records", sheetName, recordsProcessed);
+  }
+
+  private void updateSheetStatus(String sheetName, int status, int recordsProcessed) {
+    Optional<ProcessedSheet> processedSheetOpt = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    if (processedSheetOpt.isPresent()) {
+      ProcessedSheet processedSheet = processedSheetOpt.get();
+      processedSheet.setStatus(status);
+      processedSheet.setRecordsProcessed(recordsProcessed);
+      processedSheet.setIsProcessingCompleted(status == 2);
+      processedSheetRepository.save(processedSheet);
+      processedSheetRepository.flush();
+      logger.info("Updated sheet {} status to {} with {} records processed", sheetName, status, recordsProcessed);
+    }
   }
 
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
@@ -301,53 +316,68 @@ public class GoogleSheetProcessingService {
     int successCount = 0;
     int failureCount = 0;
     boolean processModelsAndCategory = false;
-    // Process each row individually
-    for (Map<String, String> row : rows) {
-      long startTimeMs = System.currentTimeMillis();
+    
+    try {
+      // Process each row individually
+      for (Map<String, String> row : rows) {
+        long startTimeMs = System.currentTimeMillis();
 
-      try {
-        Link link = createLinkFromRow(workbookId, sheetName, row);
-        if (link != null) {
-          // Process the link with its categories and models
-          if (processModelsAndCategory) {
-            categoryProcessingService.processCategories(link, link.getCategory());
-            modelProcessingService.processModels(link, link.getStar());
+        try {
+          Link link = createLinkFromRow(workbookId, sheetName, row);
+          if (link != null) {
+            // Process the link with its categories and models
+            if (processModelsAndCategory) {
+              categoryProcessingService.processCategories(link, link.getCategory());
+              modelProcessingService.processModels(link, link.getStar());
+            }
+            linkProcessingService.processLink(link);
+            links.add(link);
+
+            // Calculate and log time taken for this row
+            long endTimeMs = System.currentTimeMillis();
+            long processingTimeMs = endTimeMs - startTimeMs;
+            totalProcessingTimeMs += processingTimeMs;
+            successCount++;
+
+            // Update progress every 10 records
+            if (successCount % 1000 == 0) {
+              updateSheetStatus(sheetName, 1, successCount);
+            }
+
+            logger.info("Row processed successfully in {} ms: {} (title: {})",
+                processingTimeMs, link.getLink(), link.getTitle());
           }
-          linkProcessingService.processLink(link);
-          links.add(link);
-
-          // Calculate and log time taken for this row
+        } catch (Exception e) {
+          // Calculate time even for failures
           long endTimeMs = System.currentTimeMillis();
           long processingTimeMs = endTimeMs - startTimeMs;
           totalProcessingTimeMs += processingTimeMs;
-          successCount++;
+          failureCount++;
 
-          logger.info("Row processed successfully in {} ms: {} (title: {})",
-              processingTimeMs, link.getLink(), link.getTitle());
+          logger.error("Error processing row in sheet {} (took {} ms): {}",
+              sheetName, processingTimeMs, e.getMessage(), e);
         }
-      } catch (Exception e) {
-        // Calculate time even for failures
-        long endTimeMs = System.currentTimeMillis();
-        long processingTimeMs = endTimeMs - startTimeMs;
-        totalProcessingTimeMs += processingTimeMs;
-        failureCount++;
-
-        logger.error("Error processing row in sheet {} (took {} ms): {}",
-            sheetName, processingTimeMs, e.getMessage(), e);
       }
-    }
 
-    // Log overall statistics
-    if (rows.size() > 0) {
-      double avgProcessingTimeMs =
-          rows.size() > 0 ? (double) totalProcessingTimeMs / rows.size() : 0;
-      logger.info(
-          "Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row)",
-          sheetName, rows.size(), successCount, failureCount, totalProcessingTimeMs,
-          avgProcessingTimeMs);
-    }
+      // Update final status
+      updateSheetStatus(sheetName, 2, successCount);
 
-    return links;
+      // Log overall statistics
+      if (rows.size() > 0) {
+        double avgProcessingTimeMs =
+            rows.size() > 0 ? (double) totalProcessingTimeMs / rows.size() : 0;
+        logger.info(
+            "Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row)",
+            sheetName, rows.size(), successCount, failureCount, totalProcessingTimeMs,
+            avgProcessingTimeMs);
+      }
+
+      return links;
+    } catch (Exception e) {
+      logger.error("Error processing sheet {}: {}", sheetName, e.getMessage(), e);
+      updateSheetStatus(sheetName, 3, successCount); // Mark as failed
+      throw e;
+    }
   }
 
   private Link createLinkFromRow(String workbookId, String sheetName, Map<String, String> row) {
