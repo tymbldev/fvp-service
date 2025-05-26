@@ -20,8 +20,8 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
   Link findByTenantIdAndLinkAndThumbPathProcessedTrue(Integer tenantId, String link);
 
   // Find a link by URL and tenant ID
-  @Query("SELECT l FROM Link l WHERE l.link = :link AND l.tenantId = :tenantId AND l.thumbPathProcessed = 1")
-  Link findByLinkAndTenantId(String link, Integer tenantId);
+  @Query("SELECT l FROM Link l WHERE l.link = :link")
+  Link findByLink(String link);
 
   @Query("SELECT l FROM Link l WHERE l.thumbPathProcessed = 1 ORDER BY l.id")
   Page<Link> findAllProcessedLinks(Pageable pageable);

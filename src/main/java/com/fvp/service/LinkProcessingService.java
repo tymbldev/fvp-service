@@ -102,7 +102,7 @@ public class LinkProcessingService {
     try {
       // Check if link with same URL already exists
       long checkStartMs = System.currentTimeMillis();
-      Link existingLink = linkRepository.findByLinkAndTenantId(link.getLink(), link.getTenantId());
+      Link existingLink = linkRepository.findByLink(link.getLink());
       checkExistingTimeMs = System.currentTimeMillis() - checkStartMs;
 
       long saveStartMs = System.currentTimeMillis();
