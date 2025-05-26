@@ -112,6 +112,7 @@ public class LinkProcessingService {
 
         // Update existing link with new data
         existingLink.setTitle(link.getTitle());
+        existingLink.setTrailer(link.getTrailer());
         existingLink.setThumbnail(link.getThumbnail());
         existingLink.setDuration(link.getDuration());
         existingLink.setQuality(link.getQuality());

@@ -265,6 +265,10 @@ public class GoogleSheetProcessingService {
       map.put("duration", String.valueOf(row.get(6)));
     }
     if (row.size() > 7) {
+      map.put("trailer", String.valueOf(row.get(7)));
+    }
+    map.put("tenantId", "1");
+    if (row.size() > 8) {
       String tenantId;
       try {
         Object value = row.get(7);
@@ -368,7 +372,7 @@ public class GoogleSheetProcessingService {
       String categoryString = row.get("category");
       List<String> category = Arrays.asList(categoryString.split(","));
       link.setCategory(gson.toJson(category));
-
+      link.setTrailer(row.get("trailer"));
       link.setThumbnail(row.get("thumbnail"));
       link.setDuration(parseDuration(row.get("duration")));
       List<String> categoryList = util.tokenize(row.get("category"));
