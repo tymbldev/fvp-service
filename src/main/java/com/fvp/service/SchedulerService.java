@@ -30,10 +30,11 @@ public class SchedulerService {
 
   public void processGoogleSheetsAndThumbPaths() {
     logger.info("Starting parallel processing of Google Sheets and Thumb Paths");
-    googleSheetProcessingService.processGoogleSheets();
-    thumbPathGenerationController.processAllThumbPaths();
-    cacheController.clearAllCache();
-    fedBuildReRun();
+    if (googleSheetProcessingService.processGoogleSheets()) {
+      thumbPathGenerationController.processAllThumbPaths();
+      cacheController.clearAllCache();
+      fedBuildReRun();
+    }
   }
 
   private void fedBuildReRun() {

@@ -90,22 +90,23 @@ public class GoogleSheetProcessingService {
   }
 
 
-
-  public void processGoogleSheets() {
+  public boolean processGoogleSheets() {
     logger.info("Starting Google Sheets processing");
+    boolean status = false;
     try {
       Sheets sheetsService = getSheetsService();
       // First, get the status of all sheets to identify which ones to process
       Map<String, Boolean> sheetApprovalStatus = fetchSheetStatuses(sheetsService);
 
       // Process each sheet that is approved and hasn't been processed yet
-      processApprovedSheets(sheetsService, sheetApprovalStatus);
+      status = processApprovedSheets(sheetsService, sheetApprovalStatus);
 
       logger.info("Completed Google Sheets processing");
     } catch (Exception e) {
       logger.error("Error in Google Sheets processing", e);
       throw new RuntimeException("Failed to process Google Sheets", e);
     }
+    return status;
   }
 
   private Map<String, Boolean> fetchSheetStatuses(Sheets sheetsService) throws IOException {
@@ -133,10 +134,11 @@ public class GoogleSheetProcessingService {
     return sheetStatuses;
   }
 
-  private void processApprovedSheets(Sheets sheetsService, Map<String, Boolean> sheetApprovalStatus)
+  private boolean processApprovedSheets(Sheets sheetsService,
+      Map<String, Boolean> sheetApprovalStatus)
       throws IOException {
     List<Link> allLinks = new ArrayList<>();
-
+    boolean processed = false;
     // Process each approved sheet that hasn't been processed yet
     for (Map.Entry<String, Boolean> entry : sheetApprovalStatus.entrySet()) {
       String sheetName = entry.getKey();
@@ -170,18 +172,23 @@ public class GoogleSheetProcessingService {
       allLinks.addAll(sheetLinks);
       // Mark sheet as processed
       markSheetAsProcessed(sheetName, true, rows.size());
+      processed = true;
     }
+    return processed;
   }
 
   private boolean isSheetAlreadyProcessed(String sheetName) {
-    Optional<ProcessedSheet> processedSheet = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
-    return processedSheet.isPresent() && processedSheet.get().getStatus() == 2; // Only consider completed sheets
+    Optional<ProcessedSheet> processedSheet = processedSheetRepository.findBySheetNameAndWorkbookId(
+        sheetName, spreadsheetId);
+    return processedSheet.isPresent()
+        && processedSheet.get().getStatus() == 2; // Only consider completed sheets
   }
 
   private void markSheetAsProcessed(String sheetName, boolean isApproved, int recordsProcessed) {
-    Optional<ProcessedSheet> existingSheet = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    Optional<ProcessedSheet> existingSheet = processedSheetRepository.findBySheetNameAndWorkbookId(
+        sheetName, spreadsheetId);
     ProcessedSheet processedSheet;
-    
+
     if (existingSheet.isPresent()) {
       // Update existing entry
       processedSheet = existingSheet.get();
@@ -200,19 +207,20 @@ public class GoogleSheetProcessingService {
       );
       processedSheet.setStatus(1); // Set status to In Progress
     }
-    
+
     processedSheetRepository.save(processedSheet);
     processedSheetRepository.flush(); // Explicitly flush to ensure it's written to DB
-    logger.info("{} sheet {} with {} records", 
-        existingSheet.isPresent() ? "Updated" : "Created new", 
-        sheetName, 
+    logger.info("{} sheet {} with {} records",
+        existingSheet.isPresent() ? "Updated" : "Created new",
+        sheetName,
         recordsProcessed);
   }
 
   private void updateSheetStatus(String sheetName, int status, int recordsProcessed) {
-    Optional<ProcessedSheet> processedSheetOpt = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    Optional<ProcessedSheet> processedSheetOpt = processedSheetRepository.findBySheetNameAndWorkbookId(
+        sheetName, spreadsheetId);
     ProcessedSheet processedSheet;
-    
+
     if (processedSheetOpt.isPresent()) {
       processedSheet = processedSheetOpt.get();
     } else {
@@ -225,13 +233,14 @@ public class GoogleSheetProcessingService {
           spreadsheetId
       );
     }
-    
+
     processedSheet.setStatus(status);
     processedSheet.setRecordsProcessed(recordsProcessed);
     processedSheet.setIsProcessingCompleted(status == 2);
     processedSheetRepository.save(processedSheet);
     processedSheetRepository.flush();
-    logger.info("Updated sheet {} status to {} with {} records processed", sheetName, status, recordsProcessed);
+    logger.info("Updated sheet {} status to {} with {} records processed", sheetName, status,
+        recordsProcessed);
   }
 
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
@@ -347,7 +356,7 @@ public class GoogleSheetProcessingService {
     int successCount = 0;
     int failureCount = 0;
     boolean processModelsAndCategory = false;
-    
+
     try {
       // Process each row individually
       for (Map<String, String> row : rows) {
