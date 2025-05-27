@@ -33,25 +33,32 @@ public class LinkCountCacheService {
    */
   public Map<String, Long> getLinkCounts(Integer tenantId, List<String> categoryNames) {
     return LoggingUtil.logOperationTime(logger, "get link counts", () -> {
+      logger.info("Getting link counts for tenant {} and {} categories", tenantId, categoryNames.size());
       Map<String, Long> result = new HashMap<>();
 
       // Try to get counts from cache first
       Map<String, Long> cachedCounts = getCachedCounts(tenantId, categoryNames);
+      logger.info("Retrieved {} counts from cache", cachedCounts.size());
 
       // Find which categories are not in cache
       List<String> uncachedCategories = categoryNames.stream()
           .filter(name -> !cachedCounts.containsKey(name))
           .collect(Collectors.toList());
 
+      logger.info("Found {} categories not in cache", uncachedCategories.size());
+
       // Add cached counts to result
       result.putAll(cachedCounts);
 
       // If there are uncached categories, get them from DB using sharded repositories
       if (!uncachedCategories.isEmpty()) {
+        logger.info("Fetching {} uncached categories from database", uncachedCategories.size());
         Map<String, Long> dbCounts = getAndCacheDbCounts(tenantId, uncachedCategories);
+        logger.info("Retrieved {} counts from database", dbCounts.size());
         result.putAll(dbCounts);
       }
 
+      logger.info("Total link counts retrieved: {}", result.size());
       return result;
     });
   }
@@ -64,7 +71,9 @@ public class LinkCountCacheService {
       Optional<Long> count = cacheService.getFromCache(LINK_COUNT_CACHE, cacheKey, Long.class);
       if (count.isPresent()) {
         cachedCounts.put(categoryName, count.get());
-        logger.debug("Cache hit for category count: {}", categoryName);
+        logger.debug("Cache hit for category count: {} = {}", categoryName, count.get());
+      } else {
+        logger.debug("Cache miss for category count: {}", categoryName);
       }
     }
 
@@ -78,15 +87,21 @@ public class LinkCountCacheService {
     Map<Integer, List<String>> categoriesByShard = categoryNames.stream()
         .collect(Collectors.groupingBy(shardingService::getShardNumber));
 
+    logger.info("Categories grouped into {} shards", categoriesByShard.size());
+
     // Process each shard
     for (Map.Entry<Integer, List<String>> entry : categoriesByShard.entrySet()) {
       int shardNumber = entry.getKey();
       List<String> categoriesInShard = entry.getValue();
 
+      logger.info("Processing shard {} with {} categories", shardNumber, categoriesInShard.size());
+
       try {
         // Get counts from the appropriate sharded repository
         List<Object[]> counts = shardingService.getRepositoryForShard(shardNumber)
             .countByTenantIdAndCategories(tenantId, categoriesInShard);
+
+        logger.info("Retrieved {} counts from shard {}", counts.size(), shardNumber);
 
         // Process and cache results
         for (Object[] count : counts) {
@@ -103,10 +118,10 @@ public class LinkCountCacheService {
               CACHE_EXPIRY_HOURS,
               TimeUnit.HOURS
           );
-          logger.debug("Cached count for category: {}", categoryName);
+          logger.debug("Cached count for category {} = {}", categoryName, countValue);
         }
       } catch (Exception e) {
-        logger.error("Error getting counts from shard {}: {}", shardNumber, e.getMessage());
+        logger.error("Error getting counts from shard {}: {}", shardNumber, e.getMessage(), e);
         throw e;
       }
     }

@@ -27,7 +27,7 @@ public class SchedulerController {
   }
 
   @GetMapping("/trigger")
-  @Scheduled(fixedRate = 1000 * 60 * 60 * 8) // 8 hours
+  //@Scheduled(fixedRate = 1000 * 60 * 60 * 8) // 8 hours
   public ResponseEntity<String> trigger() {
 
     // Only run in production environment

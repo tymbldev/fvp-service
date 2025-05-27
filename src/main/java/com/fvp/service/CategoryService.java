@@ -72,72 +72,70 @@ public class CategoryService {
   private final ExecutorService executorService = Executors.newFixedThreadPool(30);
 
   public List<CategoryWithLinkDTO> getHomeCategoriesWithLinks(Integer tenantId) {
-    String cacheKey = CacheService.generateCacheKey(HOME_CATEGORIES_CACHE, tenantId);
+    return LoggingUtil.logOperationTime(logger, "get home categories with links", () -> {
+      String cacheKey = CacheService.generateCacheKey(HOME_CATEGORIES_CACHE, tenantId);
 
-    TypeReference<List<CategoryWithLinkDTO>> typeRef = new TypeReference<List<CategoryWithLinkDTO>>() {
-    };
+      TypeReference<List<CategoryWithLinkDTO>> typeRef = new TypeReference<List<CategoryWithLinkDTO>>() {
+      };
 
-    // Try to get from cache first
-    Optional<List<CategoryWithLinkDTO>> cachedResult = LoggingUtil.logOperationTime(
-        logger,
-        "get home categories from cache",
-        () -> cacheService.getCollectionFromCache(
-            CacheService.CACHE_NAME_CATEGORIES,
-            cacheKey,
-            typeRef
-        )
-    );
+      // Try to get from cache first
+      Optional<List<CategoryWithLinkDTO>> cachedResult = cacheService.getCollectionFromCache(
+          CacheService.CACHE_NAME_CATEGORIES,
+          cacheKey,
+          typeRef
+      );
 
-    if (cachedResult.isPresent() && !cachedResult.get().isEmpty()) {
-      logger.info("Retrieved {} home categories from cache for tenant {}",
-          cachedResult.get().size(), tenantId);
-      return cachedResult.get();
-    }
+      if (cachedResult.isPresent() && !cachedResult.get().isEmpty()) {
+        logger.info("Retrieved {} home categories from cache for tenant {}",
+            cachedResult.get().size(), tenantId);
+        return cachedResult.get();
+      }
 
-    logger.info("Cache miss for home categories, fetching from database for tenant {}", tenantId);
+      logger.info("Cache miss for home categories, fetching from database for tenant {}", tenantId);
 
-    // Get all categories with home=1 ordered by home_cat_order
-    List<AllCat> categories = LoggingUtil.logOperationTime(
-        logger,
-        "fetch home categories from database",
-        () -> allCatService.findByTenantIdAndHomeOrderByHomeCatOrder(tenantId, 1)
-    );
+      // Get all categories with home=1 ordered by home_cat_order
+      List<AllCat> categories = LoggingUtil.logOperationTime(
+          logger,
+          "fetch home categories from database",
+          () -> allCatService.findByTenantIdAndHomeOrderByHomeCatOrder(tenantId, 1)
+      );
 
-    if (categories.isEmpty()) {
-      logger.info("No home categories found for tenant {}", tenantId);
-      return Collections.emptyList();
-    }
+      if (categories.isEmpty()) {
+        logger.info("No home categories found for tenant {}", tenantId);
+        return Collections.emptyList();
+      }
 
-    // Extract category names
-    List<String> categoryNames = categories.stream()
-        .map(AllCat::getName)
-        .collect(Collectors.toList());
+      // Extract category names
+      List<String> categoryNames = categories.stream()
+          .map(AllCat::getName)
+          .collect(Collectors.toList());
 
-    // Get first links for all categories in bulk
-    List<CategoryWithLinkDTO> firstLinks = getCategoryFirstLinks(tenantId, categoryNames);
+      // Get first links for all categories in bulk
+      List<CategoryWithLinkDTO> firstLinks = getCategoryFirstLinks(tenantId, categoryNames);
 
-    // Create a map for easy lookup
-    Map<String, CategoryWithLinkDTO> dtoMap = firstLinks.stream()
-        .collect(Collectors.toMap(CategoryWithLinkDTO::getName, dto -> dto));
+      // Create a map for easy lookup
+      Map<String, CategoryWithLinkDTO> dtoMap = firstLinks.stream()
+          .collect(Collectors.toMap(CategoryWithLinkDTO::getName, dto -> dto));
 
-    // Create final result list preserving original order
-    List<CategoryWithLinkDTO> result = categories.stream()
-        .map(category -> dtoMap.get(category.getName()))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
+      // Create final result list preserving original order
+      List<CategoryWithLinkDTO> result = categories.stream()
+          .map(category -> dtoMap.get(category.getName()))
+          .filter(Objects::nonNull)
+          .collect(Collectors.toList());
 
-    // Store in cache
-    LoggingUtil.logOperationTime(
-        logger,
-        "store home categories in cache",
-        () -> {
-          cacheService.putInCache(CacheService.CACHE_NAME_CATEGORIES, cacheKey, result);
-          return null;
-        }
-    );
+      // Store in cache
+      LoggingUtil.logOperationTime(
+          logger,
+          "store home categories in cache",
+          () -> {
+            cacheService.putInCache(CacheService.CACHE_NAME_CATEGORIES, cacheKey, result);
+            return null;
+          }
+      );
 
-    logger.info("Stored {} home categories in cache for tenant {}", result.size(), tenantId);
-    return result;
+      logger.info("Stored {} home categories in cache for tenant {}", result.size(), tenantId);
+      return result;
+    });
   }
 
   public CategoryWithLinkDTO getCategoryFirstLink(Integer tenantId, String categoryName) {
@@ -300,11 +298,11 @@ public class CategoryService {
       );
 
       if (cachedResult.isPresent()) {
-        logger.debug("Cache hit for category first link: tenant={}, category={}",
+        logger.info("Cache hit for category first link: tenant={}, category={}",
             tenantId, categoryName);
         results.add(cachedResult.get());
       } else {
-        logger.debug("Cache miss for category first link: tenant={}, category={}",
+        logger.info("Cache miss for category first link: tenant={}, category={}",
             tenantId, categoryName);
         missedCategories.add(categoryName);
       }
