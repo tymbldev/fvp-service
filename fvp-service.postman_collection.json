@@ -761,12 +761,12 @@
       ]
     },
     {
-      "name": "Google Sheets",
+      "name": "Scheduler",
       "item": [
         {
-          "name": "Process Google Sheets",
+          "name": "Trigger Scheduler",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Tenant-Id",
@@ -775,20 +775,112 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/google-sheets/process",
+              "raw": "{{base_url}}/api/scheduler/trigger",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "google-sheets",
-                "process"
+                "scheduler",
+                "trigger"
               ]
             },
-            "description": "Trigger the processing of Google Sheets data"
+            "description": "Trigger parallel processing of Google Sheets and Thumb Paths. This endpoint runs every 8 hours automatically."
           },
-          "response": []
-        },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/scheduler/trigger",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "scheduler", "trigger"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "Processing completed successfully"
+            },
+            {
+              "name": "Already Processing",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/scheduler/trigger",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "scheduler", "trigger"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "Processing is already in progress"
+            },
+            {
+              "name": "Error Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Tenant-Id",
+                    "value": "{{tenant_id}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/scheduler/trigger",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "scheduler", "trigger"]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "error": "Error during processing: [error message]"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Google Sheets",
+      "item": [
         {
           "name": "Get Processed Sheets",
           "request": {
@@ -811,7 +903,7 @@
                 "processed"
               ]
             },
-            "description": "Get all processed sheets with detailed information including sheet name, processing date, approval status, number of records processed, tenant ID, and workbook ID"
+            "description": "Get all processed sheets with detailed information including sheet name, processing date, approval status, number of records processed, tenant ID, workbook ID, and processing status (0: Not started, 1: In Progress, 2: Completed, 3: Failed)"
           },
           "response": [
             {
@@ -827,14 +919,8 @@
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/google-sheets/processed",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "google-sheets",
-                    "processed"
-                  ]
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "google-sheets", "processed"]
                 }
               },
               "status": "OK",
@@ -846,7 +932,6 @@
                   "value": "application/json"
                 }
               ],
-              "cookie": [],
               "body": {
                 "totalSheets": 2,
                 "sheets": [
@@ -854,58 +939,23 @@
                     "id": 1,
                     "sheetName": "example_sheet",
                     "processedDate": "2024-03-21T10:30:00",
-                    "isApproved": true,
+                    "isProcessingCompleted": true,
                     "recordsProcessed": 100,
                     "tenantId": 1,
-                    "workbookId": "workbook123"
+                    "workbookId": "workbook123",
+                    "status": 2
                   },
                   {
                     "id": 2,
                     "sheetName": "another_sheet",
                     "processedDate": "2024-03-21T11:30:00",
-                    "isApproved": false,
+                    "isProcessingCompleted": false,
                     "recordsProcessed": 50,
                     "tenantId": 1,
-                    "workbookId": "workbook123"
+                    "workbookId": "workbook123",
+                    "status": 1
                   }
                 ]
-              }
-            },
-            {
-              "name": "Error Response",
-              "originalRequest": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/google-sheets/processed",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "google-sheets",
-                    "processed"
-                  ]
-                }
-              },
-              "status": "Internal Server Error",
-              "code": 500,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": {
-                "error": "Error fetching processed sheets: Database connection failed"
               }
             }
           ]
@@ -940,7 +990,7 @@
                 }
               ]
             },
-            "description": "Get processed sheets for a specific workbook"
+            "description": "Get processed sheets for a specific workbook with their processing status"
           },
           "response": []
         }

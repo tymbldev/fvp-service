@@ -29,6 +29,8 @@ public interface ShardedLinkModelRepository<T extends BaseLinkModel> extends
 
   List<Object[]> countByTenantIdAndModels(Integer tenantId, List<String> modelNames);
 
+  List<T> findByLinkIdAndModel(Integer linkId, String model);
+
   @Transactional
   void deleteByLinkId(Integer linkId);
 

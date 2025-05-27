@@ -36,46 +36,7 @@ public class LinkCategoryService {
   @Value("${category.recent-links-days:3}")
   private long recentLinksDays;
 
-  /**
-   * Saves a LinkCategory entity to the appropriate shard
-   *
-   * @param linkCategory the LinkCategory entity to save
-   * @return the saved entity converted back to LinkCategory
-   */
-  @Transactional
-  public LinkCategory save(LinkCategory linkCategory) {
-    // Try to save to the appropriate shard first
-    try {
-      BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
-      BaseLinkCategory savedEntity = shardingService.save(shardEntity);
 
-      // Update the original entity with the saved ID
-      linkCategory.setId(savedEntity.getId());
-
-      // Invalidate relevant caches
-      invalidateCaches(linkCategory);
-
-      return linkCategory;
-    } catch (Exception e) {
-      logger.warn("Error saving to sharded table, falling back to original table: {}",
-          e.getMessage());
-    }
-    return null;
-  }
-
-  /**
-   * Deletes a LinkCategory entity from the appropriate shard
-   *
-   * @param linkCategory the LinkCategory entity to delete
-   */
-  @Transactional
-  public void delete(LinkCategory linkCategory) {
-    BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
-    shardingService.delete(shardEntity);
-
-    // Invalidate relevant caches
-    invalidateCaches(linkCategory);
-  }
 
   /**
    * Find a random recent link by category
@@ -293,17 +254,6 @@ public class LinkCategoryService {
     });
   }
 
-  /**
-   * Save multiple LinkCategory entities
-   *
-   * @param linkCategories the entities to save
-   * @return the saved entities
-   */
-  public List<LinkCategory> saveAll(List<LinkCategory> linkCategories) {
-    return linkCategories.stream()
-        .map(this::save)
-        .collect(Collectors.toList());
-  }
 
   /**
    * Delete a LinkCategory entity by link ID

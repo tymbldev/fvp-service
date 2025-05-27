@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -89,6 +90,7 @@ public class GoogleSheetProcessingService {
   }
 
 
+  @Async
   public void processGoogleSheets() {
     logger.info("Starting Google Sheets processing");
     try {
@@ -177,17 +179,34 @@ public class GoogleSheetProcessingService {
   }
 
   private void markSheetAsProcessed(String sheetName, boolean isApproved, int recordsProcessed) {
-    ProcessedSheet processedSheet = new ProcessedSheet(
-        sheetName,
-        isApproved,
-        recordsProcessed,
-        1, // Default tenant ID
-        spreadsheetId
-    );
-    processedSheet.setStatus(1); // Set status to In Progress
+    Optional<ProcessedSheet> existingSheet = processedSheetRepository.findBySheetNameAndWorkbookId(sheetName, spreadsheetId);
+    ProcessedSheet processedSheet;
+    
+    if (existingSheet.isPresent()) {
+      // Update existing entry
+      processedSheet = existingSheet.get();
+      processedSheet.setProcessedDate(LocalDateTime.now());
+      processedSheet.setIsProcessingCompleted(isApproved);
+      processedSheet.setRecordsProcessed(recordsProcessed);
+      processedSheet.setStatus(1); // Set status to In Progress
+    } else {
+      // Create new entry
+      processedSheet = new ProcessedSheet(
+          sheetName,
+          isApproved,
+          recordsProcessed,
+          1, // Default tenant ID
+          spreadsheetId
+      );
+      processedSheet.setStatus(1); // Set status to In Progress
+    }
+    
     processedSheetRepository.save(processedSheet);
     processedSheetRepository.flush(); // Explicitly flush to ensure it's written to DB
-    logger.info("Marked sheet {} as processing with {} records", sheetName, recordsProcessed);
+    logger.info("{} sheet {} with {} records", 
+        existingSheet.isPresent() ? "Updated" : "Created new", 
+        sheetName, 
+        recordsProcessed);
   }
 
   private void updateSheetStatus(String sheetName, int status, int recordsProcessed) {

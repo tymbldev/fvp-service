@@ -126,9 +126,30 @@ public class LinkModelShardingService {
    */
   @Transactional
   public <T extends BaseLinkModel> T save(T entity) {
-    ShardedLinkModelRepository<T> repository =
-        (ShardedLinkModelRepository<T>) getRepositoryForModel(entity.getModel());
-    return repository.save(entity);
+    try {
+      ShardedLinkModelRepository<T> repository =
+          (ShardedLinkModelRepository<T>) getRepositoryForModel(entity.getModel());
+      
+      // Check if an entry already exists for this linkId and model using direct DB query
+      List<T> existingEntities = repository.findByLinkIdAndModel(entity.getLinkId(), entity.getModel());
+      
+      if (!existingEntities.isEmpty()) {
+        // Update existing entity
+        T existing = existingEntities.get(0);
+        existing.setTenantId(entity.getTenantId());
+        existing.setCreatedOn(entity.getCreatedOn());
+        existing.setRandomOrder(entity.getRandomOrder());
+        existing.setHd(entity.getHd());
+        return repository.save(existing);
+      } else {
+        // Save new entity
+        return repository.save(entity);
+      }
+    } catch (Exception e) {
+      logger.error("Error saving BaseLinkModel for linkId {} and model {}: {}", 
+          entity.getLinkId(), entity.getModel(), e.getMessage(), e);
+      throw new RuntimeException("Failed to save BaseLinkModel", e);
+    }
   }
 
   /**

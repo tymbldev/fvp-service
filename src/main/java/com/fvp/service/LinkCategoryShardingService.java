@@ -156,9 +156,30 @@ public class LinkCategoryShardingService {
    */
   @Transactional
   public <T extends BaseLinkCategory> T save(T entity) {
-    ShardedLinkCategoryRepository<T, Integer> repository =
-        (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForCategory(entity.getCategory());
-    return repository.save(entity);
+    try {
+      ShardedLinkCategoryRepository<T, Integer> repository =
+          (ShardedLinkCategoryRepository<T, Integer>) getRepositoryForCategory(entity.getCategory());
+      
+      // Check if an entry already exists for this linkId and category using direct DB query
+      List<T> existingEntities = repository.findByLinkIdAndCategory(entity.getLinkId(), entity.getCategory());
+      
+      if (!existingEntities.isEmpty()) {
+        // Update existing entity
+        T existing = existingEntities.get(0);
+        existing.setTenantId(entity.getTenantId());
+        existing.setCreatedOn(entity.getCreatedOn());
+        existing.setRandomOrder(entity.getRandomOrder());
+        existing.setHd(entity.getHd());
+        return repository.save(existing);
+      } else {
+        // Save new entity
+        return repository.save(entity);
+      }
+    } catch (Exception e) {
+      logger.error("Error saving BaseLinkCategory for linkId {} and category {}: {}", 
+          entity.getLinkId(), entity.getCategory(), e.getMessage(), e);
+      throw new RuntimeException("Failed to save BaseLinkCategory", e);
+    }
   }
 
   /**
@@ -308,5 +329,28 @@ public class LinkCategoryShardingService {
 
     jdbcTemplate.execute(sql);
     return entity;
+  }
+
+  /**
+   * Updates random_order in all link category shards by joining with the link table
+   */
+  @Transactional
+  public void updateRandomOrderInAllShards() {
+    for (int i = 1; i <= TOTAL_SHARDS; i++) {
+      try {
+        String tableName = "link_category_shard_" + i;
+        String sql = String.format(
+            "UPDATE %s lc " +
+            "JOIN link l ON lc.link_id = l.link_id " +
+            "SET lc.random_order = l.random_order",
+            tableName
+        );
+        jdbcTemplate.execute(sql);
+        logger.info("Updated random_order in shard {}", i);
+      } catch (Exception e) {
+        logger.error("Error updating random_order in shard {}: {}", i, e.getMessage(), e);
+        throw new RuntimeException("Failed to update random_order in shard " + i, e);
+      }
+    }
   }
 } 

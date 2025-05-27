@@ -30,6 +30,8 @@ public interface ShardedLinkCategoryRepository<T extends BaseLinkCategory, ID> e
 
   List<T> findByCategoryAndTenantId(String category, Integer tenantId);
 
+  List<T> findByLinkIdAndCategory(Integer linkId, String category);
+
   @Transactional
   void deleteByLinkId(Integer linkId);
 
