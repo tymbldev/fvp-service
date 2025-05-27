@@ -70,74 +70,7 @@ public class CategoryService {
   private int recentLinksDays;
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(30);
-
-  @PostConstruct
-  public void preloadCacheInBackground() {
-    Thread thread = new Thread(() -> {
-      try {
-        logger.info("Starting cache preloading in background thread...");
-
-        // Get distinct tenant IDs (optimized query)
-        List<Integer> tenantIds = LoggingUtil.logOperationTime(
-            logger,
-            "fetch distinct tenant IDs",
-            () -> linkRepository.findDistinctTenantIds()
-        );
-        logger.info("Found {} tenants for cache preloading", tenantIds.size());
-
-        // Process each tenant
-        for (Integer tenantId : tenantIds) {
-          try {
-            logger.info("Preloading cache for tenant {}", tenantId);
-            // Get category keys for this tenant
-            List<String> keysToDelete = LoggingUtil.logOperationTime(
-                logger,
-                "get category keys for tenant",
-                () -> {
-                  try (Jedis jedis = jedisPool.getResource()) {
-                    Set<String> keys = jedis.keys(generateCacheKey(tenantId, "*"));
-                    return keys.stream()
-                        .filter(key -> key.contains(CATEGORY_PREFIX))
-                        .collect(Collectors.toList());
-                  }
-                }
-            );
-
-            // Delete existing keys
-            if (!keysToDelete.isEmpty()) {
-              LoggingUtil.logOperationTime(
-                  logger,
-                  "delete existing category keys",
-                  () -> {
-                    try (Jedis jedis = jedisPool.getResource()) {
-                      jedis.del(keysToDelete.toArray(new String[0]));
-                    }
-                    return null;
-                  }
-              );
-              logger.info("Deleted {} existing category cache keys for tenant {}",
-                  keysToDelete.size(), tenantId);
-            }
-
-            // Get home categories with links - use pagination to avoid memory issues
-            List<CategoryWithLinkDTO> categories = getHomeCategoriesWithLinks(tenantId);
-            logger.info("Preloaded {} categories for tenant {}", categories.size(), tenantId);
-          } catch (Exception e) {
-            logger.error("Error preloading cache for tenant {}: {}", tenantId, e.getMessage());
-          }
-        }
-
-        logger.info("Completed cache preloading in background thread");
-      } catch (Exception e) {
-        logger.error("Error during cache preloading: {}", e.getMessage(), e);
-      }
-    });
-
-    thread.setName("Cache-Preloader");
-    thread.setDaemon(true);
-    thread.start();
-  }
-
+  
   public List<CategoryWithLinkDTO> getHomeCategoriesWithLinks(Integer tenantId) {
     String cacheKey = CacheService.generateCacheKey(HOME_CATEGORIES_CACHE, tenantId);
 
