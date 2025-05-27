@@ -9,10 +9,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import org.hibernate.annotations.QueryHints;
 
 @Repository
 public interface LinkRepository extends JpaRepository<Link, Integer> {
@@ -77,7 +77,8 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
   int updateThumbPathProcessedStatus(@Param("oldStatus") int oldStatus, @Param("newStatus") int newStatus);
 
   @Modifying
+  @Transactional
   @Query(value = "UPDATE link SET random_order = FLOOR(1 + (RAND() * 10000))", nativeQuery = true)
-  @org.springframework.data.jpa.repository.QueryHints(value = @QueryHint(name = org.hibernate.annotations.QueryHints.TIMEOUT_JPA, value = "300000"))
+  @QueryHints(value = @QueryHint(name = "javax.persistence.query.timeout", value = "300000"))
   void updateRandomOrderForAllLinks();
 }

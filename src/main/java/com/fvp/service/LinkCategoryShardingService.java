@@ -336,21 +336,22 @@ public class LinkCategoryShardingService {
    */
   @Transactional
   public void updateRandomOrderInAllShards() {
-    for (int i = 1; i <= TOTAL_SHARDS; i++) {
+    logger.info("Starting to update random_order in all link category shards");
+    for (int i = 1; i <= 50; i++) {
       try {
-        String tableName = "link_category_shard_" + i;
+        String tableName = String.format("link_category_shard_%d", i);
         String sql = String.format(
-            "UPDATE %s lc " +
-            "JOIN link l ON lc.link_id = l.link_id " +
-            "SET lc.random_order = l.random_order",
+            "UPDATE %s lc JOIN link l ON lc.link_id = l.id SET lc.random_order = l.random_order",
             tableName
         );
+        logger.info("Executing SQL for shard {}: {}", i, sql);
         jdbcTemplate.execute(sql);
-        logger.info("Updated random_order in shard {}", i);
+        logger.info("Successfully updated random_order in shard {}", i);
       } catch (Exception e) {
         logger.error("Error updating random_order in shard {}: {}", i, e.getMessage(), e);
         throw new RuntimeException("Failed to update random_order in shard " + i, e);
       }
     }
+    logger.info("Completed updating random_order in all link category shards");
   }
 } 

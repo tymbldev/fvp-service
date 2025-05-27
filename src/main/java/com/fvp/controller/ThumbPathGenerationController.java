@@ -74,21 +74,6 @@ public class ThumbPathGenerationController {
     this.executorService = Executors.newFixedThreadPool(NUM_THREADS);
   }
 
-  @GetMapping("/trigger-scheduler")
-  @Scheduled(fixedRate = 1000 * 60 * 60 * 8) // 10 minutes
-  public ResponseEntity<String> trigger() {
-    try {
-      if (!isProcessing.compareAndSet(false, true)) {
-        return ResponseEntity.ok("Processing is already running");
-      }
-      googleSheetProcessingService.processGoogleSheets();
-      processAllThumbPaths();
-      return ResponseEntity.ok("Google Sheets processing started successfully");
-    } finally {
-      isProcessing.set(false);
-    }
-  }
-
   @Async
   @GetMapping("/process")
   public ResponseEntity<Map<String, Object>> processAllThumbPaths() {
