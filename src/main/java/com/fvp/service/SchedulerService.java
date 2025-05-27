@@ -41,7 +41,7 @@ public class SchedulerService {
     try {
       logger.info("Starting deployment script execution");
       ProcessBuilder processBuilder = new ProcessBuilder(
-          "/apps/fvp/devops/fvp-devops/deploy_fed.sh");
+          "/apps/fvp/devops/fvp-devops/sync.sh");
       processBuilder.inheritIO(); // This will show the output in the application logs
       Process process = processBuilder.start();
 
