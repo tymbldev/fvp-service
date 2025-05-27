@@ -66,19 +66,6 @@ public class CacheController {
     }
   }
 
-  @GetMapping("/clear/{cacheName}")
-  public ResponseEntity<String> clearCache(@PathVariable String cacheName) {
-    try {
-      logger.info("Clearing cache: {}", cacheName);
-      cacheService.clearCache(cacheName);
-      logger.info("Successfully cleared cache: {}", cacheName);
-      return ResponseEntity.ok("Cache '" + cacheName + "' cleared successfully");
-    } catch (Exception e) {
-      logger.error("Error clearing cache {}: {}", cacheName, e.getMessage(), e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body("Error clearing cache: " + e.getMessage());
-    }
-  }
 
   @GetMapping("/build-cache")
   public ResponseEntity<String> buildCache() {

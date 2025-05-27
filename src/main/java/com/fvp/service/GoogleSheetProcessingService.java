@@ -90,7 +90,7 @@ public class GoogleSheetProcessingService {
   }
 
 
-  @Async
+
   public void processGoogleSheets() {
     logger.info("Starting Google Sheets processing");
     try {

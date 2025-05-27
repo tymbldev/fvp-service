@@ -74,7 +74,7 @@ public class ThumbPathGenerationController {
     this.executorService = Executors.newFixedThreadPool(NUM_THREADS);
   }
 
-  @Async
+
   @GetMapping("/process")
   public ResponseEntity<Map<String, Object>> processAllThumbPaths() {
     // Create thumbs directory if it doesn't exist

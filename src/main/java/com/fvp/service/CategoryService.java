@@ -70,7 +70,7 @@ public class CategoryService {
   private int recentLinksDays;
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(30);
-  
+
   public List<CategoryWithLinkDTO> getHomeCategoriesWithLinks(Integer tenantId) {
     String cacheKey = CacheService.generateCacheKey(HOME_CATEGORIES_CACHE, tenantId);
 
