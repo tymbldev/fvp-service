@@ -443,6 +443,11 @@ public class GoogleSheetProcessingService {
       List<String> category = Arrays.asList(categoryString.split(","));
       link.setCategory(gson.toJson(category));
       link.setTrailer(row.get("trailer"));
+      if (link.getTrailer() != null && !link.getTrailer().isEmpty()) {
+        link.setTrailerPresent(1);
+      }else{
+        link.setTrailerPresent(0);
+      }
       link.setThumbnail(row.get("thumbnail"));
       link.setDuration(parseDuration(row.get("duration")));
       List<String> categoryList = util.tokenize(row.get("category"));

@@ -88,6 +88,9 @@ public class Link implements Serializable {
   @Column(name = "thumb_path_processed")
   private Integer thumbPathProcessed = 0;
 
+  @Column(name = "trailer_present")
+  private Integer trailerPresent = 0;
+
   @Column(name = "hd")
   private Integer hd = 0;
 } 
