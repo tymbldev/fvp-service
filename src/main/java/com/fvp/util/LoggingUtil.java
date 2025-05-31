@@ -25,7 +25,11 @@ public class LoggingUtil {
       T result = supplier.get();
       long endTime = System.currentTimeMillis();
       long duration = endTime - startTime;
-      logger.info("Completed {} operation in {} ms", operationName, duration);
+      if (duration < 300) {
+        logger.info("Completed {} operation in {} ms", operationName, duration);
+      } else {
+        logger.warn("High time Completed {} operation in {} ms", operationName, duration);
+      }
       return result;
     } catch (Exception e) {
       long endTime = System.currentTimeMillis();

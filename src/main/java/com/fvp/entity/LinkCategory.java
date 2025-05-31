@@ -44,6 +44,9 @@ public class LinkCategory {
   @Column(name = "hd")
   private Integer hd = 0;
 
+  @Column(name = "trailer_flag")
+  private Integer trailerFlag = 0;
+
   @ToString.Exclude
   @ManyToOne
   @JoinColumn(name = "link_id", insertable = false, updatable = false)

@@ -66,6 +66,7 @@ public class LinkCategoryDynamicQueryBuilder {
         
         // Order by random
         query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         query.orderBy(cb.asc(root.get("randomOrder")));
         
         // Execute query and return first result if present
@@ -107,6 +108,7 @@ public class LinkCategoryDynamicQueryBuilder {
         
         // Order by random
         query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         query.orderBy(cb.asc(root.get("randomOrder")));
         
         // Execute query and return first result if present
@@ -257,6 +259,8 @@ public class LinkCategoryDynamicQueryBuilder {
         predicates.add(cb.equal(root.get("tenantId"), tenantId));
         predicates.add(cb.equal(root.get("category"), category));
         predicates.add(cb.equal(linkJoin.get("thumbPathProcessed"), 1));
+
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         
         // Apply predicates
         query.where(predicates.toArray(new Predicate[0]));
@@ -293,6 +297,7 @@ public class LinkCategoryDynamicQueryBuilder {
         // Apply predicates
         query.where(predicates.toArray(new Predicate[0]));
         query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         query.orderBy(cb.asc(root.get("randomOrder")));
 
         return entityManager.createQuery(query).getResultList();
@@ -340,6 +345,7 @@ public class LinkCategoryDynamicQueryBuilder {
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(root.get("tenantId"), tenantId));
         predicates.add(cb.equal(root.get("category"), category));
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         
         // Apply predicates
         query.where(predicates.toArray(new Predicate[0]));
@@ -401,6 +407,7 @@ public class LinkCategoryDynamicQueryBuilder {
         
         // Order by random
         query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         query.orderBy(cb.asc(root.get("randomOrder")));
         
         return entityManager.createQuery(query).getResultList();
@@ -596,6 +603,7 @@ public class LinkCategoryDynamicQueryBuilder {
         
         // Order by random_order
         query.orderBy(cb.desc(root.get("hd")));
+        query.orderBy(cb.desc(root.get("trailerFlag")));
         query.orderBy(cb.asc(root.get("randomOrder")));
 
         // Create and execute typed query with pagination

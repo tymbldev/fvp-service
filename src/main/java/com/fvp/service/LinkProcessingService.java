@@ -225,6 +225,7 @@ public class LinkProcessingService {
           linkCategory.setCreatedOn(link.getCreatedOn());
           linkCategory.setRandomOrder(link.getRandomOrder());
           linkCategory.setHd(link.getHd());
+
           // Convert to shard entity
           BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);
           shardEntities.add(shardEntity);
