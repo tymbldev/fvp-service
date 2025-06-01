@@ -71,9 +71,9 @@ public class LinkCountCacheService {
       Optional<Long> count = cacheService.getFromCache(LINK_COUNT_CACHE, cacheKey, Long.class);
       if (count.isPresent()) {
         cachedCounts.put(categoryName, count.get());
-        logger.debug("Cache hit for category count: {} = {}", categoryName, count.get());
+        logger.info("Cache hit for category count: {} = {}", categoryName, count.get());
       } else {
-        logger.debug("Cache miss for category count: {}", categoryName);
+        logger.info("Cache miss for category count: {}", categoryName);
       }
     }
 
@@ -118,7 +118,7 @@ public class LinkCountCacheService {
               CACHE_EXPIRY_HOURS,
               TimeUnit.HOURS
           );
-          logger.debug("Cached count for category {} = {}", categoryName, countValue);
+          logger.info("Cached count for category {} = {}", categoryName, countValue);
         }
       } catch (Exception e) {
         logger.error("Error getting counts from shard {}: {}", shardNumber, e.getMessage(), e);
