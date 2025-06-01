@@ -33,6 +33,8 @@ public class CacheController {
     this.categoryController = categoryController;
   }
 
+
+
   @GetMapping("/clear")
   public ResponseEntity<String> clearAllCache() {
     try {
@@ -75,5 +77,35 @@ public class CacheController {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
           .body("Error building cache: " + e.getMessage());
     }
+  }
+
+  @GetMapping("/clear-async")
+  public ResponseEntity<String> clearAllCacheAsync() {
+    new Thread(() -> {
+      try {
+        logger.info("Starting async cache refresh process...");
+        clearAllCache();
+        logger.info("Async cache refresh completed successfully");
+      } catch (Exception e) {
+        logger.error("Error during async cache refresh process: {}", e.getMessage(), e);
+      }
+    }).start();
+
+    return ResponseEntity.ok("Cache refresh started in background");
+  }
+
+  @GetMapping("/build-cache-async")
+  public ResponseEntity<String> buildCacheAsync() {
+    new Thread(() -> {
+      try {
+        logger.info("Starting async cache build process...");
+        buildCache();
+        logger.info("Async cache build completed successfully");
+      } catch (Exception e) {
+        logger.error("Error during async cache build process: {}", e.getMessage(), e);
+      }
+    }).start();
+
+    return ResponseEntity.ok("Cache build started in background");
   }
 } 

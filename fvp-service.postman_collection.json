@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "cd5a5bcc-916e-479f-854e-96102c6b21b6",
-    "name": "FVP Service",
-    "description": "Collection for FVP Service API endpoints",
+    "name": "FVP Service API",
+    "description": "API collection for FVP Service",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "8726097"
   },
@@ -10,24 +10,18 @@
     {
       "name": "Health",
       "item": [
-        { 
+        {
           "name": "Health Check",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/health",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "health"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
             },
-            "description": "Check the health status of the service"
-          },
-          "response": []
+            "description": "Get the health status of the service and its components"
+          }
         },
         {
           "name": "Ping",
@@ -36,18 +30,11 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/health/ping",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "health",
-                "ping"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "health", "ping"]
             },
-            "description": "Simple ping endpoint"
-          },
-          "response": []
+            "description": "Simple ping endpoint to check if service is up"
+          }
         }
       ]
     },
@@ -61,7 +48,7 @@
             "header": [
               {
                 "key": "X-Tenant-Id",
-                "value": "1",
+                "value": "{{tenant_id}}",
                 "type": "text"
               }
             ],
@@ -70,7 +57,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "categories", "home"]
             },
-            "description": "Get categories for home page with their links"
+            "description": "Get home categories with links"
           },
           "response": []
         },
@@ -81,7 +68,7 @@
             "header": [
               {
                 "key": "X-Tenant-Id",
-                "value": "1",
+                "value": "{{tenant_id}}",
                 "type": "text"
               }
             ],
@@ -90,7 +77,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "categories", "home-seo"]
             },
-            "description": "Get categories with homeSEO=true and their links"
+            "description": "Get home SEO categories with links"
           },
           "response": []
         },
@@ -107,16 +94,10 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/categories/all",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "categories",
-                "all"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories", "all"]
             },
-            "description": "Get all categories with their link counts"
+            "description": "Get all categories with link counts"
           },
           "response": []
         },
@@ -127,20 +108,14 @@
             "header": [
               {
                 "key": "X-Tenant-Id",
-                "value": "1",
+                "value": "{{tenant_id}}",
                 "type": "text"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/categories/:categoryName/first",
+              "raw": "{{base_url}}/api/categories/{{category_name}}/first",
               "host": ["{{base_url}}"],
-              "path": ["api", "categories", ":categoryName", "first"],
-              "variable": [
-                {
-                  "key": "categoryName",
-                  "value": "your-category-name"
-                }
-              ]
+              "path": ["api", "categories", "{{category_name}}", "first"]
             },
             "description": "Get the first link for a specific category"
           },
@@ -153,67 +128,53 @@
             "header": [
               {
                 "key": "X-Tenant-Id",
-                "value": "1",
+                "value": "{{tenant_id}}",
                 "type": "text"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/categories/:categoryName/links?maxDuration=:maxDuration&quality=:quality&page=:page&size=:size",
+              "raw": "{{base_url}}/api/categories/{{category_name}}/links?minDuration={{min_duration}}&maxDuration={{max_duration}}&quality={{quality}}&page={{page}}&size={{size}}&sort=randomOrder",
               "host": ["{{base_url}}"],
-              "path": ["api", "categories", ":categoryName", "links"],
+              "path": ["api", "categories", "{{category_name}}", "links"],
               "query": [
                 {
-                  "key": "maxDuration",
-                  "value": ":maxDuration"
-                },
-                {
-                  "key": "quality",
-                  "value": ":quality"
-                },
-                {
-                  "key": "page",
-                  "value": ":page"
-                },
-                {
-                  "key": "size",
-                  "value": ":size"
-                }
-              ],
-              "variable": [
-                {
-                  "key": "categoryName",
-                  "value": "your-category-name"
+                  "key": "minDuration",
+                  "value": "{{min_duration}}"
                 },
                 {
                   "key": "maxDuration",
-                  "value": "null"
+                  "value": "{{max_duration}}"
                 },
                 {
                   "key": "quality",
-                  "value": "null"
+                  "value": "{{quality}}"
                 },
                 {
                   "key": "page",
-                  "value": "0"
+                  "value": "{{page}}"
                 },
                 {
                   "key": "size",
-                  "value": "20"
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "randomOrder"
                 }
               ]
             },
-            "description": "Get links for a specific category with pagination and filtering"
+            "description": "Get paginated links for a specific category"
           },
           "response": []
         },
         {
-          "name": "Build System Cache",
+          "name": "Build Category Cache",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "X-Tenant-Id",
-                "value": "1",
+                "value": "{{tenant_id}}",
                 "type": "text"
               }
             ],
@@ -222,7 +183,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "categories", "build-cache"]
             },
-            "description": "Build the complete system cache by calling home, home-seo, and first page of all categories"
+            "description": "Build cache for all categories"
           },
           "response": []
         }
@@ -244,21 +205,15 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/models/all",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "models",
-                "all"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "models", "all"]
             },
-            "description": "Get all models with their basic information (id, tenantId, name, description, country, thumbnail, thumbPath, age). This endpoint no longer returns link-related fields."
+            "description": "Get all models for a tenant"
           },
           "response": []
         },
         {
-          "name": "Get Model Details",
+          "name": "Get Model First Link",
           "request": {
             "method": "GET",
             "header": [
@@ -269,25 +224,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/models/:modelName/first",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "models",
-                ":modelName",
-                "first"
-              ],
-              "variable": [
-                {
-                  "key": "modelName",
-                  "value": "exampleModel",
-                  "description": "Name of the model"
-                }
-              ]
+              "raw": "{{base_url}}/api/models/{{model_name}}/first",
+              "host": ["{{base_url}}"],
+              "path": ["api", "models", "{{model_name}}", "first"]
             },
-            "description": "Get the details for a specific model along with its first link data. This endpoint returns both model information (id, tenantId, name, description, country, thumbnail, thumbPath, age) and link data (link, linkTitle, linkThumbnail, linkThumbPath, linkSource, linkTrailer, linkDuration)."
+            "description": "Get the first link for a specific model"
           },
           "response": []
         },
@@ -303,59 +244,40 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/models/:modelName/links?page=0&size=20&minDuration=&maxDuration=&quality=",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "models",
-                ":modelName",
-                "links"
-              ],
+              "raw": "{{base_url}}/api/models/{{model_name}}/links?maxDuration={{max_duration}}&quality={{quality}}&page={{page}}&size={{size}}&sort=randomOrder",
+              "host": ["{{base_url}}"],
+              "path": ["api", "models", "{{model_name}}", "links"],
               "query": [
                 {
-                  "key": "page",
-                  "value": "0",
-                  "description": "Page number (zero-based)"
-                },
-                {
-                  "key": "size",
-                  "value": "20",
-                  "description": "Number of items per page"
-                },
-                {
-                  "key": "minDuration",
-                  "value": "",
-                  "description": "Optional filter for minimum duration"
-                },
-                {
                   "key": "maxDuration",
-                  "value": "",
-                  "description": "Optional filter for maximum duration"
+                  "value": "{{max_duration}}"
                 },
                 {
                   "key": "quality",
-                  "value": "",
-                  "description": "Optional filter for quality"
-                }
-              ],
-              "variable": [
+                  "value": "{{quality}}"
+                },
                 {
-                  "key": "modelName",
-                  "value": "exampleModel",
-                  "description": "Name of the model"
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "randomOrder"
                 }
               ]
             },
-            "description": "Get links for a specific model with pagination and filtering. This endpoint returns model information along with a separate collection of links."
+            "description": "Get paginated links for a specific model"
           },
           "response": []
         },
         {
           "name": "Build Model Cache",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Tenant-Id",
@@ -365,16 +287,10 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/models/build-cache",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "models",
-                "build-cache"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "models", "build-cache"]
             },
-            "description": "Build the complete model cache by calling all models and caching their data"
+            "description": "Build cache for all models"
           },
           "response": []
         }
@@ -396,16 +312,10 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/links/count",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "links",
-                "count"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "links", "count"]
             },
-            "description": "Get total count of links for a tenant"
+            "description": "Get total link count for a tenant"
           },
           "response": []
         }
@@ -415,46 +325,22 @@
       "name": "Elasticsearch",
       "item": [
         {
-          "name": "Search Links",
+          "name": "Search Models",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/links/search?query=example&page=0&size=20",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "links",
-                "search"
-              ],
+              "raw": "{{base_url}}/api/elasticsearch/models/search?query={{query}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "models", "search"],
               "query": [
                 {
                   "key": "query",
-                  "value": "example",
-                  "description": "Search query for links (searches across multiple fields including title, categories, models, etc.)"
-                },
-                {
-                  "key": "page",
-                  "value": "0",
-                  "description": "Page number (zero-based)"
-                },
-                {
-                  "key": "size",
-                  "value": "20",
-                  "description": "Number of items per page"
+                  "value": "{{query}}"
                 }
               ]
             },
-            "description": "Search for links using a query string. Returns paginated results with metadata including totalElements, totalPages, currentPage, size, and content."
+            "description": "Search models in Elasticsearch"
           },
           "response": []
         },
@@ -462,67 +348,47 @@
           "name": "Search Categories",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/categories/search?query=example",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "categories",
-                "search"
-              ],
+              "raw": "{{base_url}}/api/elasticsearch/categories/search?query={{query}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "categories", "search"],
               "query": [
                 {
                   "key": "query",
-                  "value": "example",
-                  "description": "Query to search categories by name or description"
+                  "value": "{{query}}"
                 }
               ]
             },
-            "description": "Search for categories by name or description. Returns a list of category documents with their metadata."
+            "description": "Search categories in Elasticsearch"
           },
           "response": []
         },
         {
-          "name": "Search Models",
+          "name": "Search Links",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/models/search?query=example",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "models",
-                "search"
-              ],
+              "raw": "{{base_url}}/api/elasticsearch/links/search?query={{query}}&page={{page}}&size={{size}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "links", "search"],
               "query": [
                 {
                   "key": "query",
-                  "value": "example",
-                  "description": "Query to search models by name or description"
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "size",
+                  "value": "{{size}}"
                 }
               ]
             },
-            "description": "Search for models by name or description. Returns a list of model documents with their metadata."
+            "description": "Search links in Elasticsearch"
           },
           "response": []
         },
@@ -530,85 +396,38 @@
           "name": "Autosuggest",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/autosuggest?query=example",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "autosuggest"
-              ],
+              "raw": "{{base_url}}/api/elasticsearch/autosuggest?query={{query}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "autosuggest"],
               "query": [
                 {
                   "key": "query",
-                  "value": "example",
-                  "description": "Query for autosuggest results (required)"
+                  "value": "{{query}}"
                 }
               ]
             },
-            "description": "Get autosuggest results for links, categories, and models based on a prefix query. Returns a combined list of matching items with their type and details."
+            "description": "Get autosuggestions based on query"
           },
           "response": []
-        },
-        {
-          "name": "Sync All",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/elasticsearch/sync",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "sync"
-              ]
-            },
-            "description": "Trigger a synchronization of all entities (links, categories, models) to Elasticsearch. This initiates asynchronous background processes."
-          },
-          "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Elasticsearch Sync",
+      "item": [
         {
           "name": "Sync Links",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/links",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "sync",
-                "links"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "sync", "links"]
             },
-            "description": "Trigger a synchronization of only link entities to Elasticsearch. Returns a response with status and message."
+            "description": "Sync all links to Elasticsearch"
           },
           "response": []
         },
@@ -616,26 +435,13 @@
           "name": "Sync Categories",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/categories",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "sync",
-                "categories"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "sync", "categories"]
             },
-            "description": "Trigger a synchronization of only category entities to Elasticsearch. Returns a response with status and message."
+            "description": "Sync all categories to Elasticsearch"
           },
           "response": []
         },
@@ -643,31 +449,37 @@
           "name": "Sync Models",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/elasticsearch/sync/models",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "sync",
-                "models"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "sync", "models"]
             },
-            "description": "Trigger a synchronization of only model entities to Elasticsearch. Returns a response with status and message."
+            "description": "Sync all models to Elasticsearch"
           },
           "response": []
         },
         {
           "name": "Get Sync Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/elasticsearch/sync/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "elasticsearch", "sync", "status"]
+            },
+            "description": "Get sync status for all entities"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Google Sheets",
+      "item": [
+        {
+          "name": "Get Processed Sheets",
           "request": {
             "method": "GET",
             "header": [
@@ -678,30 +490,37 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/elasticsearch/sync/status",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "elasticsearch",
-                "sync",
-                "status"
-              ]
+              "raw": "{{base_url}}/api/google-sheets/processed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "google-sheets", "processed"]
             },
-            "description": "Get the current status of all synchronization processes (links, categories, models), including progress information and completion status."
+            "description": "Get all processed sheets with details"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Processed Sheets by Workbook",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/google-sheets/processed/{{workbook_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "google-sheets", "processed", "{{workbook_id}}"]
+            },
+            "description": "Get processed sheets for a specific workbook"
           },
           "response": []
         }
       ]
     },
     {
-      "name": "Cache",
+      "name": "Cache Management",
       "item": [
         {
-          "name": "Clear All Caches",
+          "name": "Clear All Cache",
           "request": {
-            "method": "DELETE",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Tenant-Id",
@@ -711,23 +530,17 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/cache/clear",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "cache",
-                "clear"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "cache", "clear"]
             },
-            "description": "Clear all Redis caches"
+            "description": "Clear all cache and rebuild"
           },
           "response": []
         },
         {
-          "name": "Clear Specific Cache",
+          "name": "Clear All Cache Async",
           "request": {
-            "method": "DELETE",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Tenant-Id",
@@ -736,25 +549,51 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/cache/clear/:cacheName",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "cache",
-                "clear",
-                ":cacheName"
-              ],
-              "variable": [
-                {
-                  "key": "cacheName",
-                  "value": "categories",
-                  "description": "Name of the cache to clear"
-                }
-              ]
+              "raw": "{{base_url}}/api/cache/clear-async",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cache", "clear-async"]
             },
-            "description": "Clear a specific cache by name"
+            "description": "Clear all cache and rebuild asynchronously"
+          },
+          "response": []
+        },
+        {
+          "name": "Build Cache",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cache/build-cache",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cache", "build-cache"]
+            },
+            "description": "Build system cache"
+          },
+          "response": []
+        },
+        {
+          "name": "Build Cache Async",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cache/build-cache-async",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cache", "build-cache-async"]
+            },
+            "description": "Build system cache asynchronously"
           },
           "response": []
         }
@@ -776,113 +615,15 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/scheduler/trigger",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "scheduler",
-                "trigger"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "scheduler", "trigger"]
             },
-            "description": "Trigger parallel processing of Google Sheets and Thumb Paths. This endpoint runs every 8 hours automatically."
+            "description": "Trigger the scheduler to process Google Sheets and thumbnails"
           },
-          "response": [
-            {
-              "name": "Success Response",
-              "originalRequest": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/scheduler/trigger",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "scheduler", "trigger"]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "Processing completed successfully"
-            },
-            {
-              "name": "Already Processing",
-              "originalRequest": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/scheduler/trigger",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "scheduler", "trigger"]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "Processing is already in progress"
-            },
-            {
-              "name": "Error Response",
-              "originalRequest": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/scheduler/trigger",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "scheduler", "trigger"]
-                }
-              },
-              "status": "Internal Server Error",
-              "code": 500,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": {
-                "error": "Error during processing: [error message]"
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Google Sheets",
-      "item": [
+          "response": []
+        },
         {
-          "name": "Get Processed Sheets",
+          "name": "Trigger Scheduler Async",
           "request": {
             "method": "GET",
             "header": [
@@ -893,581 +634,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/google-sheets/processed",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "google-sheets",
-                "processed"
-              ]
+              "raw": "{{base_url}}/api/scheduler/trigger-async",
+              "host": ["{{base_url}}"],
+              "path": ["api", "scheduler", "trigger-async"]
             },
-            "description": "Get all processed sheets with detailed information including sheet name, processing date, approval status, number of records processed, tenant ID, workbook ID, and processing status (0: Not started, 1: In Progress, 2: Completed, 3: Failed)"
-          },
-          "response": [
-            {
-              "name": "Success Response",
-              "originalRequest": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/google-sheets/processed",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "google-sheets", "processed"]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": {
-                "totalSheets": 2,
-                "sheets": [
-                  {
-                    "id": 1,
-                    "sheetName": "example_sheet",
-                    "processedDate": "2024-03-21T10:30:00",
-                    "isProcessingCompleted": true,
-                    "recordsProcessed": 100,
-                    "tenantId": 1,
-                    "workbookId": "workbook123",
-                    "status": 2
-                  },
-                  {
-                    "id": 2,
-                    "sheetName": "another_sheet",
-                    "processedDate": "2024-03-21T11:30:00",
-                    "isProcessingCompleted": false,
-                    "recordsProcessed": 50,
-                    "tenantId": 1,
-                    "workbookId": "workbook123",
-                    "status": 1
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get Processed Sheets By Workbook",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/google-sheets/processed/:workbookId",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "google-sheets",
-                "processed",
-                ":workbookId"
-              ],
-              "variable": [
-                {
-                  "key": "workbookId",
-                  "value": "exampleWorkbookId",
-                  "description": "ID of the workbook"
-                }
-              ]
-            },
-            "description": "Get processed sheets for a specific workbook with their processing status"
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Batch Processing",
-      "item": [
-        {
-          "name": "Process Categories and Models",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/links/batch/process-categories-models?page=0&size=100",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "links",
-                "batch",
-                "process-categories-models"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0",
-                  "description": "Page number (zero-based)"
-                },
-                {
-                  "key": "size",
-                  "value": "100",
-                  "description": "Number of items per page"
-                }
-              ]
-            },
-            "description": "Process categories and models for links in a specific page. Returns a 200 OK response with processing results."
-          },
-          "response": []
-        },
-        {
-          "name": "Process All Categories and Models",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/links/batch/process-all-categories-models",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "links",
-                "batch",
-                "process-all-categories-models"
-              ]
-            },
-            "description": "Start background processing of all links for categories and models. Returns a 202 Accepted response immediately."
-          },
-          "response": []
-        },
-        {
-          "name": "Process By Tenant ID",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/links/batch/process-by-tenant/:tenantId?page=0&size=100",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "links",
-                "batch",
-                "process-by-tenant",
-                ":tenantId"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0",
-                  "description": "Page number (zero-based)"
-                },
-                {
-                  "key": "size",
-                  "value": "100",
-                  "description": "Number of items per page"
-                }
-              ],
-              "variable": [
-                {
-                  "key": "tenantId",
-                  "value": "1",
-                  "description": "ID of the tenant"
-                }
-              ]
-            },
-            "description": "Start background processing of categories and models for links of a specific tenant. Returns a 202 Accepted response immediately."
-          },
-          "response": []
-        },
-        {
-          "name": "Process By Date Range",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/links/batch/process-by-date-range?startDate=2023-01-01T00:00:00&endDate=2023-12-31T23:59:59&page=0&size=100",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "links",
-                "batch",
-                "process-by-date-range"
-              ],
-              "query": [
-                {
-                  "key": "startDate",
-                  "value": "2023-01-01T00:00:00",
-                  "description": "Start date in ISO format"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2023-12-31T23:59:59",
-                  "description": "End date in ISO format"
-                },
-                {
-                  "key": "page",
-                  "value": "0",
-                  "description": "Page number (zero-based)"
-                },
-                {
-                  "key": "size",
-                  "value": "100",
-                  "description": "Number of items per page"
-                }
-              ]
-            },
-            "description": "Start background processing of categories and models for links within a date range. Returns a 202 Accepted response immediately."
-          },
-          "response": []
-        },
-        {
-          "name": "Process By Category",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/links/batch/process-by-category?category=exampleCategory&page=0&size=100",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "links",
-                "batch",
-                "process-by-category"
-              ],
-              "query": [
-                {
-                  "key": "category",
-                  "value": "exampleCategory",
-                  "description": "Category to process"
-                },
-                {
-                  "key": "page",
-                  "value": "0",
-                  "description": "Page number (zero-based)"
-                },
-                {
-                  "key": "size",
-                  "value": "100",
-                  "description": "Number of items per page"
-                }
-              ]
-            },
-            "description": "Start background processing of models for links with a specific category. Returns a 202 Accepted response immediately."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "LinkCategory Migration",
-      "item": [
-        {
-          "name": "Migrate All LinkCategories",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-category/all",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-category",
-                "all"
-              ]
-            },
-            "description": "Migrate all LinkCategory records to the sharded tables"
-          },
-          "response": []
-        },
-        {
-          "name": "Migrate LinkCategories by Tenant",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-category/tenant/:tenantId",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-category",
-                "tenant",
-                ":tenantId"
-              ],
-              "variable": [
-                {
-                  "key": "tenantId",
-                  "value": "1",
-                  "description": "ID of the tenant"
-                }
-              ]
-            },
-            "description": "Migrate LinkCategory records for a specific tenant to the sharded tables"
-          },
-          "response": []
-        },
-        {
-          "name": "Migrate LinkCategories by Category",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-category/category/:categoryName",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-category",
-                "category",
-                ":categoryName"
-              ],
-              "variable": [
-                {
-                  "key": "categoryName",
-                  "value": "example-category",
-                  "description": "Name of the category to migrate"
-                }
-              ]
-            },
-            "description": "Migrate LinkCategory records for a specific category to the appropriate shard"
-          },
-          "response": []
-        },
-        {
-          "name": "Get Categories with Shard Info",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-category/categories-shard-info",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-category",
-                "categories-shard-info"
-              ]
-            },
-            "description": "Get all categories with their target shard information and record counts"
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "LinkModel Migration",
-      "item": [
-        {
-          "name": "Migrate All LinkModels",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-model/all",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-model",
-                "all"
-              ]
-            },
-            "description": "Migrate all LinkModel records to the sharded tables"
-          },
-          "response": []
-        },
-        {
-          "name": "Migrate LinkModels by Tenant",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-model/tenant/:tenantId",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-model",
-                "tenant",
-                ":tenantId"
-              ],
-              "variable": [
-                {
-                  "key": "tenantId",
-                  "value": "1",
-                  "description": "ID of the tenant"
-                }
-              ]
-            },
-            "description": "Migrate LinkModel records for a specific tenant to the sharded tables"
-          },
-          "response": []
-        },
-        {
-          "name": "Migrate LinkModels by Model",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-model/model/:modelName",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-model",
-                "model",
-                ":modelName"
-              ],
-              "variable": [
-                {
-                  "key": "modelName",
-                  "value": "example-model",
-                  "description": "Name of the model to migrate"
-                }
-              ]
-            },
-            "description": "Migrate LinkModel records for a specific model to the appropriate shard"
-          },
-          "response": []
-        },
-        {
-          "name": "Get Models with Shard Info",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-Id",
-                "value": "{{tenant_id}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/admin/migration/link-model/models-shard-info",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "migration",
-                "link-model",
-                "models-shard-info"
-              ]
-            },
-            "description": "Get all models with their target shard information and record counts"
+            "description": "Trigger the scheduler asynchronously"
           },
           "response": []
         }
@@ -1479,7 +650,7 @@
         {
           "name": "Process All Thumbnails",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Tenant-Id",
@@ -1489,16 +660,30 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/thumbs/process",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "thumbs",
-                "process"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "thumbs", "process"]
             },
-            "description": "Process all links with 'NA' thumbpath values in batches of 20 until completion. Downloads thumbnail images, optimizes them, saves to configured directory, and updates both database and Elasticsearch. The thumbpath directory is configurable in application properties."
+            "description": "Process all links with 'NA' thumbpath values in batches"
+          },
+          "response": []
+        },
+        {
+          "name": "Process All Thumbnails Async",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/thumbs/process-async",
+              "host": ["{{base_url}}"],
+              "path": ["api", "thumbs", "process-async"]
+            },
+            "description": "Process all links with 'NA' thumbpath values asynchronously"
           },
           "response": []
         },
@@ -1515,16 +700,10 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/thumbs/stats",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "thumbs",
-                "stats"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "thumbs", "stats"]
             },
-            "description": "Get statistics about thumbnail processing, including total links, processed and pending thumbpaths, and progress percentage. Thumbnails are stored in the configurable directory specified by 'fvp.thumbs.directory' in application properties (/Users/nitin.goyal/Desktop/myspace/personal/fvp/thumb/ for local and /apps/fvp/thumbs for production)."
+            "description": "Get statistics about thumbnail processing"
           },
           "response": []
         },
@@ -1544,107 +723,74 @@
               "host": ["{{base_url}}"],
               "path": ["api", "thumbs", "update-processed-status"]
             },
-            "description": "Updates all links with thumbPathProcessed=2 to thumbPathProcessed=1 in both MySQL and Elasticsearch. The endpoint processes links in batches of 10 in parallel using 5 threads for better performance. It includes concurrent processing protection to prevent multiple simultaneous executions."
+            "description": "Update links with thumbPathProcessed=2 to thumbPathProcessed=1"
           },
-          "response": [
-            {
-              "name": "Success Response",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/thumbs/update-processed-status",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "thumbs", "update-processed-status"]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": {
-                "message": "Processing completed",
-                "totalRecords": 100,
-                "processed": 95,
-                "failed": 5,
-                "totalDuration": "30 seconds"
+          "response": []
+        },
+        {
+          "name": "Update Processed Status Async",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
               }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/thumbs/update-processed-status-async",
+              "host": ["{{base_url}}"],
+              "path": ["api", "thumbs", "update-processed-status-async"]
             },
-            {
-              "name": "Already Processing",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/thumbs/update-processed-status",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "thumbs", "update-processed-status"]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
+            "description": "Update links with thumbPathProcessed=2 to thumbPathProcessed=1 asynchronously"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shard Info",
+      "item": [
+        {
+          "name": "Get Category Shard Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/shard-info/category?category={{category_name}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shard-info", "category"],
+              "query": [
                 {
-                  "key": "Content-Type",
-                  "value": "application/json"
+                  "key": "category",
+                  "value": "{{category_name}}"
                 }
-              ],
-              "body": {
-                "message": "Processing is already running",
-                "status": "in_progress"
-              }
+              ]
             },
-            {
-              "name": "No Records Found",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Tenant-Id",
-                    "value": "{{tenant_id}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/thumbs/update-processed-status",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "thumbs", "update-processed-status"]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
+            "description": "Get shard information for a category"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Model Shard Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/shard-info/model?model={{model_name}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shard-info", "model"],
+              "query": [
                 {
-                  "key": "Content-Type",
-                  "value": "application/json"
+                  "key": "model",
+                  "value": "{{model_name}}"
                 }
-              ],
-              "body": {
-                "message": "No links found with thumbPathProcessed=2",
-                "processed": 0,
-                "failed": 0
-              }
-            }
-          ]
+              ]
+            },
+            "description": "Get shard information for a model"
+          },
+          "response": []
         }
       ]
     }
@@ -1652,13 +798,47 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8080",
-      "type": "string"
+      "value": "http://localhost:8080"
     },
     {
       "key": "tenant_id",
-      "value": "1",
-      "type": "string"
+      "value": "1"
+    },
+    {
+      "key": "model_name",
+      "value": "example-model"
+    },
+    {
+      "key": "category_name",
+      "value": "example-category"
+    },
+    {
+      "key": "workbook_id",
+      "value": "example-workbook"
+    },
+    {
+      "key": "query",
+      "value": "example"
+    },
+    {
+      "key": "page",
+      "value": "0"
+    },
+    {
+      "key": "size",
+      "value": "20"
+    },
+    {
+      "key": "min_duration",
+      "value": "0"
+    },
+    {
+      "key": "max_duration",
+      "value": "3600"
+    },
+    {
+      "key": "quality",
+      "value": "HD"
     }
   ]
 }

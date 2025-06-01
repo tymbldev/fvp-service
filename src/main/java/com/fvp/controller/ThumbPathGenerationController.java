@@ -366,4 +366,38 @@ public class ThumbPathGenerationController {
       isProcessing.set(false);
     }
   }
+
+  @GetMapping("/process-async")
+  public ResponseEntity<Map<String, Object>> processAllThumbPathsAsync() {
+    Map<String, Object> response = new HashMap<>();
+    response.put("message", "Thumbnail processing started in background");
+    response.put("status", "processing");
+
+    new Thread(() -> {
+      try {
+        processAllThumbPaths();
+      } catch (Exception e) {
+        logger.error("Error in async thumbnail processing: {}", e.getMessage(), e);
+      }
+    }).start();
+
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/update-processed-status-async")
+  public ResponseEntity<Map<String, Object>> updateProcessedStatusAsync() {
+    Map<String, Object> response = new HashMap<>();
+    response.put("message", "Status update started in background");
+    response.put("status", "processing");
+
+    new Thread(() -> {
+      try {
+        updateProcessedStatus();
+      } catch (Exception e) {
+        logger.error("Error in async status update: {}", e.getMessage(), e);
+      }
+    }).start();
+
+    return ResponseEntity.ok(response);
+  }
 }

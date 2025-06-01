@@ -45,4 +45,24 @@ public class SchedulerController {
       return ResponseEntity.status(500).body("Error during processing: " + e.getMessage());
     }
   }
+
+  @GetMapping("/trigger-async")
+  public ResponseEntity<String> triggerAsync() {
+    // Only run in production environment
+    if (!true == enabled) {
+      return ResponseEntity.ok("Scheduler is disabled for non-production environment");
+    }
+
+    new Thread(() -> {
+      try {
+        logger.info("Starting scheduled task in background...");
+        schedulerService.processGoogleSheetsAndThumbPaths();
+        logger.info("Background scheduled task completed successfully");
+      } catch (Exception e) {
+        logger.error("Error in background scheduled task: {}", e.getMessage(), e);
+      }
+    }).start();
+
+    return ResponseEntity.ok("Scheduled task started in background");
+  }
 } 
