@@ -36,6 +36,7 @@ public class CacheService {
 
   public <T> Optional<T> getFromCache(String cacheName, String key, Class<T> type) {
     if (CacheBypassUtil.isCacheBypass()) {
+      logger.info("Bypassing the cache..");
       return Optional.empty();
     }
 
@@ -59,6 +60,7 @@ public class CacheService {
 
   public <T> Optional<T> getCollectionFromCache(String cacheName, String key, TypeReference<T> typeReference) {
     if (CacheBypassUtil.isCacheBypass()) {
+      logger.info("Bypassing the cache..");
       return Optional.empty();
     }
 

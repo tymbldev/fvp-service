@@ -554,7 +554,7 @@ public class CategoryService {
     return result;
   }
 
-  @Async
+
   public void buildSystemCache() {
     try {
       // Get all distinct category names

@@ -474,6 +474,7 @@ public class GoogleSheetProcessingService {
 
       // Set default thumbPath if it's required and not provided
       link.setThumbpath("NA");
+      link.setThumbPathProcessed(0);
 
       // Set createdOn timestamp
       link.setCreatedOn(LocalDateTime.now());
