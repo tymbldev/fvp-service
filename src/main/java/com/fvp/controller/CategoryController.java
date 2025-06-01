@@ -4,6 +4,7 @@ import com.fvp.dto.CategoryWithCountDTO;
 import com.fvp.dto.CategoryWithLinkDTO;
 import com.fvp.service.CategoryService;
 import com.fvp.service.CategoryUtilService;
+import com.fvp.util.CacheBypassUtil;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,7 +24,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.concurrent.ExecutorService;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -32,6 +35,9 @@ public class CategoryController {
   private final CategoryService categoryService;
   private final CategoryUtilService categoryUtilService;
   private static final Logger logger = LoggerFactory.getLogger(CategoryController.class);
+
+  @Autowired
+  private ExecutorService executorService;
 
   @Autowired
   public CategoryController(CategoryService categoryService,
@@ -75,45 +81,23 @@ public class CategoryController {
     return ResponseEntity.ok(links);
   }
 
-  @Async
-  @GetMapping("/build-cache")
-  public ResponseEntity<String> buildSystemCache(
-      @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
-    logger.info("Starting system cache build for tenant {}", tenantId);
-
-    categoryService.getAllCategoriesWithLinkCounts(tenantId);
-    logger.info("Built All categories cache");
-
-    // Build home categories cache
-    List<CategoryWithLinkDTO> homeCategories = categoryService.getHomeCategoriesWithLinks(tenantId);
-    logger.info("Built home categories cache with {} categories", homeCategories.size());
-
-    // Build home SEO categories cache
-    List<CategoryWithLinkDTO> homeSeoCategories = categoryService.getHomeSeoCategories(tenantId);
-    logger.info("Built home SEO categories cache with {} categories", homeSeoCategories.size());
-
-    // Get all distinct category names
-    Set<String> allCategoryNames = new HashSet<>();
-    allCategoryNames.addAll(
-        homeCategories.stream().map(CategoryWithLinkDTO::getName).collect(Collectors.toSet()));
-    allCategoryNames.addAll(
-        homeSeoCategories.stream().map(CategoryWithLinkDTO::getName).collect(Collectors.toSet()));
-
-    // Build cache for each category's first page
-    Pageable firstPage = PageRequest.of(0, 20, Sort.by("randomOrder"));
-    for (String categoryName : allCategoryNames) {
-      try {
-        categoryUtilService.getCategoryLinks(tenantId, categoryName, firstPage, null, null, null);
-        logger.info("Built cache for category: {}", categoryName);
-      } catch (Exception e) {
-        logger.error("Error building cache for category {}: {}", categoryName, e.getMessage());
-      }
+  @PostMapping("/build-cache")
+  public ResponseEntity<String> buildSystemCache() {
+    try {
+      // Set cache bypass flag to true for this thread
+      CacheBypassUtil.setCacheBypass(true);
+      
+      // Execute cache building in background thread with cache bypass flag propagated
+      CacheBypassUtil.executeWithCacheBypass(executorService, () -> {
+        categoryService.buildSystemCache();
+        return null;
+      });
+      
+      return ResponseEntity.ok("Cache build started successfully");
+    } finally {
+      // Clear the cache bypass flag
+      CacheBypassUtil.clearCacheBypass();
     }
-
-    String message = String.format("System cache built successfully. Processed %d categories",
-        allCategoryNames.size());
-    logger.info(message);
-    return ResponseEntity.ok(message);
   }
 
   @GetMapping("/all")

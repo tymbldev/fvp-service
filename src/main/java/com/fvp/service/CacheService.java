@@ -2,12 +2,14 @@ package com.fvp.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fvp.util.CacheBypassUtil;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -24,6 +26,7 @@ public class CacheService {
 
   private final JedisPool jedisPool;
   private final ObjectMapper objectMapper;
+  private static final Logger logger = LoggerFactory.getLogger(CacheService.class);
 
   @Autowired
   public CacheService(JedisPool jedisPool, ObjectMapper objectMapper) {
@@ -31,46 +34,48 @@ public class CacheService {
     this.objectMapper = objectMapper;
   }
 
-  public <T> Optional<T> getFromCache(String cacheName, String key, Class<T> clazz) {
+  public <T> Optional<T> getFromCache(String cacheName, String key, Class<T> type) {
+    if (CacheBypassUtil.isCacheBypass()) {
+      return Optional.empty();
+    }
+
     try {
-      String fullKey = generateCacheKey(cacheName, key);
-      String value;
+      String cacheKey = generateCacheKey(cacheName, key);
+      String cachedValue;
 
       try (Jedis jedis = jedisPool.getResource()) {
-        value = jedis.get(fullKey);
+        cachedValue = jedis.get(cacheKey);
       }
 
-      if (value == null) {
+      if (cachedValue == null) {
         return Optional.empty();
       }
-
-      return Optional.of(objectMapper.readValue(value, clazz));
+      return Optional.of(objectMapper.readValue(cachedValue, type));
     } catch (Exception e) {
+      logger.error("Error getting value from cache: {}", e.getMessage());
       return Optional.empty();
     }
   }
 
-  public <T> Optional<T> getCollectionFromCache(String cacheName, String key,
-      TypeReference<T> typeRef) {
+  public <T> Optional<T> getCollectionFromCache(String cacheName, String key, TypeReference<T> typeReference) {
+    if (CacheBypassUtil.isCacheBypass()) {
+      return Optional.empty();
+    }
+
     try {
-      String fullKey = generateCacheKey(cacheName, key);
-      String value;
+      String cacheKey = generateCacheKey(cacheName, key);
+      String cachedValue;
 
       try (Jedis jedis = jedisPool.getResource()) {
-        value = jedis.get(fullKey);
+        cachedValue = jedis.get(cacheKey);
       }
 
-      if (value == null) {
+      if (cachedValue == null) {
         return Optional.empty();
       }
-      
-      // Special handling for Page objects
-      if (typeRef.getType().getTypeName().contains("Page")) {
-        return Optional.of((T) objectMapper.readValue(value, Page.class));
-      }
-      
-      return Optional.of(objectMapper.readValue(value, typeRef));
+      return Optional.of(objectMapper.readValue(cachedValue, typeReference));
     } catch (Exception e) {
+      logger.error("Error getting collection from cache: {}", e.getMessage());
       return Optional.empty();
     }
   }

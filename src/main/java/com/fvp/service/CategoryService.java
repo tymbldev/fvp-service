@@ -9,9 +9,11 @@ import com.fvp.entity.LinkCategory;
 import com.fvp.repository.AllCatRepository;
 import com.fvp.repository.LinkRepository;
 import com.fvp.util.LoggingUtil;
+import com.fvp.util.CacheBypassUtil;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,8 +26,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -42,34 +49,38 @@ public class CategoryService {
   private static final int CHUNK_SIZE = 100;
   private static final String ALL_CATEGORIES_CACHE = "allCategories";
 
-  @Autowired
-  private AllCatRepository allCatRepository;
+  private final AllCatRepository allCatRepository;
+  private final LinkRepository linkRepository;
+  private final CacheService cacheService;
+  private final JedisPool jedisPool;
+  private final AllCatService allCatService;
+  private final LinkService linkService;
+  private final LinkCountCacheService linkCountCacheService;
+  private final LinkCategoryService linkCategoryService;
+  private final int recentLinksDays;
+  private final ExecutorService executorService;
 
-  @Autowired
-  private LinkRepository linkRepository;
-
-  @Autowired
-  private CacheService cacheService;
-
-  @Autowired
-  private JedisPool jedisPool;
-
-  @Autowired
-  private AllCatService allCatService;
-
-  @Autowired
-  private LinkService linkService;
-
-  @Autowired
-  private LinkCountCacheService linkCountCacheService;
-
-  @Autowired
-  private LinkCategoryService linkCategoryService;
-
-  @Value("${category.recent-links-days:90}")
-  private int recentLinksDays;
-
-  private final ExecutorService executorService = Executors.newFixedThreadPool(30);
+  public CategoryService(
+      AllCatRepository allCatRepository,
+      LinkRepository linkRepository,
+      CacheService cacheService,
+      JedisPool jedisPool,
+      AllCatService allCatService,
+      LinkService linkService,
+      LinkCountCacheService linkCountCacheService,
+      LinkCategoryService linkCategoryService,
+      @Value("${category.recent-links-days:90}") int recentLinksDays) {
+    this.allCatRepository = allCatRepository;
+    this.linkRepository = linkRepository;
+    this.cacheService = cacheService;
+    this.jedisPool = jedisPool;
+    this.allCatService = allCatService;
+    this.linkService = linkService;
+    this.linkCountCacheService = linkCountCacheService;
+    this.linkCategoryService = linkCategoryService;
+    this.recentLinksDays = recentLinksDays;
+    this.executorService = Executors.newFixedThreadPool(30);
+  }
 
   public List<CategoryWithLinkDTO> getHomeCategoriesWithLinks(Integer tenantId) {
     return LoggingUtil.logOperationTime(logger, "get home categories with links", () -> {
@@ -321,23 +332,37 @@ public class CategoryService {
 
       // Process chunks in parallel
       List<CompletableFuture<List<CategoryWithLinkDTO>>> futures = chunks.stream()
-          .map(chunk -> CompletableFuture.supplyAsync(
-              () -> {
-                // Get link categories
-                List<LinkCategory> linkCategories = linkCategoryService.findRandomLinksByCategoryNames(
-                    tenantId, chunk);
+          .map(chunk -> {
+            // Capture the current cache bypass state
+            boolean cacheBypass = CacheBypassUtil.isCacheBypass();
+            return CompletableFuture.supplyAsync(
+                () -> {
+                  try {
+                    // Set the cache bypass flag in the new thread
+                    if (cacheBypass) {
+                      CacheBypassUtil.setCacheBypass(true);
+                    }
+                    
+                    // Get link categories
+                    List<LinkCategory> linkCategories = linkCategoryService.findRandomLinksByCategoryNames(
+                        tenantId, chunk);
 
-                // Get categories and build a map by name
-                Map<String, AllCat> categoryMap = new HashMap<>();
-                List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId, chunk);
-                for (AllCat category : categories) {
-                  categoryMap.put(category.getName(), category);
-                }
+                    // Get categories and build a map by name
+                    Map<String, AllCat> categoryMap = new HashMap<>();
+                    List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId, chunk);
+                    for (AllCat category : categories) {
+                      categoryMap.put(category.getName(), category);
+                    }
 
-                return processChunk(tenantId, chunk, categoryMap, linkCategories);
-              },
-              executorService
-          ))
+                    return processChunk(tenantId, chunk, categoryMap, linkCategories);
+                  } finally {
+                    // Clear the cache bypass flag in the new thread
+                    CacheBypassUtil.clearCacheBypass();
+                  }
+                },
+                executorService
+            );
+          })
           .collect(Collectors.toList());
 
       // Wait for all chunks to complete and collect results
@@ -527,5 +552,71 @@ public class CategoryService {
 
     logger.info("Stored {} categories in cache for tenant {}", result.size(), tenantId);
     return result;
+  }
+
+  @Async
+  public void buildSystemCache() {
+    try {
+      // Get all distinct category names
+      Set<String> allCategoryNames = new HashSet<>();
+      
+      // Build home categories cache
+      List<CategoryWithLinkDTO> homeCategories = getHomeCategoriesWithLinks(1);
+      logger.info("Built home categories cache with {} categories", homeCategories.size());
+      allCategoryNames.addAll(
+          homeCategories.stream().map(CategoryWithLinkDTO::getName).collect(Collectors.toSet()));
+
+      // Build home SEO categories cache
+      List<CategoryWithLinkDTO> homeSeoCategories = getHomeSeoCategories(1);
+      logger.info("Built home SEO categories cache with {} categories", homeSeoCategories.size());
+      allCategoryNames.addAll(
+          homeSeoCategories.stream().map(CategoryWithLinkDTO::getName).collect(Collectors.toSet()));
+
+      // Build cache for each category's first page
+      Pageable firstPage = PageRequest.of(0, 20, Sort.by("randomOrder"));
+      for (String categoryName : allCategoryNames) {
+        try {
+          // Get links for the category
+          List<LinkCategory> linkCategories = linkCategoryService.findByCategoryWithFiltersPageable(
+              1, categoryName, null, null, null, 0, 20);
+          
+          // Create DTOs from link categories
+          List<CategoryWithLinkDTO> dtos = linkCategories.stream()
+              .map(linkCategory -> {
+                Link link = linkCategory.getLink();
+                CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
+                dto.setName(categoryName);
+                dto.setLink(link.getLink());
+                dto.setLinkTitle(link.getTitle());
+                dto.setLinkThumbnail(link.getThumbnail());
+                dto.setLinkThumbPath(link.getThumbpath());
+                dto.setLinkDuration(link.getDuration());
+                dto.setLinkSource(link.getSource());
+                return dto;
+              })
+              .collect(Collectors.toList());
+
+          // Store in cache
+          String cacheKey = String.format("%s_%s_%d_%d_null_null_null",
+              1, categoryName, 0, 20);
+          cacheService.putInCacheWithExpiry(
+              CATEGORY_LINKS_CACHE,
+              cacheKey,
+              new PageImpl<>(dtos, firstPage, dtos.size()),
+              1,
+              TimeUnit.HOURS
+          );
+          
+          logger.info("Built cache for category: {}", categoryName);
+        } catch (Exception e) {
+          logger.error("Error building cache for category {}: {}", categoryName, e.getMessage());
+        }
+      }
+
+      logger.info("System cache built successfully. Processed {} categories", allCategoryNames.size());
+    } catch (Exception e) {
+      logger.error("Error building system cache: {}", e.getMessage());
+      throw e;
+    }
   }
 } 

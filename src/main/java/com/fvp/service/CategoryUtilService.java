@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -27,23 +26,24 @@ public class CategoryUtilService {
   private static final Logger logger = LoggingUtil.getLogger(CategoryUtilService.class);
   private static final String CATEGORY_LINKS_CACHE = "categoryLinks";
 
-  @Autowired
-  private LinkCategoryShardingService shardingService;
+  private final LinkCategoryShardingService shardingService;
+  private final AllCatService allCatService;
+  private final LinkService linkService;
+  private final CacheService cacheService;
+  private final long recentLinksDays;
 
-  @Autowired
-  private AllCatService allCatService;
-
-  @Autowired
-  private LinkService linkService;
-
-  @Autowired
-  private CategoryService categoryService;
-
-  @Autowired
-  private CacheService cacheService;
-
-  @Value("${category.recent-links-days:90}")
-  private long recentLinksDays;
+  public CategoryUtilService(
+      LinkCategoryShardingService shardingService,
+      AllCatService allCatService,
+      LinkService linkService,
+      CacheService cacheService,
+      @Value("${category.recent-links-days:90}") long recentLinksDays) {
+    this.shardingService = shardingService;
+    this.allCatService = allCatService;
+    this.linkService = linkService;
+    this.cacheService = cacheService;
+    this.recentLinksDays = recentLinksDays;
+  }
 
   public Page<CategoryWithLinkDTO> getCategoryLinks(Integer tenantId, String categoryName,
       Pageable pageable, Integer minDuration, Integer maxDuration, String quality) {

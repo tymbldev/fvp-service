@@ -47,12 +47,7 @@ public class CacheController {
       logger.info("Updating random_order in all link category shards...");
       linkCategoryShardingService.updateRandomOrderInAllShards();
       logger.info("Successfully updated random_order in all link category shards");
-      
-      // Clear all caches
-      logger.info("Clearing all caches...");
-      cacheService.clearAllCaches();
-      logger.info("Successfully cleared all caches");
-      
+
       // Trigger cache build
       logger.info("Triggering cache build...");
       buildCache();
@@ -72,7 +67,7 @@ public class CacheController {
     try {
       logger.info("Starting cache build process...");
       // Call CategoryController's buildSystemCache method with default tenant ID
-      ResponseEntity<String> response = categoryController.buildSystemCache(1);
+      ResponseEntity<String> response = categoryController.buildSystemCache();
       logger.info("Successfully completed cache build");
       return response;
     } catch (Exception e) {
