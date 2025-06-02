@@ -592,6 +592,7 @@ public class CategoryService {
                 dto.setLinkThumbPath(link.getThumbpath());
                 dto.setLinkDuration(link.getDuration());
                 dto.setLinkSource(link.getSource());
+                dto.setLinkTrailer(link.getTrailer());
                 return dto;
               })
               .collect(Collectors.toList());

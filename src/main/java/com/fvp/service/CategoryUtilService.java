@@ -134,6 +134,7 @@ public class CategoryUtilService {
           dto.setLinkTitle(link.getTitle());
           dto.setLinkThumbnail(link.getThumbnail());
           dto.setLinkThumbPath(link.getThumbpath());
+          dto.setLinkTrailer(link.getTrailer());
           dto.setLinkDuration(link.getDuration());
           dto.setLinkSource(link.getSource());
           pageContent.add(dto);
@@ -263,6 +264,7 @@ public class CategoryUtilService {
       dto.setLinkThumbPath(link.getThumbpath());
       dto.setLinkDuration(link.getDuration());
       dto.setLinkSource(link.getSource());
+      dto.setLinkTrailer(link.getTrailer());
       dtos.add(dto);
     }
 
