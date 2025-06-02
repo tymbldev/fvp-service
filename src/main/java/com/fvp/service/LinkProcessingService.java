@@ -120,6 +120,7 @@ public class LinkProcessingService {
         existingLink.setThumbpath(link.getThumbpath());
         existingLink.setSheetName(link.getSheetName());
         existingLink.setSource(link.getSource());
+        existingLink.setHd(link.getHd());
         // Don't update createdOn to preserve original creation date
 
         // Save the updated link using merge
@@ -225,6 +226,7 @@ public class LinkProcessingService {
           linkCategory.setCreatedOn(link.getCreatedOn());
           linkCategory.setRandomOrder(link.getRandomOrder());
           linkCategory.setHd(link.getHd());
+          linkCategory.setTrailerFlag(link.getTrailerPresent());
 
           // Convert to shard entity
           BaseLinkCategory shardEntity = shardingService.convertToShardEntity(linkCategory);

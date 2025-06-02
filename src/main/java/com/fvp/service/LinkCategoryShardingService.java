@@ -126,6 +126,8 @@ public class LinkCategoryShardingService {
     target.setCategory(source.getCategory());
     target.setCreatedOn(source.getCreatedOn());
     target.setRandomOrder(source.getRandomOrder());
+    target.setHd(source.getHd());
+    target.setTrailerFlag(source.getTrailerFlag());
 
     return target;
   }
@@ -170,6 +172,7 @@ public class LinkCategoryShardingService {
         existing.setCreatedOn(entity.getCreatedOn());
         existing.setRandomOrder(entity.getRandomOrder());
         existing.setHd(entity.getHd());
+        existing.setTrailerFlag(entity.getTrailerFlag());
         return repository.save(existing);
       } else {
         // Save new entity
@@ -305,32 +308,7 @@ public class LinkCategoryShardingService {
    * @param entity the entity to save
    * @return the saved entity
    */
-  @Transactional
-  @SuppressWarnings("unchecked")
-  public <T extends BaseLinkCategory> T saveWithNativeQuery(T entity) {
-    int shardNumber = getShardNumber(entity.getCategory());
-    String tableName = "link_category_shard_" + shardNumber;
-
-    // Format the created_on timestamp
-    String createdOnStr = entity.getCreatedOn() != null ?
-        "'" + entity.getCreatedOn().toString() + "'" : "CURRENT_TIMESTAMP";
-
-    // Build the native SQL query with actual values
-    String sql = String.format(
-        "INSERT INTO %s (tenant_id, link_id, category, created_on, random_order) " +
-            "VALUES (%d, %d, '%s', %s, %d)",
-        tableName,
-        entity.getTenantId(),
-        entity.getLinkId(),
-        entity.getCategory().replace("'", "''"), // Escape single quotes
-        createdOnStr,
-        entity.getRandomOrder() != null ? entity.getRandomOrder() : 0
-    );
-
-    jdbcTemplate.execute(sql);
-    return entity;
-  }
-
+  
   /**
    * Updates random_order in all link category shards by joining with the link table
    */
