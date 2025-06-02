@@ -123,9 +123,10 @@ public class CategoryUtilService {
         BeanUtils.copyProperties(baseLinkCategory, firstLink);
 
         Link link = firstLink.getLink();
-        if (link != null && link.getThumbpath() != null && link.getThumbpath()
-            .contains("processed")) {
+        logger.info("First link found with linkId {} : ", link.getId());
+        if (link != null && link.getThumbPathProcessed() == 1) {
           includeFirstLink = true;
+          logger.info("Accepting First link found with linkId {} : ", link.getId());
           CategoryWithLinkDTO dto = new CategoryWithLinkDTO();
           dto.setId(category.getId());
           dto.setName(category.getName());
@@ -138,9 +139,12 @@ public class CategoryUtilService {
           dto.setLinkDuration(link.getDuration());
           dto.setLinkSource(link.getSource());
           pageContent.add(dto);
+        } else {
+          logger.info(
+              "Rejecting first link in overall list because its thumprocessed flag is not right {} ",
+              link.getId());
         }
       }
-
       if (includeFirstLink) {
         // If first page has only one item (pageSize=1), we're done
         if (pageable.getPageSize() == 1) {
