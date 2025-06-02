@@ -288,6 +288,7 @@ public class LinkProcessingService {
         linkModel.setCreatedOn(link.getCreatedOn());
         linkModel.setRandomOrder(link.getRandomOrder().doubleValue());
         linkModel.setHd(link.getHd());
+        linkModel.setTrailerFlag(link.getTrailerPresent());
         // Convert and save to appropriate shard
         BaseLinkModel shardEntity = linkModelShardingService.convertToShardEntity(linkModel);
         linkModelShardingService.save(shardEntity);

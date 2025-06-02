@@ -140,6 +140,7 @@ public class LinkModelShardingService {
         existing.setCreatedOn(entity.getCreatedOn());
         existing.setRandomOrder(entity.getRandomOrder());
         existing.setHd(entity.getHd());
+        existing.setTrailerFlag(entity.getTrailerFlag());
         return repository.save(existing);
       } else {
         // Save new entity

@@ -32,6 +32,10 @@ public abstract class BaseLinkModel {
   @Column(name = "hd")
   private Integer hd = 0;
 
+  @Column(name = "trailer_flag")
+  private Integer trailerFlag = 0;
+
+
   public Integer getId() {
     return id;
   }
@@ -86,5 +90,13 @@ public abstract class BaseLinkModel {
 
   public void setHd(Integer hd) {
     this.hd = hd;
+  }
+
+  public Integer getTrailerFlag() {
+    return trailerFlag;
+  }
+
+  public void setTrailerFlag(Integer trailerFlag) {
+    this.trailerFlag = trailerFlag;
   }
 }
