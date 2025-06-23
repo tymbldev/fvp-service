@@ -2,6 +2,7 @@ package com.fvp.service;
 
 import com.fvp.controller.CacheController;
 import com.fvp.controller.ThumbPathGenerationController;
+import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,22 @@ public class SchedulerService {
     this.googleSheetProcessingService = googleSheetProcessingService;
     this.thumbPathGenerationController = thumbPathGenerationController;
     this.cacheController = cacheController;
+  }
+
+  @PostConstruct
+  public void init() {
+    while (true) {
+      try {
+        logger.info("Starting scheduled task for Google Sheets and Thumb Paths processing");
+        cacheController.clearAllCache();
+        logger.info("Running FED Build Re-Run");
+        fedBuildReRun();
+        Thread.sleep(1000 * 60 * 60 * 24); // Sleep for 1 hour
+      } catch (Exception e) {
+        logger.error("Error executing post contruct {}", e.getMessage(), e);
+      }
+    }
+
   }
 
   public void processGoogleSheetsAndThumbPaths() {
