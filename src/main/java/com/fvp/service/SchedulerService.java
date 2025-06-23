@@ -31,18 +31,19 @@ public class SchedulerService {
 
   @PostConstruct
   public void init() {
-    while (true) {
-      try {
-        logger.info("Starting scheduled task for Google Sheets and Thumb Paths processing");
-        cacheController.clearAllCache();
-        logger.info("Running FED Build Re-Run");
-        fedBuildReRun();
-        Thread.sleep(1000 * 60 * 60 * 24); // Sleep for 1 hour
-      } catch (Exception e) {
-        logger.error("Error executing post contruct {}", e.getMessage(), e);
+    new Thread(()-> {
+      while (true) {
+        try {
+          logger.info("Starting scheduled task for Google Sheets and Thumb Paths processing");
+          cacheController.clearAllCache();
+          logger.info("Running FED Build Re-Run");
+          fedBuildReRun();
+          Thread.sleep(1000 * 60 * 60 * 24); // Sleep for 1 hour
+        } catch (Exception e) {
+          logger.error("Error executing post contruct {}", e.getMessage(), e);
+        }
       }
-    }
-
+    }).start();
   }
 
   public void processGoogleSheetsAndThumbPaths() {
