@@ -451,7 +451,7 @@ public class ThumbPathGenerationController {
       response.put("success", false);
       response.put("message", "Error resizing file: " + e.getMessage());
       response.put("originalFile", filename);
-      return ResponseEntity.internalServerError().body(response);
+      return ResponseEntity.ok().body(response);
     }
   }
 }
