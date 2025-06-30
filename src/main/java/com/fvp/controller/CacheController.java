@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fvp.service.LinkProcessingService;
 
 @RestController
 @RequestMapping("/api/cache")
@@ -20,17 +21,20 @@ public class CacheController {
   private final LinkRepository linkRepository;
   private final LinkCategoryShardingService linkCategoryShardingService;
   private final CategoryController categoryController;
+  private final LinkProcessingService linkProcessingService;
   private static final Logger logger = LoggerFactory.getLogger(CacheController.class);
 
   public CacheController(
       CacheService cacheService, 
       LinkRepository linkRepository,
       LinkCategoryShardingService linkCategoryShardingService,
-      CategoryController categoryController) {
+      CategoryController categoryController,
+      LinkProcessingService linkProcessingService) {
     this.cacheService = cacheService;
     this.linkRepository = linkRepository;
     this.linkCategoryShardingService = linkCategoryShardingService;
     this.categoryController = categoryController;
+    this.linkProcessingService = linkProcessingService;
   }
 
 
@@ -42,7 +46,7 @@ public class CacheController {
       
       // Update random_order for all links using native query
       logger.info("Updating random_order in link table...");
-      linkRepository.updateRandomOrderForAllLinks();
+      linkProcessingService.updateRandomOrderForAllLinksInBatches();
       logger.info("Successfully updated random_order in link table");
       
       // Update random_order in all link category shards

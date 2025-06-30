@@ -2,6 +2,7 @@ package com.fvp.service;
 
 import com.fvp.controller.CacheController;
 import com.fvp.controller.ThumbPathGenerationController;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ public class SchedulerService {
   private final GoogleSheetProcessingService googleSheetProcessingService;
   private final ThumbPathGenerationController thumbPathGenerationController;
   private final CacheController cacheController;
+  private AtomicBoolean status = new AtomicBoolean(false);
 
   public SchedulerService(
       GoogleSheetProcessingService googleSheetProcessingService,
@@ -31,16 +33,24 @@ public class SchedulerService {
 
   @PostConstruct
   public void init() {
-    new Thread(()-> {
+    new Thread(() -> {
       while (true) {
         try {
-          logger.info("Post Contruct Starting scheduled task for Google Sheets and Thumb Paths processing");
+          if (status.get() == true) {
+            logger.info("Execution already in progress, skipping this cycle");
+            continue;
+          }
+          status.set(true);
+          logger.info(
+              "Post Contruct Starting scheduled task for Google Sheets and Thumb Paths processing");
           cacheController.clearAllCache();
           logger.info("Running FED Build Re-Run");
           fedBuildReRun();
           Thread.sleep(1000 * 60 * 60 * 24); // Sleep for 1 day
+          status.set(false);
         } catch (Exception e) {
           logger.error("Error executing post contruct {}", e.getMessage(), e);
+          status.set(false);
         }
       }
     }).start();

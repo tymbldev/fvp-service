@@ -78,7 +78,13 @@ public interface LinkRepository extends JpaRepository<Link, Integer> {
 
   @Modifying
   @Transactional
-  @Query(value = "UPDATE link SET random_order = FLOOR(1 + (RAND() * 10000))", nativeQuery = true)
+  @Query(value = "UPDATE link SET random_order = FLOOR(1 + (RAND() * 10000)) WHERE id >= :startId AND id < :endId", nativeQuery = true)
   @QueryHints(value = @QueryHint(name = "javax.persistence.query.timeout", value = "300000"))
-  void updateRandomOrderForAllLinks();
+  int updateRandomOrderForLinksInRange(@Param("startId") int startId, @Param("endId") int endId);
+
+  @Query(value = "SELECT MIN(id) FROM link", nativeQuery = true)
+  Integer findMinLinkId();
+
+  @Query(value = "SELECT MAX(id) FROM link", nativeQuery = true)
+  Integer findMaxLinkId();
 }

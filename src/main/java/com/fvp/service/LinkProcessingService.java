@@ -407,4 +407,27 @@ public class LinkProcessingService {
     return searchableText.toString().trim();
   }
 
+  /**
+   * Updates random_order for all links in batches of 500,000 to avoid query timeouts.
+   */
+  public void updateRandomOrderForAllLinksInBatches() {
+    final int BATCH_SIZE = 500000;
+    Integer minId = linkRepository.findMinLinkId();
+    Integer maxId = linkRepository.findMaxLinkId();
+    if (minId == null || maxId == null) {
+      logger.warn("No links found in the database.");
+      return;
+    }
+    logger.info("Updating random_order for all links in batches. minId={}, maxId={}, batchSize={}", minId, maxId, BATCH_SIZE);
+    int updatedTotal = 0;
+    for (int startId = minId; startId <= maxId; startId += BATCH_SIZE) {
+      int endId = Math.min(startId + BATCH_SIZE, maxId + 1);
+      logger.info("Updating random_order for links with id in range [{} - {})", startId, endId);
+      int updated = linkRepository.updateRandomOrderForLinksInRange(startId, endId);
+      updatedTotal += updated;
+      logger.info("Batch updated {} rows (total so far: {})", updated, updatedTotal);
+    }
+    logger.info("Completed updating random_order for all links in batches. Total updated: {}", updatedTotal);
+  }
+
 }

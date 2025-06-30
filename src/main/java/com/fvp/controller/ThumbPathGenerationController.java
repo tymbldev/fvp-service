@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import net.coobird.thumbnailator.Thumbnails;
 
 @RestController
 @RequestMapping("/api/thumbs")
@@ -290,16 +291,12 @@ public class ThumbPathGenerationController {
         return false;
       }
 
-      // Resize the image (simple resize, ideally you'd use a library like Thumbnailator)
-      java.awt.Image resizedImage = originalImage.getScaledInstance(320, 180,
-          java.awt.Image.SCALE_SMOOTH);
-      BufferedImage outputImage = new BufferedImage(320, 180, BufferedImage.TYPE_INT_RGB);
-      outputImage.getGraphics().drawImage(resizedImage, 0, 0, null);
-
-      // Save the image
-      File outputFile = new File(outputPath);
-      return ImageIO.write(outputImage, "jpg", outputFile);
-
+      // Use Thumbnailator to resize and save the image
+      Thumbnails.of(originalImage)
+                .size(320, 180)
+                .outputQuality(0.8)
+                .toFile(outputPath);
+      return true;
     } catch (IOException e) {
       logger.error("Error processing image: {}", e.getMessage(), e);
       return false;
@@ -399,5 +396,62 @@ public class ThumbPathGenerationController {
     }).start();
 
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Dummy controller to resize an existing image file from the thumbs directory.
+   * This endpoint takes a filename as query parameter and resizes it using Thumbnailator.
+   *
+   * @param filename the name of the file to resize
+   * @return ResponseEntity containing the resize results
+   */
+  @GetMapping("/resize-file")
+  public ResponseEntity<Map<String, Object>> resizeFile(@RequestParam String filename) {
+    Map<String, Object> response = new HashMap<>();
+    
+    try {
+      // Construct the input file path
+      Path inputFilePath = Paths.get(thumbsDir, filename);
+      File inputFile = inputFilePath.toFile();
+      
+      if (!inputFile.exists()) {
+        response.put("success", false);
+        response.put("message", "File not found: " + filename);
+        response.put("inputPath", inputFilePath.toString());
+        return ResponseEntity.badRequest().body(response);
+      }
+      
+      // Construct the output file path with "_resized" suffix
+      String nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+      String extension = filename.substring(filename.lastIndexOf('.'));
+      String resizedFilename = nameWithoutExt + "_resized" + extension;
+      Path outputFilePath = Paths.get(thumbsDir, resizedFilename);
+      
+      logger.info("Resizing file: {} -> {}", inputFilePath, outputFilePath);
+      
+      // Use Thumbnailator to resize the image
+      Thumbnails.of(inputFile)
+                .size(320, 180)
+                .outputQuality(0.8)
+                .toFile(outputFilePath.toFile());
+      
+      response.put("success", true);
+      response.put("message", "File resized successfully");
+      response.put("originalFile", filename);
+      response.put("resizedFile", resizedFilename);
+      response.put("inputPath", inputFilePath.toString());
+      response.put("outputPath", outputFilePath.toString());
+      response.put("size", "320x180");
+      response.put("quality", "0.8");
+      
+      return ResponseEntity.ok(response);
+      
+    } catch (Exception e) {
+      logger.error("Error resizing file {}: {}", filename, e.getMessage(), e);
+      response.put("success", false);
+      response.put("message", "Error resizing file: " + e.getMessage());
+      response.put("originalFile", filename);
+      return ResponseEntity.internalServerError().body(response);
+    }
   }
 }
