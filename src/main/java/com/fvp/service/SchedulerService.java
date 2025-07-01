@@ -20,7 +20,7 @@ public class SchedulerService {
   private final GoogleSheetProcessingService googleSheetProcessingService;
   private final ThumbPathGenerationController thumbPathGenerationController;
   private final CacheController cacheController;
-  private AtomicBoolean status = new AtomicBoolean(false);
+  private static AtomicBoolean status = new AtomicBoolean(false);
 
   public SchedulerService(
       GoogleSheetProcessingService googleSheetProcessingService,
