@@ -41,33 +41,23 @@ public class ElasticsearchClientService {
   private static final String MODELS_INDEX = "models";
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final RestHighLevelClient esClient;
-  private final boolean elasticsearchEnabled;
 
   @Autowired
   public ElasticsearchClientService(
-      RestHighLevelClient esClient,
-      @Value("${elasticsearch.enabled:false}") boolean elasticsearchEnabled) {
+      RestHighLevelClient esClient) {
     this.esClient = esClient;
-    this.elasticsearchEnabled = elasticsearchEnabled;
 
-    if (elasticsearchEnabled) {
-      try {
-        ensureIndexExists(LINKS_INDEX);
-        ensureIndexExists(CATEGORIES_INDEX);
-        ensureIndexExists(MODELS_INDEX);
-      } catch (Exception e) {
-        logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
-      }
-    } else {
-      logger.info("Elasticsearch is disabled. Operations will be logged but not executed.");
+    try {
+      ensureIndexExists(LINKS_INDEX);
+      ensureIndexExists(CATEGORIES_INDEX);
+      ensureIndexExists(MODELS_INDEX);
+    } catch (Exception e) {
+      logger.error("Error ensuring indexes exist: {}", e.getMessage(), e);
     }
+
   }
 
   private void ensureIndexExists(String indexName) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping index check for {}", indexName);
-      return;
-    }
 
     LoggingUtil.logOperationTime(logger, "ensure elasticsearch index exists: " + indexName, () -> {
       try {
@@ -88,11 +78,6 @@ public class ElasticsearchClientService {
   }
 
   public void saveLinkDocument(LinkDocument document) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping document save for ID={}",
-          document != null ? document.getLinkId() : "null");
-      return;
-    }
 
     LoggingUtil.logOperationTime(logger, "save link document to elasticsearch", () -> {
       try {
@@ -151,10 +136,6 @@ public class ElasticsearchClientService {
    * @return List of matching LinkDocument objects
    */
   public List<LinkDocument> searchByLinkId(String link, String searchableText) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping search for link={}", link);
-      return new ArrayList<>();
-    }
 
     return LoggingUtil.logOperationTime(logger, "search documents by link ID", () -> {
       List<LinkDocument> results = new ArrayList<>();
@@ -213,10 +194,28 @@ public class ElasticsearchClientService {
     map.put("searchableText", document.getSearchableText());
     map.put("categories", document.getCategories());
     map.put("models", document.getModels());
+    
+    // Add missing fields
+    map.put("quality", document.getQuality());
+    map.put("sheetName", document.getSheetName());
+    map.put("randomOrder", document.getRandomOrder());
+    map.put("thumbPathProcessed", document.getThumbPathProcessed());
+    map.put("trailerPresent", document.getTrailerPresent());
+    map.put("hd", document.getHd());
+    
+    // Format createdOn date for Elasticsearch
+    if (document.getCreatedOn() != null) {
+      SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+      dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+      map.put("createdOn", dateFormat.format(document.getCreatedOn()));
+    } else {
+      map.put("createdOn", null);
+    }
+    
     return map;
   }
 
-  private LinkDocument convertToLinkDocument(Map<String, Object> map) {
+  public LinkDocument convertToLinkDocument(Map<String, Object> map) {
     LinkDocument document = new LinkDocument();
     document.setLinkId((String) map.get("id"));
     document.setTenantId((Integer) map.get("tenantId"));
@@ -266,15 +265,54 @@ public class ElasticsearchClientService {
     document.setSearchableText((String) map.get("searchableText"));
     document.setCategories((List<String>) map.get("categories"));
     document.setModels((List<String>) map.get("models"));
+    
+    // Add missing fields
+    document.setQuality((String) map.get("quality"));
+    document.setSheetName((String) map.get("sheetName"));
+    document.setRandomOrder((Integer) map.get("randomOrder"));
+    document.setThumbPathProcessed((Integer) map.get("thumbPathProcessed"));
+    document.setTrailerPresent((Integer) map.get("trailerPresent"));
+    document.setHd((Integer) map.get("hd"));
+    
+    // Parse createdOn date from Elasticsearch format
+    String createdOnStr = (String) map.get("createdOn");
+    if (createdOnStr != null) {
+      try {
+        // Try multiple date formats
+        String[] formats = {
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+        };
+
+        for (String format : formats) {
+          try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+            dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            document.setCreatedOn(dateFormat.parse(createdOnStr));
+            break;
+          } catch (Exception e) {
+            // Continue to next format if this one fails
+            continue;
+          }
+        }
+
+        // If all formats failed, log warning
+        if (document.getCreatedOn() == null) {
+          logger.warn("Failed to parse createdOn date with any format: {}", createdOnStr);
+        }
+      } catch (Exception e) {
+        logger.warn("Failed to parse createdOn date: {}", createdOnStr);
+        document.setCreatedOn(null);
+      }
+    } else {
+      document.setCreatedOn(null);
+    }
+    
     return document;
   }
 
   public void saveCategoryDocument(CategoryDocument document) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping category document save for ID={}",
-          document != null ? document.getId() : "null");
-      return;
-    }
 
     LoggingUtil.logOperationTime(logger, "save category document to elasticsearch", () -> {
       try {
@@ -324,11 +362,6 @@ public class ElasticsearchClientService {
   }
 
   public void saveModelDocument(ModelDocument document) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping model document save for ID={}",
-          document != null ? document.getId() : "null");
-      return;
-    }
 
     LoggingUtil.logOperationTime(logger, "save model document to elasticsearch", () -> {
       try {
@@ -404,7 +437,7 @@ public class ElasticsearchClientService {
     return map;
   }
 
-  private Map<String, Object> convertToMap(ModelDocument document) {
+  public Map<String, Object> convertToMap(ModelDocument document) {
     Map<String, Object> map = new HashMap<>();
     map.put("id", document.getId());
     map.put("tenantId", document.getTenantId());
@@ -429,10 +462,6 @@ public class ElasticsearchClientService {
   }
 
   public List<CategoryDocument> findCategories(String name) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping category search for name={}", name);
-      return new ArrayList<>();
-    }
 
     return LoggingUtil.logOperationTime(logger, "find categories by name", () -> {
       List<CategoryDocument> results = new ArrayList<>();
@@ -466,10 +495,6 @@ public class ElasticsearchClientService {
   }
 
   public List<ModelDocument> findModels(String name) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping model search for name={}", name);
-      return new ArrayList<>();
-    }
 
     return LoggingUtil.logOperationTime(logger, "find models by name", () -> {
       List<ModelDocument> results = new ArrayList<>();
@@ -503,10 +528,6 @@ public class ElasticsearchClientService {
   }
 
   public Page<LinkDocument> searchLinks(String query, Pageable pageable) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping link search for query={}", query);
-      return new PageImpl<>(new ArrayList<>(), pageable, 0);
-    }
 
     return LoggingUtil.logOperationTime(logger, "search links with pagination", () -> {
       try {
@@ -560,10 +581,6 @@ public class ElasticsearchClientService {
   }
 
   public List<AutosuggestItem> autosuggest(String query) {
-    if (!elasticsearchEnabled) {
-      logger.debug("Elasticsearch disabled: skipping autosuggest for query={}", query);
-      return new ArrayList<>();
-    }
 
     return LoggingUtil.logOperationTime(logger, "autosuggest across model and category indices",
         () -> {
@@ -656,7 +673,7 @@ public class ElasticsearchClientService {
     return document;
   }
 
-  private ModelDocument convertToModelDocument(Map<String, Object> map) {
+  public ModelDocument convertToModelDocument(Map<String, Object> map) {
     ModelDocument document = new ModelDocument();
     document.setId((String) map.get("id"));
     document.setTenantId((Integer) map.get("tenantId"));
@@ -682,5 +699,9 @@ public class ElasticsearchClientService {
     }
 
     return document;
+  }
+
+  public RestHighLevelClient getEsClient() {
+    return esClient;
   }
 } 

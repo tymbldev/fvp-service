@@ -3,13 +3,12 @@ package com.fvp.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.dto.ModelWithLinkDTO;
 import com.fvp.dto.ModelLinksResponseDTO;
-import com.fvp.entity.BaseLinkModel;
 import com.fvp.entity.Link;
-import com.fvp.entity.LinkModel;
 import com.fvp.entity.Model;
 import com.fvp.repository.LinkRepository;
 import com.fvp.repository.ModelRepository;
-import com.fvp.repository.ShardedLinkModelRepository;
+import com.fvp.repository.ElasticsearchLinkModelRepository;
+import com.fvp.document.LinkDocument;
 import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -40,9 +38,6 @@ public class ModelUtilService {
   private LinkRepository linkRepository;
 
   @Autowired
-  private LinkModelShardingService shardingService;
-
-  @Autowired
   private LinkService linkService;
 
   @Autowired
@@ -50,6 +45,9 @@ public class ModelUtilService {
 
   @Autowired
   private CacheService cacheService;
+
+  @Autowired
+  private ElasticsearchLinkModelRepository elasticsearchLinkModelRepository;
 
   public List<ModelWithLinkDTO> getFirstLinksForModels(Integer tenantId, List<String> modelNames) {
     List<ModelWithLinkDTO> results = new ArrayList<>();
@@ -89,19 +87,21 @@ public class ModelUtilService {
       }
 
       // Get random link for the model
-      Optional<? extends BaseLinkModel> randomLinkBase = shardingService.getRepositoryForModel(
-              modelName)
-          .findRandomLinkByModel(tenantId, modelName);
+      Optional<LinkDocument> randomLinkDoc = elasticsearchLinkModelRepository.findRandomLinkByModel(tenantId, modelName);
 
-      if (!randomLinkBase.isPresent()) {
+      if (!randomLinkDoc.isPresent()) {
         return null;
       }
 
-      LinkModel randomLink = new LinkModel();
-      BeanUtils.copyProperties(randomLinkBase.get(), randomLink);
-
       try {
-        Link link = linkRepository.findById(randomLink.getLinkId()).orElse(null);
+        // Extract link ID from LinkDocument
+        String linkIdStr = randomLinkDoc.get().getLinkId();
+        if (linkIdStr == null) {
+          return null;
+        }
+        
+        Integer linkId = Integer.parseInt(linkIdStr);
+        Link link = linkRepository.findById(linkId).orElse(null);
         if (link == null) {
           return null;
         }
@@ -176,8 +176,7 @@ public class ModelUtilService {
       }
 
       // Get the total count with filters (for pagination metadata)
-      Long totalCount = shardingService.getRepositoryForModel(modelName)
-          .countByModelWithFilters(tenantId, modelName, maxDuration, quality);
+      Long totalCount = elasticsearchLinkModelRepository.countByModelWithFilters(tenantId, modelName, maxDuration, quality);
       if (totalCount == 0) {
         logger.info("No links found for model {} with given filters", modelName);
         return Page.empty();
@@ -221,22 +220,21 @@ public class ModelUtilService {
             int limit = pageable.getPageSize() - 1;
 
             // Get the remaining items for the first page
-            List<? extends BaseLinkModel> remainingLinksBase = shardingService.getRepositoryForModel(modelName)
-                .findByModelWithFiltersExcludingLinkPageable(
+            List<LinkDocument> remainingLinks = elasticsearchLinkModelRepository.findByModelWithFiltersExcludingLinkPageable(
                     tenantId, modelName, maxDuration, quality, firstLinkId, adjustedOffset, limit);
 
-            List<LinkModel> remainingLinks = remainingLinksBase.stream()
-                .map(baseLinkModel -> {
-                    LinkModel linkModel = new LinkModel();
-                    BeanUtils.copyProperties(baseLinkModel, linkModel);
-                    return linkModel;
-                })
-                .collect(Collectors.toList());
-
             try {
-              // Extract all link IDs
+              // Extract all link IDs from LinkDocument
               List<Integer> linkIds = remainingLinks.stream()
-                  .map(LinkModel::getLinkId)
+                  .map(linkDoc -> {
+                    try {
+                      return Integer.parseInt(linkDoc.getLinkId());
+                    } catch (NumberFormatException e) {
+                      logger.warn("Invalid linkId format: {}", linkDoc.getLinkId());
+                      return null;
+                    }
+                  })
+                  .filter(id -> id != null)
                   .collect(Collectors.toList());
               
               // Fetch all links in a single database call
@@ -248,18 +246,23 @@ public class ModelUtilService {
                     .collect(Collectors.toMap(Link::getId, link -> link));
                 
                 // Create DTOs with all fields properly mapped
-                for (LinkModel linkModel : remainingLinks) {
-                  Link link = linkMap.get(linkModel.getLinkId());
-                  if (link != null) {
-                    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
-                    linkDTO.setLink(link.getLink());
-                    linkDTO.setLinkTitle(link.getTitle());
-                    linkDTO.setLinkThumbnail(link.getThumbnail());
-                    linkDTO.setLinkThumbPath(link.getThumbpath());
-                    linkDTO.setLinkSource(link.getSource());
-                    linkDTO.setLinkTrailer(link.getTrailer());
-                    linkDTO.setLinkDuration(link.getDuration());
-                    pageContent.add(linkDTO);
+                for (LinkDocument linkDoc : remainingLinks) {
+                  try {
+                    Integer linkId = Integer.parseInt(linkDoc.getLinkId());
+                    Link link = linkMap.get(linkId);
+                    if (link != null) {
+                      ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+                      linkDTO.setLink(link.getLink());
+                      linkDTO.setLinkTitle(link.getTitle());
+                      linkDTO.setLinkThumbnail(link.getThumbnail());
+                      linkDTO.setLinkThumbPath(link.getThumbpath());
+                      linkDTO.setLinkSource(link.getSource());
+                      linkDTO.setLinkTrailer(link.getTrailer());
+                      linkDTO.setLinkDuration(link.getDuration());
+                      pageContent.add(linkDTO);
+                    }
+                  } catch (NumberFormatException e) {
+                    logger.warn("Invalid linkId format: {}", linkDoc.getLinkId());
                   }
                 }
               }
@@ -268,22 +271,21 @@ public class ModelUtilService {
             }
           } else {
             // If filters are applied, get all items for the first page
-            List<? extends BaseLinkModel> firstPageLinksBase = shardingService.getRepositoryForModel(modelName)
-                .findByModelWithFiltersPageable(
+            List<LinkDocument> firstPageLinks = elasticsearchLinkModelRepository.findByModelWithFiltersPageable(
                     tenantId, modelName, maxDuration, quality, 0, pageable.getPageSize());
 
-            List<LinkModel> firstPageLinks = firstPageLinksBase.stream()
-                .map(baseLinkModel -> {
-                    LinkModel linkModel = new LinkModel();
-                    BeanUtils.copyProperties(baseLinkModel, linkModel);
-                    return linkModel;
-                })
-                .collect(Collectors.toList());
-
             try {
-              // Extract all link IDs
+              // Extract all link IDs from LinkDocument
               List<Integer> linkIds = firstPageLinks.stream()
-                  .map(LinkModel::getLinkId)
+                  .map(linkDoc -> {
+                    try {
+                      return Integer.parseInt(linkDoc.getLinkId());
+                    } catch (NumberFormatException e) {
+                      logger.warn("Invalid linkId format: {}", linkDoc.getLinkId());
+                      return null;
+                    }
+                  })
+                  .filter(id -> id != null)
                   .collect(Collectors.toList());
               
               // Fetch all links in a single database call
@@ -295,45 +297,49 @@ public class ModelUtilService {
                     .collect(Collectors.toMap(Link::getId, link -> link));
                 
                 // Create DTOs with all fields properly mapped
-                for (LinkModel linkModel : firstPageLinks) {
-                  Link link = linkMap.get(linkModel.getLinkId());
-                  if (link != null) {
-                    ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
-                    linkDTO.setLink(link.getLink());
-                    linkDTO.setLinkTitle(link.getTitle());
-                    linkDTO.setLinkThumbnail(link.getThumbnail());
-                    linkDTO.setLinkThumbPath(link.getThumbpath());
-                    linkDTO.setLinkSource(link.getSource());
-                    linkDTO.setLinkTrailer(link.getTrailer());
-                    linkDTO.setLinkDuration(link.getDuration());
-                    pageContent.add(linkDTO);
+                for (LinkDocument linkDoc : firstPageLinks) {
+                  try {
+                    Integer linkId = Integer.parseInt(linkDoc.getLinkId());
+                    Link link = linkMap.get(linkId);
+                    if (link != null) {
+                      ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+                      linkDTO.setLink(link.getLink());
+                      linkDTO.setLinkTitle(link.getTitle());
+                      linkDTO.setLinkThumbnail(link.getThumbnail());
+                      linkDTO.setLinkThumbPath(link.getThumbpath());
+                      linkDTO.setLinkSource(link.getSource());
+                      linkDTO.setLinkTrailer(link.getTrailer());
+                      linkDTO.setLinkDuration(link.getDuration());
+                      pageContent.add(linkDTO);
+                    }
+                  } catch (NumberFormatException e) {
+                    logger.warn("Invalid linkId format: {}", linkDoc.getLinkId());
                   }
                 }
               }
             } catch (Exception e) {
-              logger.error("Error fetching link details in batch: {}", e.getMessage());
+              logger.error("Error fetching link details for first page: {}", e.getMessage());
             }
           }
         }
       } else {
         // For subsequent pages, get items directly
         int offset = pageable.getPageNumber() * pageable.getPageSize();
-        List<? extends BaseLinkModel> pageLinksBase = shardingService.getRepositoryForModel(modelName)
-            .findByModelWithFiltersPageable(
+        List<LinkDocument> pageLinks = elasticsearchLinkModelRepository.findByModelWithFiltersPageable(
                 tenantId, modelName, maxDuration, quality, offset, pageable.getPageSize());
 
-        List<LinkModel> pageLinks = pageLinksBase.stream()
-            .map(baseLinkModel -> {
-                LinkModel linkModel = new LinkModel();
-                BeanUtils.copyProperties(baseLinkModel, linkModel);
-                return linkModel;
-            })
-            .collect(Collectors.toList());
-
         try {
-          // Extract all link IDs
+          // Extract all link IDs from LinkDocument
           List<Integer> linkIds = pageLinks.stream()
-              .map(LinkModel::getLinkId)
+              .map(linkDoc -> {
+                try {
+                  return Integer.parseInt(linkDoc.getLinkId());
+                } catch (NumberFormatException e) {
+                  logger.warn("Invalid linkId format: {}", linkDoc.getLinkId());
+                  return null;
+                }
+              })
+              .filter(id -> id != null)
               .collect(Collectors.toList());
           
           // Fetch all links in a single database call
@@ -345,23 +351,28 @@ public class ModelUtilService {
                 .collect(Collectors.toMap(Link::getId, link -> link));
             
             // Create DTOs with all fields properly mapped
-            for (LinkModel linkModel : pageLinks) {
-              Link link = linkMap.get(linkModel.getLinkId());
-              if (link != null) {
-                ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
-                linkDTO.setLink(link.getLink());
-                linkDTO.setLinkTitle(link.getTitle());
-                linkDTO.setLinkThumbnail(link.getThumbnail());
-                linkDTO.setLinkThumbPath(link.getThumbpath());
-                linkDTO.setLinkSource(link.getSource());
-                linkDTO.setLinkTrailer(link.getTrailer());
-                linkDTO.setLinkDuration(link.getDuration());
-                pageContent.add(linkDTO);
+            for (LinkDocument linkDoc : pageLinks) {
+              try {
+                Integer linkId = Integer.parseInt(linkDoc.getLinkId());
+                Link link = linkMap.get(linkId);
+                if (link != null) {
+                  ModelLinksResponseDTO.LinkDTO linkDTO = new ModelLinksResponseDTO.LinkDTO();
+                  linkDTO.setLink(link.getLink());
+                  linkDTO.setLinkTitle(link.getTitle());
+                  linkDTO.setLinkThumbnail(link.getThumbnail());
+                  linkDTO.setLinkThumbPath(link.getThumbpath());
+                  linkDTO.setLinkSource(link.getSource());
+                  linkDTO.setLinkTrailer(link.getTrailer());
+                  linkDTO.setLinkDuration(link.getDuration());
+                  pageContent.add(linkDTO);
+                }
+              } catch (NumberFormatException e) {
+                logger.warn("Invalid linkId format: {}", linkDoc.getLinkId());
               }
             }
           }
         } catch (Exception e) {
-          logger.error("Error fetching link details in batch: {}", e.getMessage());
+          logger.error("Error fetching link details for page: {}", e.getMessage());
         }
       }
 
@@ -374,6 +385,8 @@ public class ModelUtilService {
 
   private ModelLinksResponseDTO createResponseDTO(Model model, List<ModelLinksResponseDTO.LinkDTO> links, Pageable pageable, long totalCount) {
     ModelLinksResponseDTO response = new ModelLinksResponseDTO();
+    
+    // Set individual model fields
     response.setId(model.getId());
     response.setTenantId(model.getTenantId());
     response.setName(model.getName());
@@ -382,13 +395,15 @@ public class ModelUtilService {
     response.setThumbnail(model.getThumbnail());
     response.setThumbPath(model.getThumbpath());
     response.setAge(model.getAge());
+    
+    // Set links and pagination data
     response.setLinks(links);
     response.setTotalElements(totalCount);
     response.setTotalPages((int) Math.ceil((double) totalCount / pageable.getPageSize()));
     response.setNumber(pageable.getPageNumber());
     response.setSize(pageable.getPageSize());
     response.setFirst(pageable.getPageNumber() == 0);
-    response.setLast(pageable.getPageNumber() >= (totalCount - 1) / pageable.getPageSize());
+    response.setLast(pageable.getPageNumber() >= response.getTotalPages() - 1);
     response.setEmpty(links.isEmpty());
     return response;
   }

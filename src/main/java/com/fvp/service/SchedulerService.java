@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -22,6 +23,9 @@ public class SchedulerService {
   private final CacheController cacheController;
   private static AtomicBoolean status = new AtomicBoolean(false);
 
+  @Value("${scheduler.enabled:true}")
+  private boolean schedulerEnabled;
+
   public SchedulerService(
       GoogleSheetProcessingService googleSheetProcessingService,
       ThumbPathGenerationController thumbPathGenerationController,
@@ -33,6 +37,12 @@ public class SchedulerService {
 
   @PostConstruct
   public void init() {
+    if (!schedulerEnabled) {
+      logger.info("Scheduler is disabled via property 'scheduler.enabled=false'. Skipping PostConstruct execution.");
+      return;
+    }
+    
+    logger.info("Scheduler is enabled. Starting PostConstruct execution.");
     new Thread(() -> {
       while (true) {
         try {

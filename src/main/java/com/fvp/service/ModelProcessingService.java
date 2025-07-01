@@ -24,13 +24,10 @@ public class ModelProcessingService {
   private static final Logger logger = LoggerFactory.getLogger(ModelProcessingService.class);
 
   private final ModelService modelService;
-  private final LinkModelShardingService linkModelShardingService;
 
   public ModelProcessingService(
-      ModelService modelService,
-      LinkModelShardingService linkModelShardingService) {
+      ModelService modelService) {
     this.modelService = modelService;
-    this.linkModelShardingService = linkModelShardingService;
   }
 
   public void processModels(Link link, String models) {

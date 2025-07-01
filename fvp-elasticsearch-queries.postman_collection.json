@@ -1,0 +1,781 @@
+{
+  "info": {
+    "_postman_id": "elasticsearch-queries-collection",
+    "name": "FVP Elasticsearch Queries",
+    "description": "Elasticsearch queries collection for FVP Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Direct Elasticsearch Queries",
+      "item": [
+        {
+          "name": "Links Index",
+          "item": [
+            {
+              "name": "Search All Links",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 10\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Find Random Link by Category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"function_score\": {\n      \"query\": {\n        \"bool\": {\n          \"must\": [\n            {\n              \"term\": {\n                \"tenantId\": {{tenant_id}}\n              }\n            },\n            {\n              \"term\": {\n                \"categories\": \"{{category_name}}\"\n              }\n            },\n            {\n              \"term\": {\n                \"thumbPathProcessed\": 1\n              }\n            }\n          ]\n        }\n      },\n      \"functions\": [\n        {\n          \"random_score\": {}\n        }\n      ]\n    }\n  },\n  \"size\": 1,\n  \"sort\": [\n    {\n      \"hd\": {\n        \"order\": \"desc\"\n      }\n    },\n    {\n      \"trailerFlag\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Count Links by Category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"categories\": \"{{category_name}}\"\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 0,\n  \"track_total_hits\": true\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Get Distinct Categories",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        }\n      ]\n    }\n  },\n  \"aggs\": {\n    \"distinct_categories\": {\n      \"terms\": {\n        \"field\": \"categories.keyword\",\n        \"size\": 1000\n      }\n    }\n  },\n  \"size\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Find Random Link by Model",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"function_score\": {\n      \"query\": {\n        \"bool\": {\n          \"must\": [\n            {\n              \"term\": {\n                \"tenantId\": {{tenant_id}}\n              }\n            },\n            {\n              \"term\": {\n                \"models\": \"{{model_name}}\"\n              }\n            }\n          ]\n        }\n      },\n      \"functions\": [\n        {\n          \"random_score\": {}\n        }\n      ]\n    }\n  },\n  \"size\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Get Distinct Models",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        }\n      ]\n    }\n  },\n  \"aggs\": {\n    \"distinct_models\": {\n      \"terms\": {\n        \"field\": \"models.keyword\",\n        \"size\": 1000\n      }\n    }\n  },\n  \"size\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Get Total Links Count",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 0,\n  \"track_total_hits\": true\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_count",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_count"]
+                }
+              }
+            },
+            {
+              "name": "Get Sample Links Data",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 5,\n  \"sort\": [\n    {\n      \"_id\": {\n        \"order\": \"asc\"\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Delete All Links Data",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_delete_by_query",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_delete_by_query"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Link Category Repository Queries",
+          "item": [
+            {
+              "name": "findRandomRecentLinkByCategory",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"function_score\": {\n      \"query\": {\n        \"bool\": {\n          \"must\": [\n            {\n              \"term\": {\n                \"tenantId\": {{tenant_id}}\n              }\n            },\n            {\n              \"term\": {\n                \"categories\": \"{{category_name}}\"\n              }\n            },\n            {\n              \"range\": {\n                \"createdAt\": {\n                  \"gte\": \"now-{{recent_days}}d\"\n                }\n              }\n            },\n            {\n              \"term\": {\n                \"thumbPathProcessed\": 1\n              }\n            }\n          ]\n        }\n      },\n      \"functions\": [\n        {\n          \"random_score\": {}\n        }\n      ]\n    }\n  },\n  \"size\": 1,\n  \"sort\": [\n    {\n      \"hd\": {\n        \"order\": \"desc\"\n      }\n    },\n    {\n      \"trailerFlag\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByTenantIdAndCategory",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"categories\": \"{{category_name}}\"\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 1000,\n  \"sort\": [\n    {\n      \"hd\": {\n        \"order\": \"desc\"\n      }\n    },\n    {\n      \"trailerFlag\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByCategoryWithFiltersPageable",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"categories\": \"{{category_name}}\"\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        },\n        {\n          \"range\": {\n            \"linkDuration\": {\n              \"gte\": {{min_duration}},\n              \"lte\": {{max_duration}}\n            }\n          }\n        },\n        {\n          \"term\": {\n            \"quality\": \"{{quality}}\"\n          }\n        }\n      ]\n    }\n  },\n  \"from\": {{offset}},\n  \"size\": {{limit}},\n  \"sort\": [\n    {\n      \"hd\": {\n        \"order\": \"desc\"\n      }\n    },\n    {\n      \"trailerFlag\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "countByCategoryWithFilters",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"categories\": \"{{category_name}}\"\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        },\n        {\n          \"range\": {\n            \"linkDuration\": {\n              \"gte\": {{min_duration}},\n              \"lte\": {{max_duration}}\n            }\n          }\n        },\n        {\n          \"term\": {\n            \"quality\": \"{{quality}}\"\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 0,\n  \"track_total_hits\": true\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByCategoryWithFiltersExcludingLinkPageable",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"categories\": \"{{category_name}}\"\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        },\n        {\n          \"range\": {\n            \"linkDuration\": {\n              \"gte\": {{min_duration}},\n              \"lte\": {{max_duration}}\n            }\n          }\n        },\n        {\n          \"term\": {\n            \"quality\": \"{{quality}}\"\n          }\n        }\n      ],\n      \"must_not\": [\n        {\n          \"term\": {\n            \"linkId\": \"{{exclude_link_id}}\"\n          }\n        }\n      ]\n    }\n  },\n  \"from\": {{offset}},\n  \"size\": {{limit}},\n  \"sort\": [\n    {\n      \"hd\": {\n        \"order\": \"desc\"\n      }\n    },\n    {\n      \"trailerFlag\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByTenantIdAndLinkId",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"linkId\": {{link_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByLinkIdAndCategory",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"linkId\": {{link_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"categories\": \"{{category_name}}\"\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByLinkId",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"linkId\": {{link_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "findByTenantId",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"term\": {\n            \"tenantId\": {{tenant_id}}\n          }\n        },\n        {\n          \"term\": {\n            \"thumbPathProcessed\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"size\": 1000\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "_search"]
+                }
+              }
+            },
+            {
+              "name": "deleteByLinkId",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links/{{link_id}}",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links", "{{link_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories Index",
+          "item": [
+            {
+              "name": "Get Total Categories Count",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/categories/_count",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["categories", "_count"]
+                }
+              }
+            },
+            {
+              "name": "Get Sample Categories Data",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 5\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/categories/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["categories", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Delete All Categories Data",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/categories/_delete_by_query",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["categories", "_delete_by_query"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Models Index",
+          "item": [
+            {
+              "name": "Get Total Models Count",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/models/_count",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["models", "_count"]
+                }
+              }
+            },
+            {
+              "name": "Get Sample Models Data",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 5\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/models/_search",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["models", "_search"]
+                }
+              }
+            },
+            {
+              "name": "Delete All Models Data",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/models/_delete_by_query",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["models", "_delete_by_query"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Index Management",
+          "item": [
+            {
+              "name": "Get All Indices Info",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/_cat/indices?v&h=index,docs.count,store.size,health,status",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["_cat", "indices"],
+                  "query": [
+                    {
+                      "key": "v",
+                      "value": null
+                    },
+                    {
+                      "key": "h",
+                      "value": "index,docs.count,store.size,health,status"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Cluster Health",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/_cluster/health",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["_cluster", "health"]
+                }
+              }
+            },
+            {
+              "name": "Get All FVP Indices Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links,categories,models/_stats/docs,store",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links,categories,models", "_stats", "docs,store"]
+                }
+              }
+            },
+            {
+              "name": "Get Combined Count for All Indices",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links,categories,models/_count",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links,categories,models", "_count"]
+                }
+              }
+            },
+            {
+              "name": "Delete All Data from All FVP Indices",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links,categories,models/_delete_by_query",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links,categories,models", "_delete_by_query"]
+                }
+              }
+            },
+            {
+              "name": "Delete Entire Links Index",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links"]
+                }
+              }
+            },
+            {
+              "name": "Delete Entire Categories Index",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/categories",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["categories"]
+                }
+              }
+            },
+            {
+              "name": "Delete Entire Models Index",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/models",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["models"]
+                }
+              }
+            },
+            {
+              "name": "Get Index Mappings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{elasticsearch_url}}/links,categories,models/_mapping",
+                  "host": ["{{elasticsearch_url}}"],
+                  "path": ["links,categories,models", "_mapping"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Application Endpoints",
+          "item": [
+            {
+              "name": "Search Models",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/elasticsearch/models/search?query={{search_query}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "elasticsearch", "models", "search"],
+                  "query": [
+                    {
+                      "key": "query",
+                      "value": "{{search_query}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Sync Links",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/elasticsearch/sync/links",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "elasticsearch", "sync", "links"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "elasticsearch_url",
+      "value": "http://localhost:9200",
+      "type": "string"
+    },
+    {
+      "key": "base_url", 
+      "value": "http://localhost:8080/fvp-service",
+      "type": "string"
+    },
+    {
+      "key": "tenant_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "category_name",
+      "value": "amateur",
+      "type": "string"
+    },
+    {
+      "key": "model_name",
+      "value": "alexis-texas", 
+      "type": "string"
+    },
+    {
+      "key": "search_query",
+      "value": "search term",
+      "type": "string"
+    },
+    {
+      "key": "min_duration",
+      "value": "300",
+      "type": "string"
+    },
+    {
+      "key": "max_duration", 
+      "value": "1800",
+      "type": "string"
+    },
+    {
+      "key": "quality",
+      "value": "HD",
+      "type": "string"
+    },
+    {
+      "key": "offset",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "limit",
+      "value": "20",
+      "type": "string"
+    },
+    {
+      "key": "recent_days",
+      "value": "7",
+      "type": "string"
+    },
+    {
+      "key": "link_id",
+      "value": "12345",
+      "type": "string"
+    },
+    {
+      "key": "exclude_link_id",
+      "value": "67890",
+      "type": "string"
+    }
+  ]
+} 

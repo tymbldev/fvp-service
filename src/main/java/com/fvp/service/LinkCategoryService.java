@@ -3,7 +3,9 @@ package com.fvp.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fvp.entity.BaseLinkCategory;
 import com.fvp.entity.LinkCategory;
-import com.fvp.repository.ShardedLinkCategoryRepository;
+import com.fvp.repository.ElasticsearchLinkCategoryRepository;
+import com.fvp.document.LinkDocument;
+import com.fvp.entity.Link;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,15 +30,16 @@ public class LinkCategoryService {
 
 
   @Autowired
-  private LinkCategoryShardingService shardingService;
-
-  @Autowired
   private CacheService cacheService;
 
   @Value("${category.recent-links-days:3}")
   private long recentLinksDays;
 
+  private final ElasticsearchLinkCategoryRepository elasticsearchLinkCategoryRepository;
 
+  public LinkCategoryService(ElasticsearchLinkCategoryRepository elasticsearchLinkCategoryRepository) {
+    this.elasticsearchLinkCategoryRepository = elasticsearchLinkCategoryRepository;
+  }
 
   /**
    * Find a random recent link by category
@@ -59,17 +62,14 @@ public class LinkCategoryService {
     }
 
     try {
-      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-          shardingService.getRepositoryForCategory(category);
-
-      Optional<? extends BaseLinkCategory> result = repository.findRandomRecentLinkByCategory(
+      Optional<LinkDocument> result = elasticsearchLinkCategoryRepository.findRandomRecentLinkByCategory(
           tenantId, category, recentLinksDays);
-      Optional<LinkCategory> linkCategory = result.map(this::convertToLinkCategory);
+      Optional<LinkCategory> linkCategory = result.map(doc -> convertToLinkCategory(doc, category));
       linkCategory.ifPresent(
           model -> cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, model));
       return linkCategory;
     } catch (Exception e) {
-      logger.error("Error finding random recent link for category {} in sharded tables: {}",
+      logger.error("Error finding random recent link for category {} in Elasticsearch: {}",
           category, e.getMessage());
       throw e;
     }
@@ -96,17 +96,14 @@ public class LinkCategoryService {
     }
 
     try {
-      ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-          shardingService.getRepositoryForCategory(category);
-
-      Optional<? extends BaseLinkCategory> result = repository.findRandomLinkByCategory(tenantId,
+      Optional<LinkDocument> result = elasticsearchLinkCategoryRepository.findRandomLinkByCategory(tenantId,
           category);
-      Optional<LinkCategory> linkCategory = result.map(this::convertToLinkCategory);
+      Optional<LinkCategory> linkCategory = result.map(doc -> convertToLinkCategory(doc, category));
       linkCategory.ifPresent(
           model -> cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, model));
       return linkCategory;
     } catch (Exception e) {
-      logger.error("Error finding random link for category {} in sharded tables: {}",
+      logger.error("Error finding random link for category {} in Elasticsearch: {}",
           category, e.getMessage());
       throw e;
     }
@@ -128,12 +125,11 @@ public class LinkCategoryService {
         Long.class
     ).orElseGet(() -> {
       try {
-        Long count = shardingService.getRepositoryForCategory(category)
-            .countByTenantIdAndCategory(tenantId, category);
+        Long count = elasticsearchLinkCategoryRepository.countByTenantIdAndCategory(tenantId, category);
         cacheService.putInCache(CATEGORY_COUNT_CACHE, cacheKey, count);
         return count;
       } catch (Exception e) {
-        logger.error("Error counting links for category {} in sharded tables: {}",
+        logger.error("Error counting links for category {} in Elasticsearch: {}",
             category, e.getMessage());
         throw e;
       }
@@ -156,26 +152,16 @@ public class LinkCategoryService {
         new TypeReference<List<LinkCategory>>() {
         }
     ).orElseGet(() -> {
-      List<LinkCategory> result = new ArrayList<>();
-
-      // Since we don't know which shard contains this linkId, we need to check all shards
-      for (int i = 1; i <= shardingService.getTotalShards(); i++) {
-        try {
-          ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-              shardingService.getRepositoryForShard(i);
-
-          List<? extends BaseLinkCategory> entities = repository.findByTenantIdAndLinkId(tenantId,
-              linkId);
-          entities.forEach(entity -> result.add(convertToLinkCategory(entity)));
+      try {
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByTenantIdAndLinkId(tenantId, linkId);
+        List<LinkCategory> result = docs.stream().map(this::convertToLinkCategory).collect(Collectors.toList());
+        cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, result);
+        return result;
         } catch (Exception e) {
-          logger.error("Error finding links for tenant {} and link {} in shard {}: {}",
-              tenantId, linkId, i, e.getMessage());
+        logger.error("Error finding links for tenant {} and link {} in Elasticsearch: {}",
+            tenantId, linkId, e.getMessage());
           throw e;
-        }
       }
-
-      cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, result);
-      return result;
     });
   }
 
@@ -194,26 +180,14 @@ public class LinkCategoryService {
         new TypeReference<List<String>>() {
         }
     ).orElseGet(() -> {
-      List<String> result = new ArrayList<>();
-
-      // We need to check all shards and combine the results
-      for (int i = 1; i <= shardingService.getTotalShards(); i++) {
-        try {
-          ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-              shardingService.getRepositoryForShard(i);
-
-          List<String> categories = repository.findAllDistinctCategories(tenantId);
-          result.addAll(categories);
+      try {
+        List<String> result = elasticsearchLinkCategoryRepository.findAllDistinctCategories(tenantId);
+        cacheService.putInCache(CATEGORIES_CACHE, cacheKey, result);
+        return result;
         } catch (Exception e) {
-          logger.error("Error finding distinct categories in shard {}: {}",
-              i, e.getMessage());
+        logger.error("Error finding distinct categories in Elasticsearch: {}", e.getMessage());
           throw e;
-        }
       }
-
-      List<String> distinctCategories = result.stream().distinct().collect(Collectors.toList());
-      cacheService.putInCache(CATEGORIES_CACHE, cacheKey, distinctCategories);
-      return distinctCategories;
     });
   }
 
@@ -232,25 +206,15 @@ public class LinkCategoryService {
         new TypeReference<List<LinkCategory>>() {
         }
     ).orElseGet(() -> {
-      List<LinkCategory> result = new ArrayList<>();
-
-      // Since we don't know which shard contains this linkId, we need to check all shards
-      for (int i = 1; i <= shardingService.getTotalShards(); i++) {
-        try {
-          ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-              shardingService.getRepositoryForShard(i);
-
-          List<? extends BaseLinkCategory> entities = repository.findByLinkId(linkId);
-          entities.forEach(entity -> result.add(convertToLinkCategory(entity)));
+      try {
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByLinkId(linkId);
+        List<LinkCategory> result = docs.stream().map(this::convertToLinkCategory).collect(Collectors.toList());
+        cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, result);
+        return result;
         } catch (Exception e) {
-          logger.error("Error finding links for link {} in shard {}: {}",
-              linkId, i, e.getMessage());
+        logger.error("Error finding links for link {} in Elasticsearch: {}", linkId, e.getMessage());
           throw e;
-        }
       }
-
-      cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, result);
-      return result;
     });
   }
 
@@ -262,14 +226,11 @@ public class LinkCategoryService {
    */
   @Transactional
   public void deleteByLinkId(Integer linkId) {
-    // Try to delete from sharded tables first
     try {
-      shardingService.deleteByLinkId(linkId);
-
-      // Invalidate relevant caches
+      elasticsearchLinkCategoryRepository.deleteByLinkId(linkId);
       cacheService.evictFromCache(LINK_CATEGORY_CACHE, "linkId:" + linkId);
     } catch (Exception e) {
-      logger.error("Error deleting from sharded tables: {}", e.getMessage());
+      logger.error("Error deleting from Elasticsearch: {}", e.getMessage());
       throw e;
     }
   }
@@ -306,18 +267,14 @@ public class LinkCategoryService {
         }
     ).orElseGet(() -> {
       try {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-            shardingService.getRepositoryForCategory(category);
-
-        List<? extends BaseLinkCategory> shardedCategories = repository.findByTenantIdAndCategory(
-            tenantId, category);
-        List<LinkCategory> models = shardedCategories.stream()
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByTenantIdAndCategory(tenantId, category);
+        List<LinkCategory> models = docs.stream()
             .map(this::convertToLinkCategory)
             .collect(Collectors.toList());
         cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, models);
         return models;
       } catch (Exception e) {
-        logger.error("Error finding links for category {} in sharded tables: {}",
+        logger.error("Error finding links for category {} in Elasticsearch: {}",
             category, e.getMessage());
         throw e;
       }
@@ -342,18 +299,14 @@ public class LinkCategoryService {
         }
     ).orElseGet(() -> {
       try {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-            shardingService.getRepositoryForCategory(category);
-
-        List<? extends BaseLinkCategory> shardedCategories = repository.findByTenantIdAndCategoryOrderByRandomOrder(
-            tenantId, category);
-        List<LinkCategory> models = shardedCategories.stream()
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByTenantIdAndCategoryOrderByRandomOrder(tenantId, category);
+        List<LinkCategory> models = docs.stream()
             .map(this::convertToLinkCategory)
             .collect(Collectors.toList());
         cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, models);
         return models;
       } catch (Exception e) {
-        logger.error("Error finding links for category {} in sharded tables: {}",
+        logger.error("Error finding links for category {} in Elasticsearch: {}",
             category, e.getMessage());
         throw e;
       }
@@ -377,18 +330,14 @@ public class LinkCategoryService {
         }
     ).orElseGet(() -> {
       try {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-            shardingService.getRepositoryForCategory(category);
-
-        List<? extends BaseLinkCategory> shardedCategories = repository.findByCategoryAndTenantId(
-            category, tenantId);
-        List<LinkCategory> models = shardedCategories.stream()
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByCategoryAndTenantId(category, tenantId);
+        List<LinkCategory> models = docs.stream()
             .map(this::convertToLinkCategory)
             .collect(Collectors.toList());
         cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, models);
         return models;
       } catch (Exception e) {
-        logger.error("Error finding links for category {} in sharded tables: {}",
+        logger.error("Error finding links for category {} in Elasticsearch: {}",
             category, e.getMessage());
         throw e;
       }
@@ -426,18 +375,15 @@ public class LinkCategoryService {
         }
     ).orElseGet(() -> {
       try {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-            shardingService.getRepositoryForCategory(category);
-
-        List<? extends BaseLinkCategory> shardedCategories = repository.findByCategoryWithFiltersPageable(
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByCategoryWithFiltersPageable(
             tenantId, category, minDuration, maxDuration, quality, offset, limit);
-        List<LinkCategory> models = shardedCategories.stream()
+        List<LinkCategory> models = docs.stream()
             .map(this::convertToLinkCategory)
             .collect(Collectors.toList());
         cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, models);
         return models;
       } catch (Exception e) {
-        logger.error("Error finding links for category {} with filters in sharded tables: {}",
+        logger.error("Error finding links for category {} with filters in Elasticsearch: {}",
             category, e.getMessage());
         throw e;
       }
@@ -470,15 +416,12 @@ public class LinkCategoryService {
         Long.class
     ).orElseGet(() -> {
       try {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-            shardingService.getRepositoryForCategory(category);
-
-        Long count = repository.countByCategoryWithFilters(
+        Long count = elasticsearchLinkCategoryRepository.countByCategoryWithFilters(
             tenantId, category, minDuration, maxDuration, quality);
         cacheService.putInCache(CATEGORY_COUNT_CACHE, cacheKey, count);
         return count;
       } catch (Exception e) {
-        logger.error("Error counting links for category {} with filters in sharded tables: {}",
+        logger.error("Error counting links for category {} with filters in Elasticsearch: {}",
             category, e.getMessage());
         throw e;
       }
@@ -518,19 +461,16 @@ public class LinkCategoryService {
         }
     ).orElseGet(() -> {
       try {
-        ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-            shardingService.getRepositoryForCategory(category);
-
-        List<? extends BaseLinkCategory> shardedCategories = repository.findByCategoryWithFiltersExcludingLinkPageable(
+        List<LinkDocument> docs = elasticsearchLinkCategoryRepository.findByCategoryWithFiltersExcludingLinkPageable(
             tenantId, category, minDuration, maxDuration, quality, excludeId, offset, limit);
-        List<LinkCategory> models = shardedCategories.stream()
+        List<LinkCategory> models = docs.stream()
             .map(this::convertToLinkCategory)
             .collect(Collectors.toList());
         cacheService.putInCache(LINK_CATEGORY_CACHE, cacheKey, models);
         return models;
       } catch (Exception e) {
         logger.error(
-            "Error finding links for category {} with filters excluding link {} in sharded tables: {}",
+            "Error finding links for category {} with filters excluding link {} in Elasticsearch: {}",
             category, excludeId, e.getMessage());
         throw e;
       }
@@ -554,38 +494,68 @@ public class LinkCategoryService {
         new TypeReference<List<Object[]>>() {
         }
     ).orElseGet(() -> {
-      List<Object[]> result = new ArrayList<>();
-
-      // For each category name, find its shard and get counts
-      for (String categoryName : categoryNames) {
-        try {
-          ShardedLinkCategoryRepository<? extends BaseLinkCategory, Integer> repository =
-              shardingService.getRepositoryForCategory(categoryName);
-
-          List<Object[]> shardedCounts = repository.countByTenantIdAndCategories(tenantId,
-              Collections.singletonList(categoryName));
-          result.addAll(shardedCounts);
+      try {
+        List<Object[]> result = elasticsearchLinkCategoryRepository.countByTenantIdAndCategories(tenantId, categoryNames);
+        cacheService.putInCache(CATEGORY_COUNT_CACHE, cacheKey, result);
+        return result;
         } catch (Exception e) {
-          logger.error("Error counting categories for {} in sharded tables: {}",
-              categoryName, e.getMessage());
+        logger.error("Error counting categories in Elasticsearch: {}", e.getMessage());
           throw e;
-        }
       }
-
-      cacheService.putInCache(CATEGORY_COUNT_CACHE, cacheKey, result);
-      return result;
     });
   }
 
   /**
-   * Converts a BaseLinkCategory entity to a LinkCategory entity
+   * Converts a LinkDocument to a LinkCategory entity (overloaded version without category name)
    *
-   * @param entity the BaseLinkCategory entity to convert
+   * @param doc the LinkDocument to convert
    * @return a new LinkCategory entity with copied properties
    */
-  private LinkCategory convertToLinkCategory(BaseLinkCategory entity) {
+  private LinkCategory convertToLinkCategory(LinkDocument doc) {
+    String categoryName = doc.getCategories() != null && !doc.getCategories().isEmpty() ? doc.getCategories().get(0) : null;
+    return convertToLinkCategory(doc, categoryName);
+  }
+
+  /**
+   * Converts a LinkDocument to a LinkCategory entity
+   *
+   * @param doc the LinkDocument to convert
+   * @param categoryName the specific category name to use
+   * @return a new LinkCategory entity with copied properties
+   */
+  private LinkCategory convertToLinkCategory(LinkDocument doc, String categoryName) {
     LinkCategory linkCategory = new LinkCategory();
-    BeanUtils.copyProperties(entity, linkCategory);
+    linkCategory.setTenantId(doc.getTenantId());
+    linkCategory.setCategory(categoryName);
+    linkCategory.setRandomOrder(doc.getRandomOrder());
+    linkCategory.setHd(doc.getHd());
+    linkCategory.setTrailerFlag(doc.getTrailerPresent());
+    linkCategory.setCreatedOn(doc.getCreatedOn() != null ? doc.getCreatedOn().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime() : null);
+    
+    // Set Link object if needed
+    Link link = new Link();
+    
+    // Safely convert linkId from String to Integer
+    if (doc.getLinkId() != null && !doc.getLinkId().trim().isEmpty()) {
+      try {
+        link.setId(Integer.valueOf(doc.getLinkId()));
+      } catch (NumberFormatException e) {
+        logger.warn("Invalid linkId format: {}", doc.getLinkId());
+        link.setId(null);
+      }
+    } else {
+      link.setId(null);
+    }
+    
+    link.setTenantId(doc.getTenantId());
+    link.setLink(doc.getLink());
+    link.setTitle(doc.getLinkTitle());
+    link.setThumbnail(doc.getLinkThumbnail());
+    link.setThumbpath(doc.getLinkThumbPath());
+    link.setDuration(doc.getLinkDuration());
+    link.setSource(doc.getLinkSource());
+    link.setTrailer(doc.getLinkTrailer());
+    linkCategory.setLink(link);
     return linkCategory;
   }
 

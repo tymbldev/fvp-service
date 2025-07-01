@@ -25,9 +25,8 @@ public class ElasticsearchSyncController {
   public ResponseEntity<Map<String, Object>> syncLinks() {
     Map<String, Object> response = new HashMap<>();
     try {
-      String result = elasticsearchSyncService.syncAllLinksToElasticsearch().get();
+      elasticsearchSyncService.syncAllLinksToElasticsearch();
       response.put("status", "success");
-      response.put("message", result);
     } catch (Exception e) {
       response.put("status", "error");
       response.put("message", "Error syncing links: " + e.getMessage());

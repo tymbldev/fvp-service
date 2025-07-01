@@ -10,6 +10,7 @@ import com.fvp.repository.AllCatRepository;
 import com.fvp.repository.LinkModelRepository;
 import com.fvp.repository.LinkRepository;
 import com.fvp.repository.ModelRepository;
+import com.fvp.repository.ElasticsearchLinkCategoryRepository;
 import com.fvp.util.LoggingUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,11 +41,11 @@ public class ElasticsearchSyncService {
   private final ElasticsearchSyncConfig syncConfig;
   private final ExecutorService executorService;
   private final JdbcTemplate jdbcTemplate;
-  private final LinkCategoryShardingService shardingService;
   private final AllCatRepository allCatRepository;
   private final ModelRepository modelRepository;
+  private final ElasticsearchLinkCategoryRepository elasticsearchLinkCategoryRepository;
   // Track sync status
-  private final AtomicReference<String> linkSyncStatus = new AtomicReference<>("not_started");
+  private static final AtomicReference<String> linkSyncStatus = new AtomicReference<>("not_started");
   private final AtomicReference<String> categorySyncStatus = new AtomicReference<>("not_started");
   private final AtomicReference<String> modelSyncStatus = new AtomicReference<>("not_started");
   @Autowired
@@ -55,9 +56,9 @@ public class ElasticsearchSyncService {
       ElasticsearchClientService elasticsearchClientService,
       ElasticsearchSyncConfig syncConfig,
       JdbcTemplate jdbcTemplate,
-      LinkCategoryShardingService shardingService,
       AllCatRepository allCatRepository,
-      ModelRepository modelRepository) {
+      ModelRepository modelRepository,
+      ElasticsearchLinkCategoryRepository elasticsearchLinkCategoryRepository) {
     this.linkRepository = linkRepository;
     this.linkModelRepository = linkModelRepository;
     this.linkProcessingService = linkProcessingService;
@@ -65,9 +66,9 @@ public class ElasticsearchSyncService {
     this.syncConfig = syncConfig;
     this.executorService = Executors.newFixedThreadPool(syncConfig.getThreadPoolSize());
     this.jdbcTemplate = jdbcTemplate;
-    this.shardingService = shardingService;
     this.allCatRepository = allCatRepository;
     this.modelRepository = modelRepository;
+    this.elasticsearchLinkCategoryRepository = elasticsearchLinkCategoryRepository;
   }
 
   /**
@@ -157,8 +158,8 @@ public class ElasticsearchSyncService {
    * @return CompletableFuture with the result of the sync operation
    */
   @Async
-  public CompletableFuture<String> syncAllLinksToElasticsearch() {
-    return syncAllLinksToElasticsearch(null);
+  public void syncAllLinksToElasticsearch() {
+     syncAllLinksToElasticsearch(null);
   }
 
   /**
@@ -230,8 +231,7 @@ public class ElasticsearchSyncService {
                     category.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
 
                 // Get link count for this category
-                Long count = shardingService.getRepositoryForCategory(category.getName())
-                    .countByTenantIdAndCategory(tenantId, category.getName());
+                Long count = elasticsearchLinkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName());
                 doc.setLinkCount(count);
 
                 elasticsearchClientService.saveCategoryDocument(doc);

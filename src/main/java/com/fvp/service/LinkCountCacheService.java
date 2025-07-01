@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.fvp.repository.ElasticsearchLinkCategoryRepository;
 
 @Service
 public class LinkCountCacheService {
@@ -19,10 +20,10 @@ public class LinkCountCacheService {
   private static final int CACHE_EXPIRY_HOURS = 24;
 
   @Autowired
-  private LinkCategoryShardingService shardingService;
+  private CacheService cacheService;
 
   @Autowired
-  private CacheService cacheService;
+  private ElasticsearchLinkCategoryRepository elasticsearchLinkCategoryRepository;
 
   /**
    * Get link counts for categories with caching
@@ -82,50 +83,23 @@ public class LinkCountCacheService {
 
   private Map<String, Long> getAndCacheDbCounts(Integer tenantId, List<String> categoryNames) {
     Map<String, Long> dbCounts = new HashMap<>();
-
-    // Group categories by their shard number
-    Map<Integer, List<String>> categoriesByShard = categoryNames.stream()
-        .collect(Collectors.groupingBy(shardingService::getShardNumber));
-
-    logger.info("Categories grouped into {} shards", categoriesByShard.size());
-
-    // Process each shard
-    for (Map.Entry<Integer, List<String>> entry : categoriesByShard.entrySet()) {
-      int shardNumber = entry.getKey();
-      List<String> categoriesInShard = entry.getValue();
-
-      logger.info("Processing shard {} with {} categories", shardNumber, categoriesInShard.size());
-
-      try {
-        // Get counts from the appropriate sharded repository
-        List<Object[]> counts = shardingService.getRepositoryForShard(shardNumber)
-            .countByTenantIdAndCategories(tenantId, categoriesInShard);
-
-        logger.info("Retrieved {} counts from shard {}", counts.size(), shardNumber);
-
-        // Process and cache results
-        for (Object[] count : counts) {
-          String categoryName = (String) count[0];
-          Long countValue = ((Number) count[1]).longValue();
-          dbCounts.put(categoryName, countValue);
-
-          // Cache individual count
-          String cacheKey = generateCacheKey(tenantId, categoryName);
-          cacheService.putInCacheWithExpiry(
-              LINK_COUNT_CACHE,
-              cacheKey,
-              countValue,
-              CACHE_EXPIRY_HOURS,
-              TimeUnit.HOURS
-          );
-          logger.info("Cached count for category {} = {}", categoryName, countValue);
-        }
-      } catch (Exception e) {
-        logger.error("Error getting counts from shard {}: {}", shardNumber, e.getMessage(), e);
-        throw e;
-      }
+    // Get counts for all categories at once from Elasticsearch
+    List<Object[]> counts = elasticsearchLinkCategoryRepository.countByTenantIdAndCategories(tenantId, categoryNames);
+    for (Object[] count : counts) {
+      String categoryName = (String) count[0];
+      Long countValue = ((Number) count[1]).longValue();
+      dbCounts.put(categoryName, countValue);
+      // Cache individual count
+      String cacheKey = generateCacheKey(tenantId, categoryName);
+      cacheService.putInCacheWithExpiry(
+          LINK_COUNT_CACHE,
+          cacheKey,
+          countValue,
+          CACHE_EXPIRY_HOURS,
+          TimeUnit.HOURS
+      );
+      logger.info("Cached count for category {} = {}", categoryName, countValue);
     }
-
     return dbCounts;
   }
 

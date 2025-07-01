@@ -342,26 +342,29 @@ public class CategoryService {
                     if (cacheBypass) {
                       CacheBypassUtil.setCacheBypass(true);
                     }
-                    
+
                     // Get link categories
                     List<LinkCategory> linkCategories = linkCategoryService.findRandomLinksByCategoryNames(
                         tenantId, chunk);
 
                     // Get categories and build a map by name
                     Map<String, AllCat> categoryMap = new HashMap<>();
-                    List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId, chunk);
+                    List<AllCat> categories = allCatRepository.findByTenantIdAndNameIn(tenantId,
+                        chunk);
                     for (AllCat category : categories) {
                       categoryMap.put(category.getName(), category);
                     }
-
                     return processChunk(tenantId, chunk, categoryMap, linkCategories);
+                  } catch (Exception e) {
+                    logger.error("Exception came while processing chunk {}: {}", chunk,
+                        e.getMessage(), e);
+                    return new ArrayList<CategoryWithLinkDTO>();
                   } finally {
                     // Clear the cache bypass flag in the new thread
                     CacheBypassUtil.clearCacheBypass();
                   }
                 },
-                executorService
-            );
+                executorService);
           })
           .collect(Collectors.toList());
 
@@ -507,7 +510,7 @@ public class CategoryService {
     List<AllCat> categories = LoggingUtil.logOperationTime(
         logger,
         "fetch all categories from database",
-        () -> allCatRepository.findByTenantIdAndCreatedViaLink(tenantId,false)
+        () -> allCatRepository.findByTenantIdAndCreatedViaLink(tenantId, false)
     );
 
     if (categories.isEmpty()) {
@@ -559,7 +562,7 @@ public class CategoryService {
     try {
       // Get all distinct category names
       Set<String> allCategoryNames = new HashSet<>();
-      
+
       // Build home categories cache
       List<CategoryWithLinkDTO> homeCategories = getHomeCategoriesWithLinks(1);
       logger.info("Built home categories cache with {} categories", homeCategories.size());
@@ -579,7 +582,7 @@ public class CategoryService {
           // Get links for the category
           List<LinkCategory> linkCategories = linkCategoryService.findByCategoryWithFiltersPageable(
               1, categoryName, null, null, null, 0, 20);
-          
+
           // Create DTOs from link categories
           List<CategoryWithLinkDTO> dtos = linkCategories.stream()
               .map(linkCategory -> {
@@ -607,14 +610,15 @@ public class CategoryService {
               1,
               TimeUnit.HOURS
           );
-          
+
           logger.info("Built cache for category: {}", categoryName);
         } catch (Exception e) {
           logger.error("Error building cache for category {}: {}", categoryName, e.getMessage());
         }
       }
 
-      logger.info("System cache built successfully. Processed {} categories", allCategoryNames.size());
+      logger.info("System cache built successfully. Processed {} categories",
+          allCategoryNames.size());
     } catch (Exception e) {
       logger.error("Error building system cache: {}", e.getMessage());
       throw e;
