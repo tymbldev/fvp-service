@@ -60,25 +60,51 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                 return Optional.empty();
             }
 
-            // Generate random offset
-            int randomOffset = (int) (Math.random() * totalCount);
+            // Use a safer approach for large result sets
+            int maxResultWindow = 10000; // Elasticsearch default
+            int randomOffset;
+            
+            if (totalCount <= maxResultWindow) {
+                // If total count is within limits, use random offset
+                randomOffset = (int) (Math.random() * totalCount);
+                
+                org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+                searchSourceBuilder.query(boolQuery);
+                searchSourceBuilder.from(randomOffset);
+                searchSourceBuilder.size(1);
 
-            // Use random offset for true randomness
-            org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
-            searchSourceBuilder.query(boolQuery);
-            searchSourceBuilder.from(randomOffset);
-            searchSourceBuilder.size(1);
+                org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
+                searchRequest.source(searchSourceBuilder);
+                log.info("Elasticsearch query for findRandomRecentLinkByCategory: {}", searchSourceBuilder.toString());
+                org.elasticsearch.action.search.SearchResponse response =
+                        elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+                for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
+                    java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                    LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
+                    document.setLinkId(hit.getId());
+                    return Optional.of(document);
+                }
+            } else {
+                // For large result sets, get a random sample and pick from it
+                int sampleSize = Math.min(1000, maxResultWindow - 1); // Safe sample size
+                randomOffset = (int) (Math.random() * sampleSize);
+                
+                org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+                searchSourceBuilder.query(boolQuery);
+                searchSourceBuilder.from(randomOffset);
+                searchSourceBuilder.size(1);
 
-            org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
-            searchRequest.source(searchSourceBuilder);
-            log.info("Elasticsearch query for findRandomRecentLinkByCategory: {}", searchSourceBuilder.toString());
-            org.elasticsearch.action.search.SearchResponse response =
-                    elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
-            for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
-                java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-                LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
-                document.setLinkId(hit.getId());
-                return Optional.of(document);
+                org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
+                searchRequest.source(searchSourceBuilder);
+                log.info("Elasticsearch query for findRandomRecentLinkByCategory (large result set): {}", searchSourceBuilder.toString());
+                org.elasticsearch.action.search.SearchResponse response =
+                        elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+                for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
+                    java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                    LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
+                    document.setLinkId(hit.getId());
+                    return Optional.of(document);
+                }
             }
         } catch (Exception e) {
             log.error("Error in findRandomRecentLinkByCategory for tenantId: {}, category: {}, recentDays: {}", 
@@ -116,25 +142,51 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                 return Optional.empty();
             }
 
-            // Generate random offset
-            int randomOffset = (int) (Math.random() * totalCount);
+            // Use a safer approach for large result sets
+            int maxResultWindow = 10000; // Elasticsearch default
+            int randomOffset;
+            
+            if (totalCount <= maxResultWindow) {
+                // If total count is within limits, use random offset
+                randomOffset = (int) (Math.random() * totalCount);
+                
+                org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+                searchSourceBuilder.query(boolQuery);
+                searchSourceBuilder.from(randomOffset);
+                searchSourceBuilder.size(1);
 
-            // Use random offset for true randomness
-            org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
-            searchSourceBuilder.query(boolQuery);
-            searchSourceBuilder.from(randomOffset);
-            searchSourceBuilder.size(1);
+                org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
+                searchRequest.source(searchSourceBuilder);
+                log.info("Elasticsearch query for findRandomLinkByCategory: {}", searchSourceBuilder.toString());
+                org.elasticsearch.action.search.SearchResponse response =
+                        elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+                for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
+                    java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                    LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
+                    document.setLinkId(hit.getId());
+                    return Optional.of(document);
+                }
+            } else {
+                // For large result sets, get a random sample and pick from it
+                int sampleSize = Math.min(1000, maxResultWindow - 1); // Safe sample size
+                randomOffset = (int) (Math.random() * sampleSize);
+                
+                org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+                searchSourceBuilder.query(boolQuery);
+                searchSourceBuilder.from(randomOffset);
+                searchSourceBuilder.size(1);
 
-            org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
-            searchRequest.source(searchSourceBuilder);
-            log.info("Elasticsearch query for findRandomLinkByCategory: {}", searchSourceBuilder.toString());
-            org.elasticsearch.action.search.SearchResponse response =
-                    elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
-            for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
-                java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-                LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
-                document.setLinkId(hit.getId());
-                return Optional.of(document);
+                org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
+                searchRequest.source(searchSourceBuilder);
+                log.info("Elasticsearch query for findRandomLinkByCategory (large result set): {}", searchSourceBuilder.toString());
+                org.elasticsearch.action.search.SearchResponse response =
+                        elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+                for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
+                    java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                    LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
+                    document.setLinkId(hit.getId());
+                    return Optional.of(document);
+                }
             }
         } catch (Exception e) {
             log.error("Error in findRandomLinkByCategory for tenantId: {}, category: {}", tenantId, category, e);
@@ -286,6 +338,11 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
 
     @Override
     public List<LinkDocument> findByCategoryWithFiltersPageable(Integer tenantId, String category, Integer minDuration, Integer maxDuration, String quality, int offset, int limit) {
+        int maxResultWindow = 10000; // Elasticsearch default
+        if (offset > maxResultWindow) {
+            log.warn("Requested offset {} exceeds max_result_window {}. Returning empty result.", offset, maxResultWindow);
+            return new java.util.ArrayList<>();
+        }
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
@@ -369,6 +426,11 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
 
     @Override
     public List<LinkDocument> findByCategoryWithFiltersExcludingLinkPageable(Integer tenantId, String category, Integer minDuration, Integer maxDuration, String quality, Integer excludeId, int offset, int limit) {
+        int maxResultWindow = 10000; // Elasticsearch default
+        if (offset > maxResultWindow) {
+            log.warn("Requested offset {} exceeds max_result_window {}. Returning empty result.", offset, maxResultWindow);
+            return new java.util.ArrayList<>();
+        }
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))

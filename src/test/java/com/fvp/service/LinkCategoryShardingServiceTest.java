@@ -22,7 +22,7 @@ public class LinkCategoryShardingServiceTest {
 
   @Test
   public void testGetShardNumber_ConsistentHashing() {
-    
+
   }
 
   @Test
