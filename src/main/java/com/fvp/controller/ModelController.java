@@ -64,35 +64,4 @@ public class ModelController {
     return ResponseEntity.ok(links);
   }
 
-  @Async
-  @GetMapping("/build-cache")
-  public ResponseEntity<String> buildSystemCache(
-      @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
-    logger.info("Starting model cache build for tenant {}", tenantId);
-
-    // Build all models cache
-    List<ModelWithoutLinkDTO> allModels = modelService.getAllModels(tenantId);
-    logger.info("Built all models cache with {} models", allModels.size());
-
-    // Get all distinct model names
-    Set<String> allModelNames = allModels.stream()
-        .map(ModelWithoutLinkDTO::getName)
-        .collect(Collectors.toSet());
-
-    // Build cache for each model's first page
-    Pageable firstPage = PageRequest.of(0, 20, Sort.by("randomOrder"));
-    for (String modelName : allModelNames) {
-      try {
-        modelUtilService.getModelLinks(tenantId, modelName, firstPage, null, null);
-        logger.info("Built cache for model: {}", modelName);
-      } catch (Exception e) {
-        logger.error("Error building cache for model {}: {}", modelName, e.getMessage());
-      }
-    }
-
-    String message = String.format("Model cache built successfully. Processed %d models",
-        allModelNames.size());
-    logger.info(message);
-    return ResponseEntity.ok(message);
-  }
-} 
+}

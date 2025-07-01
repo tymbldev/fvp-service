@@ -43,25 +43,32 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
 
-        // Use function_score for random order
-        FunctionScoreQueryBuilder functionScoreQuery =
-                org.elasticsearch.index.query.QueryBuilders.functionScoreQuery(
-                        boolQuery,
-                        new FunctionScoreQueryBuilder.FilterFunctionBuilder[]{
-                                new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-                                        org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders.randomFunction()
-                                )
-                        }
-                );
-
-        org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
-        searchSourceBuilder.query(functionScoreQuery);
-        searchSourceBuilder.size(1);
-        // Optionally sort by hd and trailerPresent if present in mapping
-        searchSourceBuilder.sort("hd", org.elasticsearch.search.sort.SortOrder.DESC);
-        searchSourceBuilder.sort("trailerPresent", org.elasticsearch.search.sort.SortOrder.DESC);
-
+        // First, get the total count for this query
+        org.elasticsearch.search.builder.SearchSourceBuilder countBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+        countBuilder.query(boolQuery);
+        countBuilder.size(0);
+        countBuilder.trackTotalHits(true);
+        
         try {
+            org.elasticsearch.action.search.SearchRequest countRequest = new org.elasticsearch.action.search.SearchRequest("links");
+            countRequest.source(countBuilder);
+            org.elasticsearch.action.search.SearchResponse countResponse =
+                    elasticsearchClientService.getEsClient().search(countRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+            
+            long totalCount = countResponse.getHits().getTotalHits().value;
+            if (totalCount == 0) {
+                return Optional.empty();
+            }
+
+            // Generate random offset
+            int randomOffset = (int) (Math.random() * totalCount);
+
+            // Use random offset for true randomness
+            org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+            searchSourceBuilder.query(boolQuery);
+            searchSourceBuilder.from(randomOffset);
+            searchSourceBuilder.size(1);
+
             org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
             searchRequest.source(searchSourceBuilder);
             log.info("Elasticsearch query for findRandomRecentLinkByCategory: {}", searchSourceBuilder.toString());
@@ -92,24 +99,32 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
 
-        // Use function_score for random order
-        FunctionScoreQueryBuilder functionScoreQuery =
-                org.elasticsearch.index.query.QueryBuilders.functionScoreQuery(
-                        boolQuery,
-                        new FunctionScoreQueryBuilder.FilterFunctionBuilder[]{
-                                new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-                                        org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders.randomFunction()
-                                )
-                        }
-                );
-
-        org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
-        searchSourceBuilder.query(functionScoreQuery);
-        searchSourceBuilder.size(1);
-        searchSourceBuilder.sort("hd", org.elasticsearch.search.sort.SortOrder.DESC);
-        searchSourceBuilder.sort("trailerPresent", org.elasticsearch.search.sort.SortOrder.DESC);
-
+        // First, get the total count for this query
+        org.elasticsearch.search.builder.SearchSourceBuilder countBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+        countBuilder.query(boolQuery);
+        countBuilder.size(0);
+        countBuilder.trackTotalHits(true);
+        
         try {
+            org.elasticsearch.action.search.SearchRequest countRequest = new org.elasticsearch.action.search.SearchRequest("links");
+            countRequest.source(countBuilder);
+            org.elasticsearch.action.search.SearchResponse countResponse =
+                    elasticsearchClientService.getEsClient().search(countRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+            
+            long totalCount = countResponse.getHits().getTotalHits().value;
+            if (totalCount == 0) {
+                return Optional.empty();
+            }
+
+            // Generate random offset
+            int randomOffset = (int) (Math.random() * totalCount);
+
+            // Use random offset for true randomness
+            org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+            searchSourceBuilder.query(boolQuery);
+            searchSourceBuilder.from(randomOffset);
+            searchSourceBuilder.size(1);
+
             org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
             searchRequest.source(searchSourceBuilder);
             log.info("Elasticsearch query for findRandomLinkByCategory: {}", searchSourceBuilder.toString());
@@ -280,7 +295,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
         if (minDuration != null || maxDuration != null) {
-            org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = org.elasticsearch.index.query.QueryBuilders.rangeQuery("linkDuration");
+            org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = org.elasticsearch.index.query.QueryBuilders.rangeQuery("duration");
             if (minDuration != null) rangeQuery.gte(minDuration);
             if (maxDuration != null) rangeQuery.lte(maxDuration);
             boolQuery.must(rangeQuery);
@@ -326,7 +341,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
         if (minDuration != null || maxDuration != null) {
-            org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = org.elasticsearch.index.query.QueryBuilders.rangeQuery("linkDuration");
+            org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = org.elasticsearch.index.query.QueryBuilders.rangeQuery("duration");
             if (minDuration != null) rangeQuery.gte(minDuration);
             if (maxDuration != null) rangeQuery.lte(maxDuration);
             boolQuery.must(rangeQuery);
@@ -363,7 +378,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
         if (minDuration != null || maxDuration != null) {
-            org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = org.elasticsearch.index.query.QueryBuilders.rangeQuery("linkDuration");
+            org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = org.elasticsearch.index.query.QueryBuilders.rangeQuery("duration");
             if (minDuration != null) rangeQuery.gte(minDuration);
             if (maxDuration != null) rangeQuery.lte(maxDuration);
             boolQuery.must(rangeQuery);
@@ -555,5 +570,51 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             log.error("Error in findByTenantId for tenantId: {}", tenantId, e);
         }
         return results;
+    }
+
+    /**
+     * Alternative random method using random offset - more reliable for true randomness
+     */
+    public Optional<LinkDocument> findRandomLinkByCategoryWithOffset(Integer tenantId, String category) {
+        // First, get the total count
+        Long totalCount = countByTenantIdAndCategory(tenantId, category);
+        if (totalCount == 0) {
+            return Optional.empty();
+        }
+
+        // Generate random offset
+        int randomOffset = (int) (Math.random() * totalCount);
+
+        // Build ES query
+        org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
+                .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
+                        .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
+                        .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
+                        .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
+
+        org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
+        searchSourceBuilder.query(boolQuery);
+        searchSourceBuilder.from(randomOffset);
+        searchSourceBuilder.size(1);
+
+        try {
+            org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("links");
+            searchRequest.source(searchSourceBuilder);
+            log.info("Elasticsearch query for findRandomLinkByCategoryWithOffset: {}", searchSourceBuilder.toString());
+            org.elasticsearch.action.search.SearchResponse response =
+                    elasticsearchClientService.getEsClient().search(searchRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
+            for (org.elasticsearch.search.SearchHit hit : response.getHits().getHits()) {
+                java.util.Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+                LinkDocument document = elasticsearchClientService.convertToLinkDocument(sourceAsMap);
+                document.setLinkId(hit.getId());
+                return Optional.of(document);
+            }
+        } catch (Exception e) {
+            log.error("Error in findRandomLinkByCategoryWithOffset for tenantId: {}, category: {}", tenantId, category, e);
+        }
+        return Optional.empty();
     }
 } 
