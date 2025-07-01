@@ -42,7 +42,7 @@ public class SchedulerService {
           }
           status.set(true);
           logger.info(
-              "Post Contruct Starting scheduled task for Google Sheets and Thumb Paths processing");
+              "Post Contruct Starting scheduled task for Google Sheets and Thumb Paths processing {} ", this.toString());
           cacheController.clearAllCache();
           logger.info("Running FED Build Re-Run");
           fedBuildReRun();
