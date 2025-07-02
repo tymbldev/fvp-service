@@ -245,9 +245,10 @@ public class GoogleSheetProcessingService {
 
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
       boolean statusSheet) throws IOException {
-    // Use direct sheet name without range specification
+    // Use sheet name with proper format to avoid confusion with cell references
+    String range = sheetName + "!";
     ValueRange response = sheetsService.spreadsheets().values()
-        .get(spreadsheetId, sheetName)
+        .get(spreadsheetId, range)
         .setKey(apiKey)
         .execute();
 
