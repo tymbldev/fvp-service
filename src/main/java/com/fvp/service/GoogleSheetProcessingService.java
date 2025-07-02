@@ -120,7 +120,7 @@ public class GoogleSheetProcessingService {
       String sheetName = row.get(SHEET_NAME_COLUMN);
       String vetStatus = row.get(VET_STATUS_COLUMN);
 
-      if (sheetName == null || vetStatus == null || sheetName.equals(STATUS_SHEET_NAME)) {
+      if (sheetName == null || vetStatus == null || sheetName.equals(STATUS_SHEET_NAME) || sheetName.equalsIgnoreCase("sheetName")) {
         continue;
       }
 
@@ -246,7 +246,11 @@ public class GoogleSheetProcessingService {
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
       boolean statusSheet) throws IOException {
     // Use sheet name with proper format to avoid confusion with cell references
-    String range = sheetName + "!";
+    String range = sheetName;
+    if (range != "status") {
+      range = sheetName + "!A1:Z100000";
+    }
+
     ValueRange response = sheetsService.spreadsheets().values()
         .get(spreadsheetId, range)
         .setKey(apiKey)
@@ -446,7 +450,7 @@ public class GoogleSheetProcessingService {
       link.setTrailer(row.get("trailer"));
       if (link.getTrailer() != null && !link.getTrailer().isEmpty()) {
         link.setTrailerPresent(1);
-      }else{
+      } else {
         link.setTrailerPresent(0);
       }
       link.setThumbnail(row.get("thumbnail"));
@@ -525,12 +529,12 @@ public class GoogleSheetProcessingService {
   }
 
   /**
-   * Escapes sheet name for Google Sheets API by wrapping in single quotes if needed
-   * Sheet names need to be escaped if they contain special characters like dots, spaces, etc.
+   * Escapes sheet name for Google Sheets API by wrapping in single quotes if needed Sheet names
+   * need to be escaped if they contain special characters like dots, spaces, etc.
    */
   private String escapeSheetName(String sheetName) {
     // Check if sheet name contains characters that need escaping
-    if (sheetName.contains(".") || sheetName.contains(" ") || sheetName.contains("-") || 
+    if (sheetName.contains(".") || sheetName.contains(" ") || sheetName.contains("-") ||
         sheetName.contains("_") || sheetName.contains("'") || sheetName.contains("\"")) {
       // Escape single quotes by doubling them and wrap in single quotes
       String escaped = sheetName.replace("'", "''");
