@@ -35,7 +35,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         // Build ES query
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.rangeQuery("createdAt").gte(thresholdDate))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
@@ -118,7 +118,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         // Build ES query
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -198,7 +198,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
     public Long countByTenantIdAndCategory(Integer tenantId, String category) {
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -298,7 +298,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
     public List<LinkDocument> findByTenantIdAndCategory(Integer tenantId, String category) {
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -345,7 +345,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         }
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -391,7 +391,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
     public Long countByCategoryWithFilters(Integer tenantId, String category, Integer minDuration, Integer maxDuration, String quality) {
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -433,7 +433,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         }
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -512,7 +512,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
     public List<LinkDocument> findByLinkIdAndCategory(Integer linkId, String category) {
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("linkId", linkId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
@@ -543,7 +543,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
     @Override
     public List<LinkDocument> findByCategoryAndTenantId(String category, Integer tenantId) {
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
@@ -650,7 +650,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         // Build ES query
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
                 .must(org.elasticsearch.index.query.QueryBuilders.termQuery("tenantId", tenantId))
-                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category))
+                .must(org.elasticsearch.index.query.QueryBuilders.termQuery("categories", category.toLowerCase()))
                 .must(org.elasticsearch.index.query.QueryBuilders.existsQuery("thumbPath"))
                 .mustNot(org.elasticsearch.index.query.QueryBuilders.boolQuery()
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))

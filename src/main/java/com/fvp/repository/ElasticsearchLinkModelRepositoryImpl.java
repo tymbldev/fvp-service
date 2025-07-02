@@ -33,7 +33,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
   public Optional<ModelDocument> findRandomModelByName(Integer tenantId, String modelName) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
 
     // First, get the total count for this query
     SearchSourceBuilder countBuilder = new SearchSourceBuilder();
@@ -86,7 +86,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
   public Long countByTenantIdAndModel(Integer tenantId, String modelName) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(boolQuery);
     searchSourceBuilder.size(0);
@@ -112,7 +112,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
   public List<ModelDocument> findByTenantIdAndModel(Integer tenantId, String modelName) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(boolQuery);
     searchSourceBuilder.size(1000);
@@ -143,7 +143,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
       Integer minAge, Integer maxAge, String country, int offset, int limit) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
     if (minAge != null || maxAge != null) {
       RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("modelAge");
         if (minAge != null) {
@@ -192,7 +192,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
       int limit) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
     if (maxDuration != null) {
       boolQuery.must(QueryBuilders.rangeQuery("duration").lte(maxDuration));
     }
@@ -236,7 +236,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
       Integer maxDuration, String quality, int offset, int limit) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
     if (maxDuration != null) {
       boolQuery.must(QueryBuilders.rangeQuery("duration").lte(maxDuration));
     }
@@ -277,7 +277,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
       String quality) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
     if (maxDuration != null) {
       boolQuery.must(QueryBuilders.rangeQuery("duration").lte(maxDuration));
     }
@@ -344,7 +344,7 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
   public Optional<LinkDocument> findRandomLinkByModel(Integer tenantId, String modelName) {
     BoolQueryBuilder boolQuery = QueryBuilders.boolQuery()
         .must(QueryBuilders.termQuery("tenantId", tenantId))
-        .must(QueryBuilders.termQuery("models", modelName));
+        .must(QueryBuilders.termQuery("models", modelName.toLowerCase()));
 
     // First, get the total count for this query
     SearchSourceBuilder countBuilder = new SearchSourceBuilder();

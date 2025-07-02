@@ -151,6 +151,7 @@ public class LinkProcessingService {
 
   private Set<String> getCategorySet(Link link) {
     Set<String> categorySet = new HashSet<>();
+    Set<String> categorySetFinal = new HashSet<>();
     if (link == null || link.getCategory() == null || link.getCategory().isEmpty()) {
       return categorySet;
     }
@@ -183,11 +184,17 @@ public class LinkProcessingService {
         }
       }
     }
-    return categorySet;
+    for(String categorySetItem : categorySet) {
+      if (!categorySetItem.isEmpty()) {
+        categorySetFinal.add(categorySetItem.toLowerCase());
+      }
+    }
+    return categorySetFinal;
   }
 
   public Set<String> getModelSet(Link link) {
     Set<String> modelSet = new HashSet<>();
+    Set<String> modelSetFinal = new HashSet<>();
     if (link == null || link.getCategory() == null || link.getCategory().isEmpty()) {
       return modelSet;
     }
@@ -204,7 +211,12 @@ public class LinkProcessingService {
         }
       }
     }
-    return modelSet;
+    for(String modelSetEntry : modelSet) {
+      if (!modelSetEntry.isEmpty()) {
+        modelSetFinal.add(modelSetEntry.toLowerCase());
+      }
+    }
+    return modelSetFinal;
   }
 
 
