@@ -245,11 +245,9 @@ public class GoogleSheetProcessingService {
 
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
       boolean statusSheet) throws IOException {
-    // Properly escape sheet name for Google Sheets API
-    String escapedSheetName = escapeSheetName(sheetName);
-    String range = escapedSheetName + "!A2:Z";
+    // Use direct sheet name without range specification
     ValueRange response = sheetsService.spreadsheets().values()
-        .get(spreadsheetId, range)
+        .get(spreadsheetId, sheetName)
         .setKey(apiKey)
         .execute();
 
