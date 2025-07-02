@@ -338,7 +338,7 @@ public class GoogleSheetProcessingService {
   }
 
   private boolean isDateFormattedSheet(String sheetName) {
-    return datePattern.matcher(sheetName).matches();
+    return sheetName.startsWith("S") && sheetName.length() == 9;
   }
 
   private boolean isSheetApproved(String sheetName) {
