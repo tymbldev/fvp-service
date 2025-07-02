@@ -27,14 +27,12 @@ public class SchedulerController {
   }
 
   @GetMapping("/trigger")
-  //@Scheduled(fixedRate = 1000 * 60 * 60 * 8) // 8 hours
   public ResponseEntity<String> trigger() {
 
     // Only run in production environment
     if (!true == enabled) {
       return ResponseEntity.ok("Scheduler is disabled for non-production environment");
     }
-
     try {
       logger.info("Starting scheduled task...");
       schedulerService.processGoogleSheetsAndThumbPaths();

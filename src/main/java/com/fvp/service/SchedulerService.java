@@ -1,15 +1,12 @@
 package com.fvp.service;
 
-import com.fvp.controller.CacheController;
+import com.fvp.controller.CategoryController;
 import com.fvp.controller.ThumbPathGenerationController;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -20,7 +17,7 @@ public class SchedulerService {
 
   private final GoogleSheetProcessingService googleSheetProcessingService;
   private final ThumbPathGenerationController thumbPathGenerationController;
-  private final CacheController cacheController;
+  private final CategoryController categoryController;
   private static AtomicBoolean status = new AtomicBoolean(false);
 
   @Value("${scheduler.enabled:true}")
@@ -29,58 +26,27 @@ public class SchedulerService {
   public SchedulerService(
       GoogleSheetProcessingService googleSheetProcessingService,
       ThumbPathGenerationController thumbPathGenerationController,
-      CacheController cacheController) {
+      CategoryController categoryController) {
     this.googleSheetProcessingService = googleSheetProcessingService;
     this.thumbPathGenerationController = thumbPathGenerationController;
-    this.cacheController = cacheController;
-  }
-
-  @PostConstruct
-  public void init() {
-    if (!schedulerEnabled) {
-      logger.info("Scheduler is disabled via property 'scheduler.enabled=false'. Skipping PostConstruct execution.");
-      return;
-    }
-    
-    logger.info("Scheduler is enabled. Starting PostConstruct execution.");
-    new Thread(() -> {
-      while (true) {
-        try {
-          if (status.get() == true) {
-            logger.info("Execution already in progress, skipping this cycle");
-            continue;
-          }
-          status.set(true);
-          logger.info(
-              "Post Contruct Starting scheduled task for Google Sheets and Thumb Paths processing {} ", this.toString());
-          cacheController.clearAllCache();
-          logger.info("Running FED Build Re-Run");
-          fedBuildReRun();
-          Thread.sleep(1000 * 60 * 60 * 24); // Sleep for 1 day
-          status.set(false);
-        } catch (Exception e) {
-          logger.error("Error executing post contruct {}", e.getMessage(), e);
-          status.set(false);
-        }
-      }
-    }).start();
+    this.categoryController = categoryController;
   }
 
   public void processGoogleSheetsAndThumbPaths() {
     logger.info("Starting parallel processing of Google Sheets and Thumb Paths");
     if (googleSheetProcessingService.processGoogleSheets()) {
       thumbPathGenerationController.processAllThumbPaths();
-      cacheController.clearAllCache();
+      categoryController.buildSystemCache();
       fedBuildReRun();
     }
   }
 
   private void fedBuildReRun() {
-    // Execute deployment script
+    // Execute deployment script with root privileges
     try {
-      logger.info("Starting deployment script execution");
+      logger.info("Starting deployment script execution with root privileges");
       ProcessBuilder processBuilder = new ProcessBuilder(
-          "/apps/fvp/devops/fvp-devops/sync.sh");
+          "sudo", "/apps/fvp/devops/fvp-devops/sync.sh");
       processBuilder.inheritIO(); // This will show the output in the application logs
       Process process = processBuilder.start();
 
@@ -96,10 +62,10 @@ public class SchedulerService {
         throw new RuntimeException("Deployment script failed with exit code: " + exitCode);
       }
 
-      logger.info("Deployment script executed successfully");
+      logger.info("Deployment script executed successfully with root privileges");
     } catch (IOException | InterruptedException e) {
-      logger.error("Error executing deployment script: {}", e.getMessage(), e);
-      throw new RuntimeException("Failed to execute deployment script", e);
+      logger.error("Error executing deployment script with root privileges: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to execute deployment script with root privileges", e);
     }
   }
 } 

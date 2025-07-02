@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -22,11 +23,14 @@ public class ElasticsearchSyncController {
   }
 
   @PostMapping("/links")
-  public ResponseEntity<Map<String, Object>> syncLinks() {
+  public ResponseEntity<Map<String, Object>> syncLinks(@RequestParam(required = false) Integer startIndex) {
     Map<String, Object> response = new HashMap<>();
     try {
-      elasticsearchSyncService.syncAllLinksToElasticsearch();
+      elasticsearchSyncService.syncAllLinksToElasticsearch(startIndex);
       response.put("status", "success");
+      if (startIndex != null) {
+        response.put("startIndex", startIndex);
+      }
     } catch (Exception e) {
       response.put("status", "error");
       response.put("message", "Error syncing links: " + e.getMessage());
