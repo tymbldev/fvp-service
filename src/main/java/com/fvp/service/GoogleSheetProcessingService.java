@@ -245,7 +245,9 @@ public class GoogleSheetProcessingService {
 
   private List<Map<String, String>> fetchSheet(Sheets sheetsService, String sheetName,
       boolean statusSheet) throws IOException {
-    String range = sheetName + "!A2:Z";
+    // Properly escape sheet name for Google Sheets API
+    String escapedSheetName = escapeSheetName(sheetName);
+    String range = escapedSheetName + "!A2:Z";
     ValueRange response = sheetsService.spreadsheets().values()
         .get(spreadsheetId, range)
         .setKey(apiKey)
@@ -523,5 +525,18 @@ public class GoogleSheetProcessingService {
     return sheetsService;
   }
 
-
+  /**
+   * Escapes sheet name for Google Sheets API by wrapping in single quotes if needed
+   * Sheet names need to be escaped if they contain special characters like dots, spaces, etc.
+   */
+  private String escapeSheetName(String sheetName) {
+    // Check if sheet name contains characters that need escaping
+    if (sheetName.contains(".") || sheetName.contains(" ") || sheetName.contains("-") || 
+        sheetName.contains("_") || sheetName.contains("'") || sheetName.contains("\"")) {
+      // Escape single quotes by doubling them and wrap in single quotes
+      String escaped = sheetName.replace("'", "''");
+      return "'" + escaped + "'";
+    }
+    return sheetName;
+  }
 } 
