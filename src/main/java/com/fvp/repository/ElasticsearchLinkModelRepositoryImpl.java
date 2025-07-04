@@ -196,8 +196,8 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
     if (maxDuration != null) {
       boolQuery.must(QueryBuilders.rangeQuery("duration").lte(maxDuration));
     }
-    if (quality != null && !quality.isEmpty()) {
-      boolQuery.must(QueryBuilders.termQuery("quality", quality));
+    if (quality != null && !quality.isEmpty() && quality.toLowerCase().contains("hd")) {
+      boolQuery.must(QueryBuilders.termQuery("hd", 1));
     }
     if (excludeId != null) {
       boolQuery.mustNot(QueryBuilders.termQuery("linkId", excludeId.toString()));
@@ -240,8 +240,8 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
     if (maxDuration != null) {
       boolQuery.must(QueryBuilders.rangeQuery("duration").lte(maxDuration));
     }
-    if (quality != null && !quality.isEmpty()) {
-      boolQuery.must(QueryBuilders.termQuery("quality", quality));
+    if (quality != null && !quality.isEmpty() && quality.toLowerCase().contains("hd")) {
+      boolQuery.must(QueryBuilders.termQuery("hd", 1));
     }
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(boolQuery);
@@ -281,8 +281,8 @@ public class ElasticsearchLinkModelRepositoryImpl implements ElasticsearchLinkMo
     if (maxDuration != null) {
       boolQuery.must(QueryBuilders.rangeQuery("duration").lte(maxDuration));
     }
-    if (quality != null && !quality.isEmpty()) {
-      boolQuery.must(QueryBuilders.termQuery("quality", quality));
+    if (quality != null && !quality.isEmpty() && quality.toLowerCase().contains("hd")) {
+      boolQuery.must(QueryBuilders.termQuery("hd", 1));
     }
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(boolQuery);

@@ -357,8 +357,8 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             if (maxDuration != null) rangeQuery.lte(maxDuration);
             boolQuery.must(rangeQuery);
         }
-        if (quality != null && !quality.isEmpty()) {
-            boolQuery.must(org.elasticsearch.index.query.QueryBuilders.termQuery("quality", quality));
+        if (quality != null && !quality.isEmpty() && quality.toLowerCase().contains("hd")) {
+            boolQuery.must(org.elasticsearch.index.query.QueryBuilders.termQuery("hd", 1));
         }
         org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
         searchSourceBuilder.query(boolQuery);
@@ -403,8 +403,8 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             if (maxDuration != null) rangeQuery.lte(maxDuration);
             boolQuery.must(rangeQuery);
         }
-        if (quality != null && !quality.isEmpty()) {
-            boolQuery.must(org.elasticsearch.index.query.QueryBuilders.termQuery("quality", quality));
+        if (quality != null && !quality.isEmpty() && quality.toLowerCase().contains("hd")) {
+            boolQuery.must(org.elasticsearch.index.query.QueryBuilders.termQuery("hd", 1));
         }
         org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
         searchSourceBuilder.query(boolQuery);
@@ -445,8 +445,8 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             if (maxDuration != null) rangeQuery.lte(maxDuration);
             boolQuery.must(rangeQuery);
         }
-        if (quality != null && !quality.isEmpty()) {
-            boolQuery.must(org.elasticsearch.index.query.QueryBuilders.termQuery("quality", quality));
+        if (quality != null && !quality.isEmpty() && quality.toLowerCase().contains("hd")) {
+            boolQuery.must(org.elasticsearch.index.query.QueryBuilders.termQuery("hd", 1));
         }
         if (excludeId != null) {
             boolQuery.mustNot(org.elasticsearch.index.query.QueryBuilders.termQuery("linkId", excludeId.toString()));
