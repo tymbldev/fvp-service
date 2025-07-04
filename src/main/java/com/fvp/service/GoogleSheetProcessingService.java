@@ -120,7 +120,8 @@ public class GoogleSheetProcessingService {
       String sheetName = row.get(SHEET_NAME_COLUMN);
       String vetStatus = row.get(VET_STATUS_COLUMN);
 
-      if (sheetName == null || vetStatus == null || sheetName.equals(STATUS_SHEET_NAME) || sheetName.equalsIgnoreCase("sheetName")) {
+      if (sheetName == null || vetStatus == null || sheetName.equals(STATUS_SHEET_NAME)
+          || sheetName.equalsIgnoreCase("sheetName")) {
         continue;
       }
 
@@ -141,38 +142,42 @@ public class GoogleSheetProcessingService {
     boolean processed = false;
     // Process each approved sheet that hasn't been processed yet
     for (Map.Entry<String, Boolean> entry : sheetApprovalStatus.entrySet()) {
-      String sheetName = entry.getKey();
-      boolean isApproved = entry.getValue();
+      try {
+        String sheetName = entry.getKey();
+        boolean isApproved = entry.getValue();
 
-      // Skip if not approved
-      if (!isApproved) {
-        logger.info("Skipping unapproved sheet: {}", sheetName);
+        // Skip if not approved
+        if (!isApproved) {
+          logger.info("Skipping unapproved sheet: {}", sheetName);
 
-        // Record that we've checked this sheet and it's not approved
-        markSheetAsProcessed(sheetName, false, 0);
-        continue;
+          // Record that we've checked this sheet and it's not approved
+          markSheetAsProcessed(sheetName, false, 0);
+          continue;
+        }
+
+        // Skip if not in date format
+        if (!isDateFormattedSheet(sheetName)) {
+          logger.info("Skipping non-date-formatted sheet: {}", sheetName);
+          continue;
+        }
+
+        // Skip if already processed
+        if (isSheetAlreadyProcessed(sheetName)) {
+          logger.info("Skipping already processed sheet: {}", sheetName);
+          continue;
+        }
+
+        // Fetch and process the sheet
+        logger.info("Processing approved sheet: {}", sheetName);
+        List<Map<String, String>> rows = fetchSheet(sheetsService, sheetName, false);
+        List<Link> sheetLinks = processSheet(spreadsheetId, sheetName, rows);
+        allLinks.addAll(sheetLinks);
+        // Mark sheet as processed
+        markSheetAsProcessed(sheetName, true, rows.size());
+        processed = true;
+      } catch (Exception e) {
+        logger.error("Exception came while processing sheet with name : " + entry.getKey(), e);
       }
-
-      // Skip if not in date format
-      if (!isDateFormattedSheet(sheetName)) {
-        logger.info("Skipping non-date-formatted sheet: {}", sheetName);
-        continue;
-      }
-
-      // Skip if already processed
-      if (isSheetAlreadyProcessed(sheetName)) {
-        logger.info("Skipping already processed sheet: {}", sheetName);
-        continue;
-      }
-
-      // Fetch and process the sheet
-      logger.info("Processing approved sheet: {}", sheetName);
-      List<Map<String, String>> rows = fetchSheet(sheetsService, sheetName, false);
-      List<Link> sheetLinks = processSheet(spreadsheetId, sheetName, rows);
-      allLinks.addAll(sheetLinks);
-      // Mark sheet as processed
-      markSheetAsProcessed(sheetName, true, rows.size());
-      processed = true;
     }
     return processed;
   }
