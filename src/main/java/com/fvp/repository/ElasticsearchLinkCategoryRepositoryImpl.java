@@ -366,6 +366,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         searchSourceBuilder.size(limit);
         searchSourceBuilder.sort("hd", org.elasticsearch.search.sort.SortOrder.DESC);
         searchSourceBuilder.sort("trailerPresent", org.elasticsearch.search.sort.SortOrder.DESC);
+        searchSourceBuilder.sort("randomOrder", org.elasticsearch.search.sort.SortOrder.ASC);
 
         List<LinkDocument> results = new java.util.ArrayList<>();
         try {
@@ -457,6 +458,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         searchSourceBuilder.size(limit);
         searchSourceBuilder.sort("hd", org.elasticsearch.search.sort.SortOrder.DESC);
         searchSourceBuilder.sort("trailerPresent", org.elasticsearch.search.sort.SortOrder.DESC);
+        searchSourceBuilder.sort("randomOrder", org.elasticsearch.search.sort.SortOrder.ASC);
 
         List<LinkDocument> results = new java.util.ArrayList<>();
         try {

@@ -141,6 +141,8 @@ public class CategoryUtilService {
         }
       }
       if (includeFirstLink) {
+        logger.info("Including first link in page content for tenant {} and category {}",
+            tenantId, categoryName);
         // If first page has only one item (pageSize=1), we're done
         if (pageable.getPageSize() == 1) {
           Page<CategoryWithLinkDTO> result = new PageImpl<>(pageContent, pageable, totalCount);
