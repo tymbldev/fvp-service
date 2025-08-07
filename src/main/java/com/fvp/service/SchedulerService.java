@@ -4,7 +4,7 @@ import com.fvp.controller.CategoryController;
 import com.fvp.controller.ThumbPathGenerationController;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SchedulerService {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchedulerService.class);
+  private static final Logger logger = LoggingUtil.getLogger(SchedulerService.class);
 
   private final GoogleSheetProcessingService googleSheetProcessingService;
   private final ThumbPathGenerationController thumbPathGenerationController;

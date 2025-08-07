@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LinkCategoryService {
 
-  private static final Logger logger = LoggerFactory.getLogger(LinkCategoryService.class);
+  private static final Logger logger = LoggingUtil.getLogger(LinkCategoryService.class);
   private static final String LINK_CATEGORY_CACHE = "linkCategory";
   private static final String CATEGORY_COUNT_CACHE = "categoryCount";
   private static final String CATEGORIES_CACHE = "categories";

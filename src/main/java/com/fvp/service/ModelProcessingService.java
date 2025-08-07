@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +21,7 @@ public class ModelProcessingService {
   @Autowired
   Util util;
 
-  private static final Logger logger = LoggerFactory.getLogger(ModelProcessingService.class);
+  private static final Logger logger = LoggingUtil.getLogger(ModelProcessingService.class);
 
   private final ModelService modelService;
 

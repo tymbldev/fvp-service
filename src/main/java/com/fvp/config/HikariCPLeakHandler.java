@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.context.annotation.Bean;
@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class HikariCPLeakHandler {
 
-  private static final Logger logger = LoggerFactory.getLogger(HikariCPLeakHandler.class);
+  private static final Logger logger = LoggingUtil.getLogger(HikariCPLeakHandler.class);
 
   @Autowired
   private DataSourceProperties dataSourceProperties;

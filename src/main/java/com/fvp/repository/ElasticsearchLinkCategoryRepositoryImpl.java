@@ -3,7 +3,7 @@ package com.fvp.repository;
 import com.fvp.document.LinkDocument;
 import com.fvp.service.ElasticsearchClientService;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -16,7 +16,7 @@ import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 @Repository
 public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLinkCategoryRepository {
 
-    private static final Logger log = LoggerFactory.getLogger(ElasticsearchLinkCategoryRepositoryImpl.class);
+    private static final Logger log = LoggingUtil.getLogger(ElasticsearchLinkCategoryRepositoryImpl.class);
     private final ElasticsearchClientService elasticsearchClientService;
 
     @Autowired

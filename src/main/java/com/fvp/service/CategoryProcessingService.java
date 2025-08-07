@@ -14,13 +14,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CategoryProcessingService {
 
-  private static final Logger logger = LoggerFactory.getLogger(CategoryProcessingService.class);
+  private static final Logger logger = LoggingUtil.getLogger(CategoryProcessingService.class);
 
   private final LinkProcessingService linkProcessingService;
   private final AllCatRepository allCatRepository;

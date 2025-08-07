@@ -11,7 +11,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,7 +49,7 @@ import net.coobird.thumbnailator.Thumbnails;
 @RequestMapping("/api/thumbs")
 public class ThumbPathGenerationController {
 
-  private static final Logger logger = LoggerFactory.getLogger(ThumbPathGenerationController.class);
+  private static final Logger logger = LoggingUtil.getLogger(ThumbPathGenerationController.class);
   private static final String THUMBS_DIR = "/apps/fvp/thumbs";
   private static final int BATCH_SIZE = 50;
   private static final int NUM_THREADS = 20;

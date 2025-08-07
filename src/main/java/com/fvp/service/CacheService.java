@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
@@ -26,7 +26,7 @@ public class CacheService {
 
   private final JedisPool jedisPool;
   private final ObjectMapper objectMapper;
-  private static final Logger logger = LoggerFactory.getLogger(CacheService.class);
+  private static final Logger logger = LoggingUtil.getLogger(CacheService.class);
 
   @Autowired
   public CacheService(JedisPool jedisPool, ObjectMapper objectMapper) {

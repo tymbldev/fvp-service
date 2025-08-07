@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,7 +34,7 @@ public class CategoryController {
 
   private final CategoryService categoryService;
   private final CategoryUtilService categoryUtilService;
-  private static final Logger logger = LoggerFactory.getLogger(CategoryController.class);
+  private static final Logger logger = LoggingUtil.getLogger(CategoryController.class);
 
   @Autowired
   private ExecutorService executorService;

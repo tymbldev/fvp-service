@@ -1,6 +1,8 @@
 package com.fvp.controller;
 
+import com.fvp.service.CategoryUtilService;
 import com.fvp.service.SchedulerService;
+import com.fvp.util.LoggingUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,13 +11,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 
 @RestController
 @RequestMapping("/api/scheduler")
 public class SchedulerController {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchedulerController.class);
+  private static final Logger logger = LoggingUtil.getLogger(SchedulerController.class);
+  
   private final SchedulerService schedulerService;
 
 

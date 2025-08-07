@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/models")
 public class ModelController {
 
-  private static final Logger logger = LoggerFactory.getLogger(ModelController.class);
+  private static final Logger logger = LoggingUtil.getLogger(ModelController.class);
 
   @Autowired
   private ModelService modelService;

@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ModelUtilService {
 
-  private static final Logger logger = LoggerFactory.getLogger(ModelUtilService.class);
+  private static final Logger logger = LoggingUtil.getLogger(ModelUtilService.class);
   private static final String MODEL_LINKS_CACHE = "modelLinks";
 
   @Autowired

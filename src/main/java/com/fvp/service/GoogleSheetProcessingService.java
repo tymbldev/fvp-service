@@ -26,7 +26,7 @@ import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -35,7 +35,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class GoogleSheetProcessingService {
 
-  private static final Logger logger = LoggerFactory.getLogger(GoogleSheetProcessingService.class);
+  private static final Logger logger = LoggingUtil.getLogger(GoogleSheetProcessingService.class);
   private static final String STATUS_SHEET_NAME = "status";
   private static final String VET_STATUS_COLUMN = "Validated";
   private static final String SHEET_NAME_COLUMN = "SheetName";

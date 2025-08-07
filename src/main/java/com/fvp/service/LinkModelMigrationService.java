@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LinkModelMigrationService {
 
-  private static final Logger logger = LoggerFactory.getLogger(LinkModelMigrationService.class);
+  private static final Logger logger = LoggingUtil.getLogger(LinkModelMigrationService.class);
   private static final int BATCH_SIZE = 1000;
 
   @Value("${migration.model.chunkSize:100}")

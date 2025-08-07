@@ -4,7 +4,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class GoogleSheetsConfig {
 
-  private static final Logger logger = LoggerFactory.getLogger(GoogleSheetsConfig.class);
+  private static final Logger logger = LoggingUtil.getLogger(GoogleSheetsConfig.class);
 
   @Value("${google.sheets.api.key:}")
   private String apiKey;

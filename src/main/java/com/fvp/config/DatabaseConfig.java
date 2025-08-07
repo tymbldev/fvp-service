@@ -2,7 +2,7 @@ package com.fvp.config;
 
 import javax.sql.DataSource;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.context.annotation.Bean;
@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Configuration
 public class DatabaseConfig {
 
-  private static final Logger logger = LoggerFactory.getLogger(DatabaseConfig.class);
+  private static final Logger logger = LoggingUtil.getLogger(DatabaseConfig.class);
 
   @Autowired
   private Environment env;

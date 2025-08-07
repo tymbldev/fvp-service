@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -12,7 +12,7 @@ import redis.clients.jedis.JedisPool;
 @Service
 public class RedisService {
 
-  private static final Logger logger = LoggerFactory.getLogger(RedisService.class);
+  private static final Logger logger = LoggingUtil.getLogger(RedisService.class);
   private final JedisPool jedisPool;
   private final ObjectMapper objectMapper;
 

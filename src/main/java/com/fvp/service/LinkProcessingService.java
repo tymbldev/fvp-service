@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class LinkProcessingService {
 
-  private static final Logger logger = LoggerFactory.getLogger(LinkProcessingService.class);
+  private static final Logger logger = LoggingUtil.getLogger(LinkProcessingService.class);
   private static final Pattern WORD_PATTERN = Pattern.compile("\\w+");
   private static final Pattern TOKEN_PATTERN = Pattern.compile("[\\s,.-]+");
   private final Random random = new Random();

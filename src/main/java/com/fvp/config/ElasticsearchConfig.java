@@ -14,7 +14,7 @@ import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.xcontent.XContentType;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -25,7 +25,7 @@ import org.springframework.util.StreamUtils;
 @Configuration
 public class ElasticsearchConfig {
 
-  private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConfig.class);
+  private static final Logger logger = LoggingUtil.getLogger(ElasticsearchConfig.class);
 
   @Value("${spring.elasticsearch.uris:http://localhost:9200}")
   private String elasticsearchUri;

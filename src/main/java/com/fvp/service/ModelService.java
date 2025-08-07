@@ -14,7 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ModelService {
 
-  private static final Logger logger = LoggerFactory.getLogger(ModelService.class);
+  private static final Logger logger = LoggingUtil.getLogger(ModelService.class);
   private static final String MODEL_CACHE_PREFIX = "model_";
   private static final int CACHE_EXPIRY_MINUTES = 60;
 
