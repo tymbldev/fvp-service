@@ -133,7 +133,7 @@ public class LinkProcessingService {
       } else {
         // Save the new link
         logger.info("Creating new link with title '{}' and URL: {}", link.getTitle(), link.getLink());
-        long saveStartMs = System.currentTimeMillis();
+        saveStartMs = System.currentTimeMillis();
         link = linkRepository.saveAndFlush(link); // Use saveAndFlush instead of save
         saveLinkTimeMs = System.currentTimeMillis() - saveStartMs;
         logger.debug("New link creation completed in {} ms with ID: {}", saveLinkTimeMs, link.getId());
