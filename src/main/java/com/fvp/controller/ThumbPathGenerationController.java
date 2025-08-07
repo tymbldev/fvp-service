@@ -78,6 +78,9 @@ public class ThumbPathGenerationController {
 
   @GetMapping("/process")
   public ResponseEntity<Map<String, Object>> processAllThumbPaths() {
+    logger.info("Received request to process all thumbnails");
+    long startTime = System.currentTimeMillis();
+    
     // Create thumbs directory if it doesn't exist
     File thumbsDirectory = new File(thumbsDir);
     if (!thumbsDirectory.exists()) {
@@ -161,6 +164,12 @@ public class ThumbPathGenerationController {
       }
     }
     long totalDuration = System.currentTimeMillis() - globalStartTime;
+    long requestDuration = System.currentTimeMillis() - startTime;
+    
+    logger.info("Thumbnail processing completed - Total records: {}, Processed: {}, Failed: {}, Total duration: {} seconds, Request duration: {} ms", 
+        totalRecords, totalProcessed.get(), totalFailed.get(), 
+        TimeUnit.MILLISECONDS.toSeconds(totalDuration), requestDuration);
+    
     Map<String, Object> response = new HashMap<>();
     response.put("message", "Processing completed");
     response.put("totalRecords", totalRecords);

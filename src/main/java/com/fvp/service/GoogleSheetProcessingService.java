@@ -358,7 +358,7 @@ public class GoogleSheetProcessingService {
 
   private List<Link> processSheet(String workbookId, String sheetName,
       List<Map<String, String>> rows) {
-    logger.info("Processing approved sheet: {} with {} rows", sheetName, rows.size());
+    logger.info("Processing approved sheet: {} with {} rows from workbook: {}", sheetName, rows.size(), workbookId);
     List<Link> links = new ArrayList<>();
 
     // Track total processing time
@@ -366,6 +366,9 @@ public class GoogleSheetProcessingService {
     int successCount = 0;
     int failureCount = 0;
     boolean processModelsAndCategory = false;
+    
+    logger.debug("Starting sheet processing - workbookId: {}, sheetName: {}, rowCount: {}", 
+        workbookId, sheetName, rows.size());
 
     try {
       // Process each row individually
@@ -391,10 +394,11 @@ public class GoogleSheetProcessingService {
 
             // Update progress every 10 records
             if (successCount % 1000 == 0) {
+              logger.info("Progress update - processed {} rows for sheet: {}", successCount, sheetName);
               updateSheetStatus(sheetName, 1, successCount);
             }
 
-            logger.info("Row processed successfully in {} ms: {} (title: {})",
+            logger.debug("Row processed successfully in {} ms: {} (title: {})",
                 processingTimeMs, link.getLink(), link.getTitle());
           }
         } catch (Exception e) {
@@ -417,9 +421,9 @@ public class GoogleSheetProcessingService {
         double avgProcessingTimeMs =
             rows.size() > 0 ? (double) totalProcessingTimeMs / rows.size() : 0;
         logger.info(
-            "Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row)",
+            "Sheet {} processing complete: {} rows processed ({} success, {} failures) in {} ms (avg: {} ms/row) - workbookId: {}",
             sheetName, rows.size(), successCount, failureCount, totalProcessingTimeMs,
-            avgProcessingTimeMs);
+            avgProcessingTimeMs, workbookId);
       }
 
       return links;

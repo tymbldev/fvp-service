@@ -42,18 +42,26 @@ public class CacheService {
 
     try {
       String cacheKey = generateCacheKey(cacheName, key);
+      logger.debug("Attempting to get from cache - cacheName: {}, key: {}, fullKey: {}", cacheName, key, cacheKey);
+      
       String cachedValue;
+      long startTime = System.currentTimeMillis();
 
       try (Jedis jedis = jedisPool.getResource()) {
         cachedValue = jedis.get(cacheKey);
       }
 
+      long duration = System.currentTimeMillis() - startTime;
+      
       if (cachedValue == null) {
+        logger.debug("Cache MISS for cacheName: {}, key: {} (took {} ms)", cacheName, key, duration);
         return Optional.empty();
       }
+      
+      logger.debug("Cache HIT for cacheName: {}, key: {} (took {} ms)", cacheName, key, duration);
       return Optional.of(objectMapper.readValue(cachedValue, type));
     } catch (Exception e) {
-      logger.error("Error getting value from cache: {}", e.getMessage());
+      logger.error("Error getting value from cache for cacheName: {}, key: {}: {}", cacheName, key, e.getMessage(), e);
       return Optional.empty();
     }
   }
@@ -85,13 +93,19 @@ public class CacheService {
   public <T> void putInCache(String cacheName, String key, T value) {
     try {
       String fullKey = generateCacheKey(cacheName, key);
+      logger.debug("Putting value in cache - cacheName: {}, key: {}, fullKey: {}", cacheName, key, fullKey);
+      
       String jsonValue = objectMapper.writeValueAsString(value);
+      long startTime = System.currentTimeMillis();
 
       try (Jedis jedis = jedisPool.getResource()) {
         jedis.setex(fullKey, (int) DEFAULT_CACHE_TTL, jsonValue);
       }
+      
+      long duration = System.currentTimeMillis() - startTime;
+      logger.debug("Successfully put value in cache - cacheName: {}, key: {} (took {} ms)", cacheName, key, duration);
     } catch (Exception e) {
-      // Silently handle exceptions
+      logger.error("Error putting value in cache for cacheName: {}, key: {}: {}", cacheName, key, e.getMessage(), e);
     }
   }
 

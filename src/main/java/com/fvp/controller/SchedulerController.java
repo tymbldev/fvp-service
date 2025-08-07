@@ -16,10 +16,7 @@ import org.slf4j.LoggerFactory;
 public class SchedulerController {
 
   private static final Logger logger = LoggerFactory.getLogger(SchedulerController.class);
-  private final SchedulerService schedulerService;
-
-  @Value("${scheduler.enabled}") // Default 8 hours in milliseconds
-  private Boolean enabled;
+  private final SchedulerService schedulerService;H
 
 
   public SchedulerController(SchedulerService schedulerService) {
@@ -29,10 +26,6 @@ public class SchedulerController {
   @GetMapping("/trigger")
   public ResponseEntity<String> trigger() {
 
-    // Only run in production environment
-    if (!true == enabled) {
-      return ResponseEntity.ok("Scheduler is disabled for non-production environment");
-    }
     try {
       logger.info("Starting scheduled task...");
       schedulerService.processGoogleSheetsAndThumbPaths();
@@ -46,13 +39,9 @@ public class SchedulerController {
 
   @GetMapping("/trigger-async")
   public ResponseEntity<String> triggerAsync() {
-    // Only run in production environment
-    if (!true == enabled) {
-      return ResponseEntity.ok("Scheduler is disabled for non-production environment");
-    }
-
     new Thread(() -> {
       try {
+        logger.info("flag is off..");
         logger.info("Starting scheduled task in background...");
         schedulerService.processGoogleSheetsAndThumbPaths();
         logger.info("Background scheduled task completed successfully");
@@ -66,11 +55,6 @@ public class SchedulerController {
 
   @GetMapping("/trigger-thumb-async")
   public ResponseEntity<String> processOnlyThumbPath() {
-    // Only run in production environment
-    if (!true == enabled) {
-      return ResponseEntity.ok("Scheduler is disabled for non-production environment");
-    }
-
     new Thread(() -> {
       try {
         logger.info("Starting scheduled task in background...");

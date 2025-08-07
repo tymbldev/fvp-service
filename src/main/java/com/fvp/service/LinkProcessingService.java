@@ -89,22 +89,25 @@ public class LinkProcessingService {
       return;
     }
 
+    logger.info("Starting to process link: {} with title: '{}'", link.getLink(), link.getTitle());
     long startTimeMs = System.currentTimeMillis();
     long checkExistingTimeMs = 0;
     long saveLinkTimeMs = 0;
 
     try {
       // Check if link with same URL already exists
+      logger.debug("Checking if link already exists: {}", link.getLink());
       long checkStartMs = System.currentTimeMillis();
       Link existingLink = linkRepository.findByLink(link.getLink());
       checkExistingTimeMs = System.currentTimeMillis() - checkStartMs;
 
       long saveStartMs = System.currentTimeMillis();
       if (existingLink != null) {
-        logger.info("Found existing link with URL '{}', updating instead of creating new",
-            link.getLink());
+        logger.info("Found existing link with URL '{}' (ID: {}), updating instead of creating new",
+            link.getLink(), existingLink.getId());
 
         // Update existing link with new data
+        logger.debug("Updating existing link fields for ID: {}", existingLink.getId());
         existingLink.setTitle(link.getTitle());
         existingLink.setTrailer(link.getTrailer());
         existingLink.setTrailerPresent(link.getTrailerPresent());
@@ -121,13 +124,21 @@ public class LinkProcessingService {
         logger.info("Updating link table: 1 entry with ID {} and title '{}'", existingLink.getId(),
             existingLink.getTitle());
         link = linkRepository.saveAndFlush(existingLink); // Use saveAndFlush instead of save
+        saveLinkTimeMs = System.currentTimeMillis() - saveStartMs;
+        logger.debug("Link update completed in {} ms", saveLinkTimeMs);
 
         // Update Elasticsearch document
+        logger.debug("Updating Elasticsearch document for link ID: {}", link.getId());
         updateElasticsearchDocument(link);
       } else {
         // Save the new link
-        logger.info("Saving to link table: 1 entry with title '{}'", link.getTitle());
+        logger.info("Creating new link with title '{}' and URL: {}", link.getTitle(), link.getLink());
+        long saveStartMs = System.currentTimeMillis();
         link = linkRepository.saveAndFlush(link); // Use saveAndFlush instead of save
+        saveLinkTimeMs = System.currentTimeMillis() - saveStartMs;
+        logger.debug("New link creation completed in {} ms with ID: {}", saveLinkTimeMs, link.getId());
+        
+        logger.debug("Updating Elasticsearch document for new link ID: {}", link.getId());
         updateElasticsearchDocument(link);
       }
       saveLinkTimeMs = System.currentTimeMillis() - saveStartMs;
@@ -236,7 +247,7 @@ public class LinkProcessingService {
   /**
    * Refreshes the categories cache every hour
    */
-//@Scheduled(fixedRate = 3600000) // 1 hour
+
   public void refreshCategoriesCache() {
     logger.info("Refreshing categories cache");
     categoriesCache.clear();

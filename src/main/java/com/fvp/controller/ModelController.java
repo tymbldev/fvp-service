@@ -40,16 +40,47 @@ public class ModelController {
   @GetMapping("/all")
   public ResponseEntity<List<ModelWithoutLinkDTO>> getHomeModels(
       @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
-    List<ModelWithoutLinkDTO> models = modelService.getAllModels(tenantId);
-    return ResponseEntity.ok(models);
+    logger.info("Received request for all models with tenantId: {}", tenantId);
+    long startTime = System.currentTimeMillis();
+    
+    try {
+      List<ModelWithoutLinkDTO> models = modelService.getAllModels(tenantId);
+      long duration = System.currentTimeMillis() - startTime;
+      logger.info("Successfully retrieved {} models for tenantId: {} in {} ms", 
+          models.size(), tenantId, duration);
+      return ResponseEntity.ok(models);
+    } catch (Exception e) {
+      long duration = System.currentTimeMillis() - startTime;
+      logger.error("Error retrieving all models for tenantId: {} after {} ms: {}", 
+          tenantId, duration, e.getMessage(), e);
+      throw e;
+    }
   }
 
   @GetMapping("/{modelName}/first")
   public ResponseEntity<ModelWithLinkDTO> getModelFirstLink(
       @PathVariable String modelName,
       @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") Integer tenantId) {
-    ModelWithLinkDTO model = modelService.getModelFirstLink(tenantId, modelName);
-    return ResponseEntity.ok(model);
+    logger.info("Received request for first link of model: {} with tenantId: {}", modelName, tenantId);
+    long startTime = System.currentTimeMillis();
+    
+    try {
+      ModelWithLinkDTO model = modelService.getModelFirstLink(tenantId, modelName);
+      long duration = System.currentTimeMillis() - startTime;
+      if (model != null) {
+        logger.info("Successfully retrieved first link for model: {} (tenantId: {}) in {} ms", 
+            modelName, tenantId, duration);
+      } else {
+        logger.warn("No first link found for model: {} (tenantId: {}) in {} ms", 
+            modelName, tenantId, duration);
+      }
+      return ResponseEntity.ok(model);
+    } catch (Exception e) {
+      long duration = System.currentTimeMillis() - startTime;
+      logger.error("Error retrieving first link for model: {} (tenantId: {}) after {} ms: {}", 
+          modelName, tenantId, duration, e.getMessage(), e);
+      throw e;
+    }
   }
 
   @GetMapping("/{modelName}/links")
@@ -59,9 +90,23 @@ public class ModelController {
       @RequestParam(required = false) Integer maxDuration,
       @RequestParam(required = false) String quality,
       @PageableDefault(size = 20, sort = "randomOrder") Pageable pageable) {
-    Page<ModelLinksResponseDTO> links = modelUtilService.getModelLinks(tenantId, modelName, pageable,
-        maxDuration, quality);
-    return ResponseEntity.ok(links);
+    logger.info("Received request for model links - model: {}, tenantId: {}, maxDuration: {}, quality: {}, page: {}, size: {}", 
+        modelName, tenantId, maxDuration, quality, pageable.getPageNumber(), pageable.getPageSize());
+    long startTime = System.currentTimeMillis();
+    
+    try {
+      Page<ModelLinksResponseDTO> links = modelUtilService.getModelLinks(tenantId, modelName, pageable,
+          maxDuration, quality);
+      long duration = System.currentTimeMillis() - startTime;
+      logger.info("Successfully retrieved {} model links for model: {} (tenantId: {}) in {} ms. Total elements: {}, total pages: {}", 
+          links.getContent().size(), modelName, tenantId, duration, links.getTotalElements(), links.getTotalPages());
+      return ResponseEntity.ok(links);
+    } catch (Exception e) {
+      long duration = System.currentTimeMillis() - startTime;
+      logger.error("Error retrieving model links for model: {} (tenantId: {}) after {} ms: {}", 
+          modelName, tenantId, duration, e.getMessage(), e);
+      throw e;
+    }
   }
 
 }

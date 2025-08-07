@@ -26,11 +26,15 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
 
     @Override
     public Optional<LinkDocument> findRandomRecentLinkByCategory(Integer tenantId, String category, Long recentDays) {
+        log.info("Starting findRandomRecentLinkByCategory - tenantId: {}, category: {}, recentDays: {}", tenantId, category, recentDays);
+        long startTime = System.currentTimeMillis();
+        
         // Calculate date threshold
         java.util.Date thresholdDate = java.util.Date.from(java.time.LocalDateTime.now()
                 .minusDays(recentDays)
                 .atZone(java.time.ZoneId.systemDefault())
                 .toInstant());
+        log.debug("Calculated threshold date: {} for recentDays: {}", thresholdDate, recentDays);
 
         // Build ES query
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()
@@ -42,6 +46,8 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", ""))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "NA"))
                         .should(org.elasticsearch.index.query.QueryBuilders.termQuery("thumbPath", "null")));
+        
+        log.debug("Built Elasticsearch query for findRandomRecentLinkByCategory");
 
         // First, get the total count for this query
         org.elasticsearch.search.builder.SearchSourceBuilder countBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
@@ -110,6 +116,10 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             log.error("Error in findRandomRecentLinkByCategory for tenantId: {}, category: {}, recentDays: {}", 
                     tenantId, category, recentDays, e);
         }
+        
+        long totalDuration = System.currentTimeMillis() - startTime;
+        log.info("findRandomRecentLinkByCategory completed in {} ms for tenantId: {}, category: {}", 
+            totalDuration, tenantId, category);
         return Optional.empty();
     }
 

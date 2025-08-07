@@ -169,14 +169,25 @@ public class ElasticsearchSyncService {
    */
   @Transactional(readOnly = true)
   private void processLinksBatch(List<Link> links) {
+    logger.debug("Processing batch of {} links for Elasticsearch sync", links.size());
+    long startTime = System.currentTimeMillis();
+    int successCount = 0;
+    int errorCount = 0;
+    
     for (Link link : links) {
       try {
-        logger.info("Processing link ID into elastic: {}", link.getId());
+        logger.debug("Processing link ID {} into Elasticsearch", link.getId());
         linkProcessingService.updateElasticsearchDocument(link);
+        successCount++;
       } catch (Exception e) {
         logger.error("Error creating document for link ID {}: {}", link.getId(), e.getMessage(), e);
+        errorCount++;
       }
     }
+    
+    long duration = System.currentTimeMillis() - startTime;
+    logger.info("Batch processing completed - Success: {}, Errors: {}, Duration: {} ms", 
+        successCount, errorCount, duration);
   }
 
 
