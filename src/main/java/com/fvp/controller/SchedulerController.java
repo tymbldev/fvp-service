@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 public class SchedulerController {
 
   private static final Logger logger = LoggerFactory.getLogger(SchedulerController.class);
-  private final SchedulerService schedulerService;H
+  private final SchedulerService schedulerService;
 
 
   public SchedulerController(SchedulerService schedulerService) {
