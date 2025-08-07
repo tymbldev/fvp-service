@@ -34,12 +34,16 @@ public class SchedulerService {
 
   public void processGoogleSheetsAndThumbPaths() {
     logger.info("Starting parallel processing of Google Sheets and Thumb Paths");
-    if (googleSheetProcessingService.processGoogleSheets()) {
-      thumbPathGenerationController.processAllThumbPaths();
-      categoryController.buildSystemCache();
-      fedBuildReRun();
-    }
+    googleSheetProcessingService.processGoogleSheets();
   }
+
+  public void processOnlyThumbPath() {
+    logger.info("Starting thumb path processing");
+    thumbPathGenerationController.processAllThumbPaths();
+    categoryController.buildSystemCache();
+    fedBuildReRun();
+  }
+
 
   private void fedBuildReRun() {
     // Execute deployment script with root privileges

@@ -63,4 +63,25 @@ public class SchedulerController {
 
     return ResponseEntity.ok("Scheduled task started in background");
   }
+
+  @GetMapping("/trigger-thumb-async")
+  public ResponseEntity<String> processOnlyThumbPath() {
+    // Only run in production environment
+    if (!true == enabled) {
+      return ResponseEntity.ok("Scheduler is disabled for non-production environment");
+    }
+
+    new Thread(() -> {
+      try {
+        logger.info("Starting scheduled task in background...");
+        schedulerService.processOnlyThumbPath();
+        logger.info("Background scheduled task completed successfully");
+      } catch (Exception e) {
+        logger.error("Error in background scheduled task: {}", e.getMessage(), e);
+      }
+    }).start();
+
+    return ResponseEntity.ok("Scheduled task started in background");
+  }
+
 } 
