@@ -23,6 +23,9 @@ public class SchedulerService {
   @Value("${scheduler.enabled:true}")
   private boolean schedulerEnabled;
 
+  private AtomicBoolean processing = new AtomicBoolean(false);
+
+
   public SchedulerService(
       GoogleSheetProcessingService googleSheetProcessingService,
       ThumbPathGenerationController thumbPathGenerationController,
@@ -51,11 +54,22 @@ public class SchedulerService {
         logger.error("Failed to process thumb path for link ID: {}", linkId);
       }
     } else {
-      logger.info("Starting thumb path processing for all links");
-      thumbPathGenerationController.processAllThumbPaths();
+      synchronized (processing) {
+        try {
+          if (processing.get()) {
+            logger.warn("Processing is already in progress. Skipping new request.");
+            return;
+          }
+          processing.set(true);
+          logger.info("Starting thumb path processing for all links");
+          thumbPathGenerationController.processAllThumbPaths();
+          categoryController.buildSystemCache();
+          fedBuildReRun();
+        } finally {
+          processing.set(false);
+        }
+      }
     }
-    categoryController.buildSystemCache();
-    fedBuildReRun();
   }
 
 
