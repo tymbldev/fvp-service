@@ -6,6 +6,7 @@ import com.fvp.util.LoggingUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -57,18 +58,48 @@ public class SchedulerController {
   }
 
   @GetMapping("/trigger-thumb-async")
-  public ResponseEntity<String> processOnlyThumbPath() {
+  public ResponseEntity<String> processOnlyThumbPath(@RequestParam(required = false) Integer linkId) {
     new Thread(() -> {
       try {
-        logger.info("Starting scheduled task in background...");
-        schedulerService.processOnlyThumbPath();
-        logger.info("Background scheduled task completed successfully");
+        if (linkId != null) {
+          logger.info("Starting scheduled task in background for link ID: {}", linkId);
+          schedulerService.processOnlyThumbPath(linkId);
+          logger.info("Background scheduled task completed successfully for link ID: {}", linkId);
+        } else {
+          logger.info("Starting scheduled task in background for all links");
+          schedulerService.processOnlyThumbPath();
+          logger.info("Background scheduled task completed successfully for all links");
+        }
       } catch (Exception e) {
         logger.error("Error in background scheduled task: {}", e.getMessage(), e);
       }
     }).start();
 
-    return ResponseEntity.ok("Scheduled task started in background");
+    if (linkId != null) {
+      return ResponseEntity.ok("Scheduled task started in background for link ID: " + linkId);
+    } else {
+      return ResponseEntity.ok("Scheduled task started in background for all links");
+    }
+  }
+
+  @GetMapping("/trigger-thumb-sync")
+  public ResponseEntity<String> processOnlyThumbPathSync(@RequestParam(required = false) Integer linkId) {
+    try {
+      if (linkId != null) {
+        logger.info("Starting synchronous thumb path processing for link ID: {}", linkId);
+        schedulerService.processOnlyThumbPath(linkId);
+        logger.info("Synchronous thumb path processing completed successfully for link ID: {}", linkId);
+        return ResponseEntity.ok("Thumb path processing completed successfully for link ID: " + linkId);
+      } else {
+        logger.info("Starting synchronous thumb path processing for all links");
+        schedulerService.processOnlyThumbPath();
+        logger.info("Synchronous thumb path processing completed successfully for all links");
+        return ResponseEntity.ok("Thumb path processing completed successfully for all links");
+      }
+    } catch (Exception e) {
+      logger.error("Error in synchronous thumb path processing: {}", e.getMessage(), e);
+      return ResponseEntity.status(500).body("Error during processing: " + e.getMessage());
+    }
   }
 
 } 

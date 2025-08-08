@@ -38,8 +38,22 @@ public class SchedulerService {
   }
 
   public void processOnlyThumbPath() {
-    logger.info("Starting thumb path processing");
-    thumbPathGenerationController.processAllThumbPaths();
+    processOnlyThumbPath(null);
+  }
+
+  public void processOnlyThumbPath(Integer linkId) {
+    if (linkId != null) {
+      logger.info("Starting thumb path processing for specific link ID: {}", linkId);
+      boolean success = thumbPathGenerationController.processLinkById(linkId);
+      if (success) {
+        logger.info("Successfully processed thumb path for link ID: {}", linkId);
+      } else {
+        logger.error("Failed to process thumb path for link ID: {}", linkId);
+      }
+    } else {
+      logger.info("Starting thumb path processing for all links");
+      thumbPathGenerationController.processAllThumbPaths();
+    }
     categoryController.buildSystemCache();
     fedBuildReRun();
   }

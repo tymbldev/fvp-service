@@ -641,6 +641,100 @@
             "description": "Trigger the scheduler asynchronously"
           },
           "response": []
+        },
+        {
+          "name": "Trigger Thumbnail Processing Async",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/scheduler/trigger-thumb-async",
+              "host": ["{{base_url}}"],
+              "path": ["api", "scheduler", "trigger-thumb-async"]
+            },
+            "description": "Trigger thumbnail processing asynchronously for all links"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Thumbnail Processing Async (Single Link)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/scheduler/trigger-thumb-async?linkId=123",
+              "host": ["{{base_url}}"],
+              "path": ["api", "scheduler", "trigger-thumb-async"],
+              "query": [
+                {
+                  "key": "linkId",
+                  "value": "123",
+                  "description": "ID of the specific link to process (optional)"
+                }
+              ]
+            },
+            "description": "Trigger thumbnail processing asynchronously for a specific link ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Thumbnail Processing Sync",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/scheduler/trigger-thumb-sync",
+              "host": ["{{base_url}}"],
+              "path": ["api", "scheduler", "trigger-thumb-sync"]
+            },
+            "description": "Trigger thumbnail processing synchronously for all links"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Thumbnail Processing Sync (Single Link)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/scheduler/trigger-thumb-sync?linkId=123",
+              "host": ["{{base_url}}"],
+              "path": ["api", "scheduler", "trigger-thumb-sync"],
+              "query": [
+                {
+                  "key": "linkId",
+                  "value": "123",
+                  "description": "ID of the specific link to process (optional)"
+                }
+              ]
+            },
+            "description": "Trigger thumbnail processing synchronously for a specific link ID"
+          },
+          "response": []
         }
       ]
     },

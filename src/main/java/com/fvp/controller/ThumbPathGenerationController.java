@@ -206,55 +206,132 @@ public class ThumbPathGenerationController {
     return linkRepository.countByThumbpathAndThumbPathProcessed("NA", 0);
   }
 
+  public boolean processLinkById(Integer linkId) {
+    logger.info("Processing single link by ID: {}", linkId);
+    
+    try {
+      Link link = linkRepository.findById(linkId).orElse(null);
+      if (link == null) {
+        logger.error("Link with ID {} not found", linkId);
+        return false;
+      }
+      
+      return processLink(link);
+    } catch (Exception e) {
+      logger.error("Error processing link ID {}: {}", linkId, e.getMessage(), e);
+      return false;
+    }
+  }
+
   private boolean processLink(Link link) {
+    long startTime = System.currentTimeMillis();
+    logger.info("Starting to process link ID: {}, thumbnail URL: {}", link.getId(), link.getThumbnail());
+    
     if (link.getThumbnail() == null || link.getThumbnail().isEmpty()) {
-      logger.warn("Link ID {} has no thumbnail URL", link.getId());
+      logger.warn("Link ID {} has no thumbnail URL - skipping processing", link.getId());
       return false;
     }
 
     String thumbUrl = link.getThumbnail();
     try {
       // Generate checksum for the thumbnail URL
+      long checksumStartTime = System.currentTimeMillis();
       String checksum = generateMd5Checksum(thumbUrl);
       String filename = checksum + ".jpg";
+      long checksumDuration = System.currentTimeMillis() - checksumStartTime;
+      
+      logger.info("Generated checksum for link ID {}: {} (duration: {} ms)", 
+          link.getId(), checksum, checksumDuration);
 
       // Create the local file path
       Path localImagePath = Paths.get(thumbsDir, filename);
       String savedImagePath = filename;
+      
+      logger.info("Local image path for link ID {}: {}", link.getId(), localImagePath.toString());
 
       // Download and process the image
+      long downloadStartTime = System.currentTimeMillis();
       byte[] imageData = downloadImage(thumbUrl);
+      long downloadDuration = System.currentTimeMillis() - downloadStartTime;
+      
       if (imageData == null || imageData.length == 0) {
-        logger.error("Failed to download image from URL: {}", thumbUrl);
+        logger.error("Failed to download image from URL: {} for link ID {} (download time: {} ms)", 
+            thumbUrl, link.getId(), downloadDuration);
         link.setThumbPathProcessed(3);
         linkRepository.save(link);
         return false;
       }
+      
+      logger.info("Successfully downloaded image for link ID {}: {} bytes (download time: {} ms)", 
+          link.getId(), imageData.length, downloadDuration);
 
       // Resize and save the image
+      long resizeStartTime = System.currentTimeMillis();
       boolean saved = resizeAndSaveImage(imageData, localImagePath.toString());
+      long resizeDuration = System.currentTimeMillis() - resizeStartTime;
+      
       if (!saved) {
-        logger.error("Failed to resize and save image for link ID {}", link.getId());
+        logger.error("Failed to resize and save image for link ID {} (resize time: {} ms)", 
+            link.getId(), resizeDuration);
         link.setThumbPathProcessed(3);
         linkRepository.save(link);
         return false;
       }
+      
+      logger.info("Successfully resized and saved image for link ID {} (resize time: {} ms)", 
+          link.getId(), resizeDuration);
 
       // Update link in database
+      long dbUpdateStartTime = System.currentTimeMillis();
       link.setThumbpath(savedImagePath);
       link.setThumbPathProcessed(1);
       linkRepository.save(link);
+      long dbUpdateDuration = System.currentTimeMillis() - dbUpdateStartTime;
+      
+      logger.info("Updated database for link ID {} (db update time: {} ms)", 
+          link.getId(), dbUpdateDuration);
 
       // Update Elasticsearch document
-      linkProcessingService.updateElasticsearchDocument(link);
+      long esUpdateStartTime = System.currentTimeMillis();
+      try {
+        linkProcessingService.updateElasticsearchDocument(link);
+        long esUpdateDuration = System.currentTimeMillis() - esUpdateStartTime;
+        logger.info("Updated Elasticsearch for link ID {} (ES update time: {} ms)", 
+            link.getId(), esUpdateDuration);
+      } catch (Exception esException) {
+        long esUpdateDuration = System.currentTimeMillis() - esUpdateStartTime;
+        logger.warn("Failed to update Elasticsearch for link ID {} (ES update time: {} ms): {}", 
+            link.getId(), esUpdateDuration, esException.getMessage());
+        // Don't fail the entire process if ES update fails
+      }
 
-      logger.info("Successfully processed thumbpath for link ID {}: {}", link.getId(),
-          savedImagePath);
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.info("Successfully processed thumbpath for link ID {}: {} (total time: {} ms)", 
+          link.getId(), savedImagePath, totalDuration);
+      
+      // Log performance metrics for slower operations
+      if (totalDuration > 5000) {
+        logger.warn("Slow link processing detected for link ID {} - Total time: {} ms", 
+            link.getId(), totalDuration);
+      }
+      
       return true;
 
     } catch (Exception e) {
-      logger.error("Error processing thumbnail for link ID {}: {}", link.getId(), e.getMessage(),
-          e);
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.error("Error processing thumbnail for link ID {} (total time: {} ms): {}", 
+          link.getId(), totalDuration, e.getMessage(), e);
+      
+      // Try to update the link status to indicate failure
+      try {
+        link.setThumbPathProcessed(3);
+        linkRepository.save(link);
+        logger.info("Updated link ID {} status to failed (thumbPathProcessed=3)", link.getId());
+      } catch (Exception dbException) {
+        logger.error("Failed to update link ID {} status after processing error: {}", 
+            link.getId(), dbException.getMessage());
+      }
+      
       return false;
     }
   }
@@ -267,47 +344,155 @@ public class ThumbPathGenerationController {
   }
 
   private byte[] downloadImage(String imageUrl) {
+    long startTime = System.currentTimeMillis();
+    logger.info("Starting image download from URL: {}", imageUrl);
+    
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       HttpGet request = new HttpGet(imageUrl);
+      
+      // Add timeout and user agent headers
+      request.setConfig(org.apache.http.client.config.RequestConfig.custom()
+          .setConnectTimeout(10000)
+          .setSocketTimeout(30000)
+          .build());
+      request.setHeader("User-Agent", "FVP-Thumbnail-Processor/1.0");
 
+      long requestStartTime = System.currentTimeMillis();
       try (CloseableHttpResponse response = httpClient.execute(request)) {
+        long responseTime = System.currentTimeMillis() - requestStartTime;
         int statusCode = response.getStatusLine().getStatusCode();
+        
+        logger.info("HTTP response received for URL: {} - Status: {}, Response time: {} ms", 
+            imageUrl, statusCode, responseTime);
 
         if (statusCode != 200) {
-          logger.error("Failed to download image, status code: {}", statusCode);
+          logger.error("Failed to download image from URL: {} - Status code: {}, Response time: {} ms", 
+              imageUrl, statusCode, responseTime);
           return null;
         }
 
         HttpEntity entity = response.getEntity();
         if (entity != null) {
-          return EntityUtils.toByteArray(entity);
+          long contentLength = entity.getContentLength();
+          logger.info("Content length for URL {}: {} bytes", imageUrl, contentLength);
+          
+          long readStartTime = System.currentTimeMillis();
+          byte[] imageData = EntityUtils.toByteArray(entity);
+          long readDuration = System.currentTimeMillis() - readStartTime;
+          
+          long totalDuration = System.currentTimeMillis() - startTime;
+          logger.info("Successfully downloaded image from URL: {} - Size: {} bytes, Read time: {} ms, Total time: {} ms", 
+              imageUrl, imageData.length, readDuration, totalDuration);
+          
+          // Log warning for large images
+          if (imageData.length > 10 * 1024 * 1024) { // 10MB
+            logger.warn("Large image downloaded from URL: {} - Size: {} MB", 
+                imageUrl, imageData.length / (1024 * 1024));
+          }
+          
+          return imageData;
+        } else {
+          logger.error("No entity content received for URL: {}", imageUrl);
+          return null;
         }
       }
 
+    } catch (java.net.SocketTimeoutException e) {
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.error("Timeout error downloading image from URL: {} - Duration: {} ms, Error: {}", 
+          imageUrl, totalDuration, e.getMessage());
+      return null;
+    } catch (java.net.ConnectException e) {
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.error("Connection error downloading image from URL: {} - Duration: {} ms, Error: {}", 
+          imageUrl, totalDuration, e.getMessage());
       return null;
     } catch (Exception e) {
-      logger.error("Error downloading image: {}", e.getMessage(), e);
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.error("Error downloading image from URL: {} - Duration: {} ms, Error: {}", 
+          imageUrl, totalDuration, e.getMessage(), e);
       return null;
     }
   }
 
   private boolean resizeAndSaveImage(byte[] imageData, String outputPath) {
+    long startTime = System.currentTimeMillis();
+    logger.info("Starting image resize and save operation for output path: {}", outputPath);
+    
     try {
+      // Log input data size
+      logger.info("Input image data size: {} bytes", imageData.length);
+      
       // Read the image
+      long readStartTime = System.currentTimeMillis();
       BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageData));
+      long readDuration = System.currentTimeMillis() - readStartTime;
+      
       if (originalImage == null) {
-        logger.error("Could not read image data");
+        logger.error("Could not read image data - ImageIO.read returned null for output path: {}", outputPath);
         return false;
       }
-
+      
+      // Log original image details
+      int originalWidth = originalImage.getWidth();
+      int originalHeight = originalImage.getHeight();
+      logger.info("Original image dimensions: {}x{} pixels, read time: {} ms", 
+          originalWidth, originalHeight, readDuration);
+      
+      // Check if image is too small
+      if (originalWidth < 320 || originalHeight < 180) {
+        logger.warn("Original image is smaller than target size. Original: {}x{}, Target: 320x180", 
+            originalWidth, originalHeight);
+      }
+      
+      // Ensure output directory exists
+      File outputFile = new File(outputPath);
+      File outputDir = outputFile.getParentFile();
+      if (!outputDir.exists()) {
+        boolean dirCreated = outputDir.mkdirs();
+        if (!dirCreated) {
+          logger.error("Failed to create output directory: {}", outputDir.getAbsolutePath());
+          return false;
+        }
+        logger.info("Created output directory: {}", outputDir.getAbsolutePath());
+      }
+      
       // Use Thumbnailator to resize and save the image
+      long resizeStartTime = System.currentTimeMillis();
       Thumbnails.of(originalImage)
                 .size(320, 180)
                 .outputQuality(0.8)
                 .toFile(outputPath);
+      long resizeDuration = System.currentTimeMillis() - resizeStartTime;
+      
+      // Verify the output file was created
+      File savedFile = new File(outputPath);
+      if (!savedFile.exists()) {
+        logger.error("Output file was not created at expected path: {}", outputPath);
+        return false;
+      }
+      
+      long fileSize = savedFile.length();
+      long totalDuration = System.currentTimeMillis() - startTime;
+      
+      logger.info("Image processing completed successfully - Output file: {} bytes, resize time: {} ms, total time: {} ms", 
+          fileSize, resizeDuration, totalDuration);
+      
+      // Log performance metrics for larger operations
+      if (totalDuration > 1000) {
+        logger.warn("Slow image processing detected - Total time: {} ms for file: {}", totalDuration, outputPath);
+      }
+      
       return true;
     } catch (IOException e) {
-      logger.error("Error processing image: {}", e.getMessage(), e);
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.error("Error processing image for output path: {} - Duration: {} ms, Error: {}", 
+          outputPath, totalDuration, e.getMessage(), e);
+      return false;
+    } catch (Exception e) {
+      long totalDuration = System.currentTimeMillis() - startTime;
+      logger.error("Unexpected error processing image for output path: {} - Duration: {} ms, Error: {}", 
+          outputPath, totalDuration, e.getMessage(), e);
       return false;
     }
   }
