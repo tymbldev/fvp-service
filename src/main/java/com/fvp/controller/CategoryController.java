@@ -4,6 +4,7 @@ import com.fvp.dto.CategoryWithCountDTO;
 import com.fvp.dto.CategoryWithLinkDTO;
 import com.fvp.service.CategoryService;
 import com.fvp.service.CategoryUtilService;
+import com.fvp.service.CategoryMappingService;
 import com.fvp.util.CacheBypassUtil;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ public class CategoryController {
 
   private final CategoryService categoryService;
   private final CategoryUtilService categoryUtilService;
+  private final CategoryMappingService categoryMappingService;
   private static final Logger logger = LoggingUtil.getLogger(CategoryController.class);
 
   @Autowired
@@ -41,9 +43,11 @@ public class CategoryController {
 
   @Autowired
   public CategoryController(CategoryService categoryService,
-      CategoryUtilService categoryUtilService) {
+      CategoryUtilService categoryUtilService,
+      CategoryMappingService categoryMappingService) {
     this.categoryService = categoryService;
     this.categoryUtilService = categoryUtilService;
+    this.categoryMappingService = categoryMappingService;
   }
 
   @GetMapping("/home")
@@ -94,19 +98,28 @@ public class CategoryController {
     long startTime = System.currentTimeMillis();
     
     try {
-      CategoryWithLinkDTO category = categoryService.getCategoryFirstLink(tenantId, categoryName);
+      // Map the incoming category name to actual database category name (case-insensitive)
+      String actualCategoryName = categoryMappingService.mapToActualCategoryNameWithFallback(categoryName);
+      
+      if (!actualCategoryName.equals(categoryName)) {
+        logger.info("Category name mapped - Input: '{}' -> Actual: '{}'", categoryName, actualCategoryName);
+      } else {
+        logger.info("Category name unchanged - using input: '{}'", categoryName);
+      }
+      
+      CategoryWithLinkDTO category = categoryService.getCategoryFirstLink(tenantId, actualCategoryName);
       long duration = System.currentTimeMillis() - startTime;
       if (category != null) {
-        logger.info("Successfully retrieved first link for category: {} (tenantId: {}) in {} ms", 
-            categoryName, tenantId, duration);
+        logger.info("Successfully retrieved first link for category: '{}' (mapped from: '{}', tenantId: {}) in {} ms", 
+            actualCategoryName, categoryName, tenantId, duration);
       } else {
-        logger.warn("No first link found for category: {} (tenantId: {}) in {} ms", 
-            categoryName, tenantId, duration);
+        logger.warn("No first link found for category: '{}' (mapped from: '{}', tenantId: {}) in {} ms", 
+            actualCategoryName, categoryName, tenantId, duration);
       }
       return ResponseEntity.ok(category);
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
-      logger.error("Error retrieving first link for category: {} (tenantId: {}) after {} ms: {}", 
+      logger.error("Error retrieving first link for category: '{}' (tenantId: {}) after {} ms: {}", 
           categoryName, tenantId, duration, e.getMessage(), e);
       throw e;
     }
@@ -125,15 +138,24 @@ public class CategoryController {
     long startTime = System.currentTimeMillis();
     
     try {
-      Page<CategoryWithLinkDTO> links = categoryUtilService.getCategoryLinks(tenantId, categoryName,
+      // Map the incoming category name to actual database category name (case-insensitive)
+      String actualCategoryName = categoryMappingService.mapToActualCategoryNameWithFallback(categoryName);
+      
+      if (!actualCategoryName.equals(categoryName)) {
+        logger.info("Category name mapped - Input: '{}' -> Actual: '{}'", categoryName, actualCategoryName);
+      } else {
+        logger.info("Category name unchanged - using input: '{}'", categoryName);
+      }
+      
+      Page<CategoryWithLinkDTO> links = categoryUtilService.getCategoryLinks(tenantId, actualCategoryName,
           pageable, minDuration, maxDuration, quality);
       long duration = System.currentTimeMillis() - startTime;
-      logger.info("Successfully retrieved {} category links for category: {} (tenantId: {}) in {} ms. Total elements: {}, total pages: {}", 
-          links.getContent().size(), categoryName, tenantId, duration, links.getTotalElements(), links.getTotalPages());
+      logger.info("Successfully retrieved {} category links for category: '{}' (mapped from: '{}', tenantId: {}) in {} ms. Total elements: {}, total pages: {}", 
+          links.getContent().size(), actualCategoryName, categoryName, tenantId, duration, links.getTotalElements(), links.getTotalPages());
       return ResponseEntity.ok(links);
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
-      logger.error("Error retrieving category links for category: {} (tenantId: {}) after {} ms: {}", 
+      logger.error("Error retrieving category links for category: '{}' (tenantId: {}) after {} ms: {}", 
           categoryName, tenantId, duration, e.getMessage(), e);
       throw e;
     }
