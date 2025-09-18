@@ -238,8 +238,15 @@ public class ElasticsearchSyncService {
                 doc.setHomeCatOrder(category.getHomeCatOrder());
                 doc.setHome(category.getHome());
                 doc.setCreatedViaLink(category.getCreatedViaLink());
-                doc.setCreatedAt(java.util.Date.from(
-                    category.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
+                // Handle null createdAt field
+                if (category.getCreatedAt() != null) {
+                  doc.setCreatedAt(java.util.Date.from(
+                      category.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
+                } else {
+                  // Use current time as fallback for null createdAt
+                  doc.setCreatedAt(new java.util.Date());
+                  logger.warn("Category '{}' has null createdAt, using current time as fallback", category.getName());
+                }
 
                 // Get link count for this category
                 Long count = elasticsearchLinkCategoryRepository.countByTenantIdAndCategory(tenantId, category.getName());
@@ -356,8 +363,15 @@ public class ElasticsearchSyncService {
             doc.setThumbPath(model.getThumbpath());
             doc.setAge(model.getAge());
             doc.setLinkCount(model.getDataPresent());
-            doc.setCreatedAt(java.util.Date.from(
-                model.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
+            // Handle null createdAt field
+            if (model.getCreatedAt() != null) {
+              doc.setCreatedAt(java.util.Date.from(
+                  model.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
+            } else {
+              // Use current time as fallback for null createdAt
+              doc.setCreatedAt(new java.util.Date());
+              logger.warn("Model '{}' has null createdAt, using current time as fallback", model.getName());
+            }
 
             // Save the document and track it
             elasticsearchClientService.saveModelDocument(doc);
