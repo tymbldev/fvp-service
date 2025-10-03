@@ -4,24 +4,24 @@ import com.fvp.document.LinkDocument;
 import com.fvp.service.ElasticsearchClientService;
 import org.slf4j.Logger;
 import com.fvp.util.LoggingUtil;
+import com.fvp.util.ThreadSafeRandomGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 
 @Repository
 public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLinkCategoryRepository {
 
     private static final Logger log = LoggingUtil.getLogger(ElasticsearchLinkCategoryRepositoryImpl.class);
     private final ElasticsearchClientService elasticsearchClientService;
+    private final ThreadSafeRandomGenerator randomGenerator;
 
     @Autowired
-    public ElasticsearchLinkCategoryRepositoryImpl(ElasticsearchClientService elasticsearchClientService) {
+    public ElasticsearchLinkCategoryRepositoryImpl(ElasticsearchClientService elasticsearchClientService, 
+                                                   ThreadSafeRandomGenerator randomGenerator) {
         this.elasticsearchClientService = elasticsearchClientService;
+        this.randomGenerator = randomGenerator;
     }
 
     @Override
@@ -72,7 +72,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             
             if (totalCount <= maxResultWindow) {
                 // If total count is within limits, use random offset
-                randomOffset = (int) (Math.random() * totalCount);
+                randomOffset = randomGenerator.getRandomValue((int) totalCount);
                 
                 org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
                 searchSourceBuilder.query(boolQuery);
@@ -93,7 +93,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             } else {
                 // For large result sets, get a random sample and pick from it
                 int sampleSize = Math.min(1000, maxResultWindow - 1); // Safe sample size
-                randomOffset = (int) (Math.random() * sampleSize);
+                randomOffset = randomGenerator.getRandomValue(sampleSize);
                 
                 org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
                 searchSourceBuilder.query(boolQuery);
@@ -158,7 +158,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             
             if (totalCount <= maxResultWindow) {
                 // If total count is within limits, use random offset
-                randomOffset = (int) (Math.random() * totalCount);
+                randomOffset = randomGenerator.getRandomValue((int) totalCount);
                 
                 org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
                 searchSourceBuilder.query(boolQuery);
@@ -179,7 +179,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
             } else {
                 // For large result sets, get a random sample and pick from it
                 int sampleSize = Math.min(1000, maxResultWindow - 1); // Safe sample size
-                randomOffset = (int) (Math.random() * sampleSize);
+                randomOffset = randomGenerator.getRandomValue(sampleSize);
                 
                 org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder = new org.elasticsearch.search.builder.SearchSourceBuilder();
                 searchSourceBuilder.query(boolQuery);
@@ -657,7 +657,7 @@ public class ElasticsearchLinkCategoryRepositoryImpl implements ElasticsearchLin
         }
 
         // Generate random offset
-        int randomOffset = (int) (Math.random() * totalCount);
+        int randomOffset = randomGenerator.getRandomValue(totalCount.intValue());
 
         // Build ES query
         org.elasticsearch.index.query.BoolQueryBuilder boolQuery = org.elasticsearch.index.query.QueryBuilders.boolQuery()

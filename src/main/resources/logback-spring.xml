@@ -4,6 +4,8 @@
   <property name="LOGS_PATH" value="${LOG_PATH:-${logs.path:-logs}}"/>
   <property name="LOG_PATTERN"
     value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+  <property name="ACCESS_LOG_PATTERN"
+    value="%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n"/>
 
   <!-- Console Appender (for troubleshooting) -->
   <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
@@ -28,7 +30,7 @@
   <appender name="AccessLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>${LOGS_PATH}/access.log</file>
     <encoder>
-      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+      <pattern>${ACCESS_LOG_PATTERN}</pattern>
     </encoder>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <fileNamePattern>${LOGS_PATH}/access.%d{yyyy-MM-dd}.log</fileNamePattern>
@@ -36,7 +38,7 @@
     </rollingPolicy>
   </appender>
 
-  <!-- Access Log Logger -->
+  <!-- Access Log Logger - Only logs to access.log, not to application.log -->
   <logger name="ACCESS_LOG" level="INFO" additivity="false">
     <appender-ref ref="AccessLog"/>
   </logger>
