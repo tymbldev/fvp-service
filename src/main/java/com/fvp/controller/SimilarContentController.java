@@ -132,13 +132,14 @@ public class SimilarContentController {
       // Get all categories with links for the tenant
       List<CategoryWithLinkDTO> allCategories = categoryService.getAllCategories(tenantId);
       
-      // Filter to only include similar categories
+      // Filter to only include similar categories with at least 100 links
       List<CategoryWithLinkDTO> similarCategories = allCategories.stream()
           .filter(category -> similarCategoryNames.contains(category.getName()))
+          .filter(category -> category.getLinkCount() != null && category.getLinkCount() >= 100)
           .collect(Collectors.toList());
       
       long duration = System.currentTimeMillis() - startTime;
-      logger.info("Successfully retrieved {} similar categories for category: {} in {} ms", 
+      logger.info("Successfully retrieved {} similar categories (with >=100 links) for category: {} in {} ms", 
           similarCategories.size(), categoryName, duration);
       
       return ResponseEntity.ok(similarCategories);
