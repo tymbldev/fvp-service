@@ -130,7 +130,7 @@ public class SimilarContentController {
           similarCategoryNames.size(), categoryName);
       
       // Get all categories with links for the tenant
-      List<CategoryWithLinkDTO> allCategories = categoryService.getHomeCategoriesWithLinks(tenantId);
+      List<CategoryWithLinkDTO> allCategories = categoryService.getAllCategories(tenantId);
       
       // Filter to only include similar categories
       List<CategoryWithLinkDTO> similarCategories = allCategories.stream()

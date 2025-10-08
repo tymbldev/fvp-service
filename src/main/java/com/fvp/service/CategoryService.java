@@ -690,6 +690,106 @@ public class CategoryService {
     return result;
   }
 
+  public List<CategoryWithLinkDTO> getAllCategories(Integer tenantId) {
+    long methodStartTime = System.currentTimeMillis();
+    logger.info("=== Starting getAllCategories method ===");
+    logger.info("Request parameters - tenantId: {}", tenantId);
+    
+    if (tenantId == null) {
+      logger.warn("Invalid tenant ID detected - returning empty list");
+      return Collections.emptyList();
+    }
+
+    String cacheKey = CacheService.generateCacheKey("allCategoriesWithLinks", tenantId);
+    logger.info("Generated cache key: '{}'", cacheKey);
+    TypeReference<List<CategoryWithLinkDTO>> typeRef = new TypeReference<List<CategoryWithLinkDTO>>() {
+    };
+
+    // Try to get from cache first
+    long cacheStartTime = System.currentTimeMillis();
+    Optional<List<CategoryWithLinkDTO>> cachedResult = LoggingUtil.logOperationTime(
+        logger,
+        "get all categories with links from cache",
+        () -> cacheService.getCollectionFromCache(
+            CacheService.CACHE_NAME_CATEGORIES,
+            cacheKey,
+            typeRef
+        )
+    );
+    long cacheDuration = System.currentTimeMillis() - cacheStartTime;
+
+    if (cachedResult.isPresent() && !cachedResult.get().isEmpty()) {
+      logger.info("Cache HIT for all categories with links - key: '{}', duration: {} ms, cached result size: {} for tenant {}",
+          cacheKey, cacheDuration, cachedResult.get().size(), tenantId);
+      return cachedResult.get();
+    }
+
+    logger.info("Cache MISS for all categories with links - key: '{}', cache lookup duration: {} ms for tenant {}",
+        cacheKey, cacheDuration, tenantId);
+
+    // Get all categories from database (not just home categories)
+    logger.info("Fetching all categories from database - tenantId: {}, createdViaLink=false", tenantId);
+    List<AllCat> categories = LoggingUtil.logOperationTime(
+        logger,
+        "fetch all categories from database",
+        () -> allCatRepository.findByTenantIdAndCreatedViaLink(tenantId, false)
+    );
+
+    if (categories.isEmpty()) {
+      logger.info("No categories found for tenant {} - returning empty list", tenantId);
+      return Collections.emptyList();
+    }
+    
+    logger.info("Found {} categories for tenant {} - extracting category names", 
+        categories.size(), tenantId);
+
+    // Extract category names
+    List<String> categoryNames = categories.stream()
+        .map(AllCat::getName)
+        .collect(Collectors.toList());
+    logger.info("Extracted {} category names: {}", categoryNames.size(), categoryNames);
+
+    // Get first links for all categories in bulk
+    logger.info("Getting first links for {} categories in bulk for tenant {}", 
+        categoryNames.size(), tenantId);
+    List<CategoryWithLinkDTO> firstLinks = getCategoryFirstLinks(tenantId, categoryNames);
+    logger.info("Retrieved {} first links for all categories", firstLinks.size());
+
+    // Create a map for easy lookup
+    Map<String, CategoryWithLinkDTO> dtoMap = firstLinks.stream()
+        .collect(Collectors.toMap(CategoryWithLinkDTO::getName, dto -> dto));
+    logger.info("Created DTO map with {} entries for lookup", dtoMap.size());
+
+    // Create final result list preserving original order
+    List<CategoryWithLinkDTO> result = categories.stream()
+        .map(category -> dtoMap.get(category.getName()))
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+    logger.info("Created final result list with {} items (preserving original order)", result.size());
+
+    // Store in cache
+    logger.info("Storing {} all categories in cache with key: '{}' (24 hour expiry)", result.size(), cacheKey);
+    LoggingUtil.logOperationTime(
+        logger,
+        "store all categories in cache",
+        () -> {
+          cacheService.putInCacheWithExpiry(
+              CacheService.CACHE_NAME_CATEGORIES,
+              cacheKey,
+              result,
+              24,
+              TimeUnit.HOURS
+          );
+          return null;
+        }
+    );
+
+    long methodDuration = System.currentTimeMillis() - methodStartTime;
+    logger.info("=== Method completed in {} ms - stored {} all categories in cache for tenant {} ===", 
+        methodDuration, result.size(), tenantId);
+    return result;
+  }
+
 
   public void buildSystemCache() {
     long methodStartTime = System.currentTimeMillis();
