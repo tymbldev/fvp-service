@@ -6,20 +6,16 @@ import com.fvp.service.CategoryService;
 import com.fvp.service.CategoryUtilService;
 import com.fvp.service.CategoryMappingService;
 import com.fvp.util.CacheBypassUtil;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import com.fvp.util.LoggingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -37,6 +33,7 @@ public class CategoryController {
   private final CategoryUtilService categoryUtilService;
   private final CategoryMappingService categoryMappingService;
   private static final Logger logger = LoggingUtil.getLogger(CategoryController.class);
+  private final int minLinkCountThreshold;
 
   @Autowired
   private ExecutorService executorService;
@@ -44,10 +41,52 @@ public class CategoryController {
   @Autowired
   public CategoryController(CategoryService categoryService,
       CategoryUtilService categoryUtilService,
-      CategoryMappingService categoryMappingService) {
+      CategoryMappingService categoryMappingService,
+      @Value("${category.min-link-count-threshold:1000}") int minLinkCountThreshold) {
     this.categoryService = categoryService;
     this.categoryUtilService = categoryUtilService;
     this.categoryMappingService = categoryMappingService;
+    this.minLinkCountThreshold = minLinkCountThreshold;
+  }
+
+  /**
+   * Filters categories based on link count threshold
+   * @param categories List of categories to filter
+   * @return Filtered list of categories with link count >= threshold
+   */
+  private List<CategoryWithLinkDTO> filterCategoriesByLinkCount(List<CategoryWithLinkDTO> categories) {
+    if (categories == null || categories.isEmpty()) {
+      return categories;
+    }
+    
+    List<CategoryWithLinkDTO> filteredCategories = categories.stream()
+        .filter(category -> category.getLinkCount() != null && category.getLinkCount() >= minLinkCountThreshold)
+        .collect(Collectors.toList());
+    
+    logger.info("Filtered categories by link count threshold {}: {} -> {} categories", 
+        minLinkCountThreshold, categories.size(), filteredCategories.size());
+    
+    return filteredCategories;
+  }
+
+  /**
+   * Filters categories with count based on link count threshold
+   * @param categories List of categories with count to filter
+   * @return Filtered list of categories with link count >= threshold
+   */
+  private List<CategoryWithCountDTO> filterCategoriesWithCountByLinkCount(List<CategoryWithCountDTO> categories) {
+    if (categories == null || categories.isEmpty()) {
+      return categories;
+    }
+    
+    List<CategoryWithCountDTO> filteredCategories = categories.stream()
+        .filter(category -> category.getLinkCount() != null && category.getLinkCount() >= minLinkCountThreshold)
+        .collect(Collectors.toList());
+    
+    logger.info("Filtered categories with count by link count threshold {}: {} -> {} categories", 
+        minLinkCountThreshold, categories.size(), filteredCategories.size());
+    
+    return filteredCategories;
   }
 
   @GetMapping("/home")
@@ -58,10 +97,11 @@ public class CategoryController {
     
     try {
       List<CategoryWithLinkDTO> categories = categoryService.getHomeCategoriesWithLinks(tenantId);
+      List<CategoryWithLinkDTO> filteredCategories = filterCategoriesByLinkCount(categories);
       long duration = System.currentTimeMillis() - startTime;
-      logger.info("Successfully retrieved {} home categories for tenantId: {} in {} ms", 
-          categories.size(), tenantId, duration);
-      return ResponseEntity.ok(categories);
+      logger.info("Successfully retrieved {} home categories (filtered from {}) for tenantId: {} in {} ms", 
+          filteredCategories.size(), categories.size(), tenantId, duration);
+      return ResponseEntity.ok(filteredCategories);
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
       logger.error("Error retrieving home categories for tenantId: {} after {} ms: {}", 
@@ -78,10 +118,11 @@ public class CategoryController {
     
     try {
       List<CategoryWithLinkDTO> categories = categoryService.getHomeSeoCategories(tenantId);
+      List<CategoryWithLinkDTO> filteredCategories = filterCategoriesByLinkCount(categories);
       long duration = System.currentTimeMillis() - startTime;
-      logger.info("Successfully retrieved {} home SEO categories for tenantId: {} in {} ms", 
-          categories.size(), tenantId, duration);
-      return ResponseEntity.ok(categories);
+      logger.info("Successfully retrieved {} home SEO categories (filtered from {}) for tenantId: {} in {} ms", 
+          filteredCategories.size(), categories.size(), tenantId, duration);
+      return ResponseEntity.ok(filteredCategories);
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
       logger.error("Error retrieving home SEO categories for tenantId: {} after {} ms: {}", 
@@ -202,10 +243,11 @@ public class CategoryController {
     try {
       List<CategoryWithCountDTO> categories = categoryService.getAllCategoriesWithLinkCounts(
           tenantId);
+      List<CategoryWithCountDTO> filteredCategories = filterCategoriesWithCountByLinkCount(categories);
       long duration = System.currentTimeMillis() - startTime;
-      logger.info("Successfully retrieved {} categories with link counts for tenantId: {} in {} ms", 
-          categories.size(), tenantId, duration);
-      return ResponseEntity.ok(categories);
+      logger.info("Successfully retrieved {} categories with link counts (filtered from {}) for tenantId: {} in {} ms", 
+          filteredCategories.size(), categories.size(), tenantId, duration);
+      return ResponseEntity.ok(filteredCategories);
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
       logger.error("Error retrieving all categories for tenantId: {} after {} ms: {}", 

@@ -49,6 +49,9 @@ public class AllCat implements Serializable {
   @Column(nullable = false)
   private Boolean createdViaLink = false;
 
+  @Column(name = "sim_content", length = 1000)
+  private String simContent;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private LocalDateTime createdAt;

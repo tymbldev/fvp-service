@@ -887,6 +887,70 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "Cleanup Link",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cleanup/link/{{link_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cleanup", "link", "{{link_id}}"]
+            },
+            "description": "Cleanup a link by ID - removes from database, Elasticsearch, and deletes thumbnail file"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Similar Content",
+      "item": [
+        {
+          "name": "Get Similar Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/similar/categories/{{category_name}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "similar", "categories", "{{category_name}}"]
+            },
+            "description": "Get similar categories for a given category name"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Similar Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/similar/models/{{model_name}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "similar", "models", "{{model_name}}"]
+            },
+            "description": "Get similar models for a given model name"
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -933,6 +997,10 @@
     {
       "key": "quality",
       "value": "HD"
+    },
+    {
+      "key": "link_id",
+      "value": "1"
     }
   ]
 }

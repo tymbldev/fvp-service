@@ -45,6 +45,9 @@ public class Model {
   @Column(nullable = false)
   private Integer dataPresent = 0;
 
+  @Column(name = "sim_content", length = 1000)
+  private String simContent;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private LocalDateTime createdAt;
