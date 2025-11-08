@@ -581,6 +581,7 @@ public class CategoryService {
       dto.setLinkSource(link.getSource());
       dto.setLinkTrailer(link.getTrailer());
       dto.setLinkDuration(link.getDuration());
+      dto.setCreatedOn(link.getCreatedOn());
       dtos.add(dto);
     }
 
@@ -851,6 +852,7 @@ public class CategoryService {
                 dto.setLinkDuration(link.getDuration());
                 dto.setLinkSource(link.getSource());
                 dto.setLinkTrailer(link.getTrailer());
+                dto.setCreatedOn(link.getCreatedOn());
                 return dto;
               })
               .collect(Collectors.toList());
