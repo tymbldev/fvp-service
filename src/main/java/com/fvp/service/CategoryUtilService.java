@@ -156,6 +156,7 @@ public class CategoryUtilService {
             completeFirstLinkDTO.setLinkSource(linkEntity.getSource());
             completeFirstLinkDTO.setLinkTrailer(linkEntity.getTrailer());
             completeFirstLinkDTO.setLinkCount(firstLinkDTO.getLinkCount()); // Keep the link count from the original DTO
+            completeFirstLinkDTO.setCreatedOn(linkEntity.getCreatedOn());
             
             pageContent.add(completeFirstLinkDTO);
             logger.info("Added complete first link DTO to page content. Current page content size: {}", pageContent.size());
@@ -374,6 +375,7 @@ public class CategoryUtilService {
       dto.setLinkDuration(link.getDuration());
       dto.setLinkSource(link.getSource());
       dto.setLinkTrailer(link.getTrailer());
+      dto.setCreatedOn(link.getCreatedOn());
       dtos.add(dto);
       
       logger.info("Created DTO for link - ID: {}, Title: '{}', Duration: {}, Source: '{}'", 

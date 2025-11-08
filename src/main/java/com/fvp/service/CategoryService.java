@@ -271,6 +271,7 @@ public class CategoryService {
     dto.setLinkTrailer(link.getTrailer());
     dto.setLinkDuration(link.getDuration());
     dto.setLinkCount(linkCount);
+    dto.setCreatedOn(link.getCreatedOn());
 
     // Store in cache
     logger.info("Storing category first link in cache with key: '{}'", cacheKey);
@@ -330,6 +331,7 @@ public class CategoryService {
       dto.setLinkTrailer(link.getTrailer());
       dto.setLinkDuration(link.getDuration());
       dto.setLinkCount(linkCount);
+      dto.setCreatedOn(link.getCreatedOn());
 
       chunkResults.add(dto);
       processedCount++;

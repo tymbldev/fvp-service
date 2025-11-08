@@ -194,6 +194,26 @@ public class ModelUtilService {
 
           if (includeFirstLink) {
             ModelLinksResponseDTO.LinkDTO firstLinkDTO = new ModelLinksResponseDTO.LinkDTO();
+
+            // Get link entity to populate first link DTO
+            Link linkEntity = null;
+            try {
+              linkEntity = linkRepository.findById(firstLink.getId()).orElse(null);
+              if (linkEntity != null) {
+                // Populate first link DTO with link entity data
+                firstLinkDTO.setLink(linkEntity.getLink());
+                firstLinkDTO.setLinkTitle(linkEntity.getTitle());
+                firstLinkDTO.setLinkThumbnail(linkEntity.getThumbnail());
+                firstLinkDTO.setLinkThumbPath(linkEntity.getThumbpath());
+                firstLinkDTO.setLinkSource(linkEntity.getSource());
+                firstLinkDTO.setLinkTrailer(linkEntity.getTrailer());
+                firstLinkDTO.setLinkDuration(linkEntity.getDuration());
+                firstLinkDTO.setCreatedOn(linkEntity.getCreatedOn());
+              }
+            } catch (Exception e) {
+              logger.warn("Error fetching link entity: {}", e.getMessage());
+            }
+            
             pageContent.add(firstLinkDTO);
 
             // If first page has only one item (pageSize=1), we're done
@@ -202,14 +222,6 @@ public class ModelUtilService {
               Page<ModelLinksResponseDTO> result = new PageImpl<>(Collections.singletonList(response), pageable, totalCount);
               cacheService.putInCacheWithExpiry(MODEL_LINKS_CACHE, cacheKey, result, 1, TimeUnit.HOURS);
               return result;
-            }
-
-            // Get link entity for exclusion from subsequent query
-            Link linkEntity = null;
-            try {
-              linkEntity = linkRepository.findById(firstLink.getId()).orElse(null);
-            } catch (Exception e) {
-              logger.warn("Error fetching link entity: {}", e.getMessage());
             }
 
             // For first page, get one less item from DB and exclude the first link's ID
@@ -259,6 +271,7 @@ public class ModelUtilService {
                       linkDTO.setLinkSource(link.getSource());
                       linkDTO.setLinkTrailer(link.getTrailer());
                       linkDTO.setLinkDuration(link.getDuration());
+                      linkDTO.setCreatedOn(link.getCreatedOn());
                       pageContent.add(linkDTO);
                     }
                   } catch (NumberFormatException e) {
@@ -310,6 +323,7 @@ public class ModelUtilService {
                       linkDTO.setLinkSource(link.getSource());
                       linkDTO.setLinkTrailer(link.getTrailer());
                       linkDTO.setLinkDuration(link.getDuration());
+                      linkDTO.setCreatedOn(link.getCreatedOn());
                       pageContent.add(linkDTO);
                     }
                   } catch (NumberFormatException e) {

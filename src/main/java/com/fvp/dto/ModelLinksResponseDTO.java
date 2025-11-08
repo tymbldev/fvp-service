@@ -32,5 +32,6 @@ public class ModelLinksResponseDTO implements Serializable {
         private String linkSource;
         private String linkTrailer;
         private Integer linkDuration;
+        private java.time.LocalDateTime createdOn;
     }
 } 
