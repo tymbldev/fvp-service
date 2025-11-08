@@ -554,7 +554,7 @@ public class LinkCategoryService {
     link.setThumbpath(doc.getLinkThumbPath());
     link.setDuration(doc.getLinkDuration());
     link.setSource(doc.getLinkSource());
-    link.setTrailer(doc.getLinkTrailer());
+    link.setTrailer(doc.getLinkTrailer());link.setCreatedOn(linkCategory.getCreatedOn());link.setCreatedAt(linkCategory.getCreatedOn());
     linkCategory.setLink(link);
     return linkCategory;
   }

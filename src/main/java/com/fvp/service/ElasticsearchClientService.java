@@ -194,7 +194,7 @@ public class ElasticsearchClientService {
     map.put("searchableText", document.getSearchableText());
     map.put("categories", document.getCategories());
     map.put("models", document.getModels());
-    
+
     // Add missing fields
     map.put("quality", document.getQuality());
     map.put("sheetName", document.getSheetName());
@@ -202,7 +202,7 @@ public class ElasticsearchClientService {
     map.put("thumbPathProcessed", document.getThumbPathProcessed());
     map.put("trailerPresent", document.getTrailerPresent());
     map.put("hd", document.getHd());
-    
+
     // Format createdOn date for Elasticsearch
     if (document.getCreatedOn() != null) {
       SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
@@ -211,7 +211,7 @@ public class ElasticsearchClientService {
     } else {
       map.put("createdOn", null);
     }
-    
+
     return map;
   }
 
@@ -265,7 +265,7 @@ public class ElasticsearchClientService {
     document.setSearchableText((String) map.get("searchableText"));
     document.setCategories((List<String>) map.get("categories"));
     document.setModels((List<String>) map.get("models"));
-    
+
     // Add missing fields
     document.setQuality((String) map.get("quality"));
     document.setSheetName((String) map.get("sheetName"));
@@ -273,7 +273,7 @@ public class ElasticsearchClientService {
     document.setThumbPathProcessed((Integer) map.get("thumbPathProcessed"));
     document.setTrailerPresent((Integer) map.get("trailerPresent"));
     document.setHd((Integer) map.get("hd"));
-    
+
     // Parse createdOn date from Elasticsearch format
     String createdOnStr = (String) map.get("createdOn");
     if (createdOnStr != null) {
@@ -308,7 +308,12 @@ public class ElasticsearchClientService {
     } else {
       document.setCreatedOn(null);
     }
-    
+    if (document.getCreatedOn() == null) {
+      document.setCreatedOn(document.getCreatedAt());
+    }
+    if (document.getCreatedAt() == null) {
+      document.setCreatedAt(document.getCreatedOn());
+    }
     return document;
   }
 
